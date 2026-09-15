@@ -1118,7 +1118,7 @@ git commit -m "feat(db): 0002 yardımcılar ve RLS — rol bazlı okuma, admin y
     - `cleanupFixtureOrders(): Promise<void>`
     - `Fixtures` = `{ tableId, table2Id, doenerId, variantH, variantK, ingZwiebeln, ingTomaten, sauceA, sauceB, sauceOhne, extraCheese, colaId, soldOutId, sauceGroupId }`
 
-- [ ] **Adım 1: Fixture yardımcısını yaz**
+- [x] **Adım 1: Fixture yardımcısını yaz**
 
 `supabase/tests/helpers/fixtures.ts` — fixture'lar `sql()` ile (postgres yetkisiyle) oluşturulur. Tüm test verisinin slug'ı `test-` ile başlar, masa adları `Test-Tisch` / `Test-Tisch-2`'dir.
 ```ts
@@ -1217,7 +1217,7 @@ export async function cleanupFixtureOrders(): Promise<void> {
 }
 ```
 
-- [ ] **Adım 2: `submit_order` testlerini yaz (kırmızı)**
+- [x] **Adım 2: `submit_order` testlerini yaz (kırmızı)**
 
 `supabase/tests/orders.test.ts`:
 ```ts
@@ -1329,7 +1329,7 @@ describe('submit_order', () => {
 ```
 Run: `npm run db:test -- orders` → Expected: FAIL (`submit_order` yok)
 
-- [ ] **Adım 3: Migration'ı yaz**
+- [x] **Adım 3: Migration'ı yaz**
 
 `supabase/migrations/0003_submit_order.sql`:
 ```sql
@@ -1554,13 +1554,13 @@ grant execute on all functions in schema public to authenticated, service_role;
 revoke all on all functions in schema internal from public, anon, authenticated;
 ```
 
-- [ ] **Adım 4: Uygula ve testleri çalıştır**
+- [x] **Adım 4: Uygula ve testleri çalıştır**
 
 Run: `npm run db:apply` → Expected: `→ 0003_submit_order.sql … ok`
 Run: `npm run db:test -- orders` → Expected: PASS (6 senaryo + 6 geçersiz kalem vakası)
 Testlerden biri takılırsa `systematic-debugging` uygula. Özellikle `option_groups_for_ticket` sıralamasına ve `v_variant := null` davranışına bak.
 
-- [ ] **Adım 5: Advisors + commit**
+- [x] **Adım 5: Advisors + commit**
 
 `get_advisors` temiz olmalı.
 ```bash
