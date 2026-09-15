@@ -36,3 +36,25 @@ describe('0001 şema', () => {
     expect(grants).toEqual([]);
   });
 });
+
+// R33: her migration'dan sonra geçerli kalması gereken değişmezler.
+describe('anon yetkisi yok — her migration sonrası (R33)', () => {
+  it('anon hiçbir public fonksiyonu çalıştıramaz', async () => {
+    const rows = await sql<{ fn: string; anon: boolean }>(`
+      select p.oid::regprocedure::text as fn, has_function_privilege('anon', p.oid, 'execute') as anon
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'`);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.filter((r) => r.anon).map((r) => r.fn)).toEqual([]);
+  });
+
+  it('anon hiçbir public sequence üzerinde usage/select/update yetkisine sahip değil', async () => {
+    const rows = await sql<{ seq: string; anon: boolean }>(`
+      select c.oid::regclass::text as seq,
+             has_sequence_privilege('anon', c.oid, 'usage, select, update') as anon
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'S'`);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.filter((r) => r.anon).map((r) => r.seq)).toEqual([]);
+  });
+});

@@ -764,14 +764,14 @@ git commit -m "feat(db): 0001 şema — enum'lar, 19 tablo, kısıtlar, RLS aç�
     - `internal.audit(p_action, p_entity, p_entity_id, p_details jsonb)`
   - Test yardımcıları: `ensureTestUsers(): Promise<Record<TestUserKey, string>>`, `clientFor(key): Promise<SupabaseClient>`, `anonClient()`, `serviceClient()`. `TestUserKey` = `admin | waiter | waiter2 | kitchen | printer | inactive`
 
-- [ ] **Adım 1: Test parolasını üret ve `.env` dosyasına ekle**
+- [x] **Adım 1: Test parolasını üret ve `.env` dosyasına ekle**
 
 Run: `node -e "console.log('T-' + require('crypto').randomBytes(12).toString('base64url'))"`
 `.env` dosyasına ekle: `TEST_USER_PASSWORD=<çıktı>`. `.env.example` dosyasına değersiz `TEST_USER_PASSWORD=` satırını ekle.
 
 Not: Test kullanıcıları gerçek projede durur. **M8'de (Görev 27) yayından önce pasifleştirilir.**
 
-- [ ] **Adım 2: Test kullanıcı yardımcısını yaz**
+- [x] **Adım 2: Test kullanıcı yardımcısını yaz**
 
 `supabase/tests/helpers/users.ts`:
 ```ts
@@ -836,7 +836,7 @@ export async function clientFor(key: TestUserKey): Promise<SupabaseClient> {
 }
 ```
 
-- [ ] **Adım 3: RLS testlerini yaz (kırmızı)**
+- [x] **Adım 3: RLS testlerini yaz (kırmızı)**
 
 `supabase/tests/rls.test.ts`:
 ```ts
@@ -939,7 +939,7 @@ describe('RLS (0002)', () => {
 ```
 Run: `npm run db:test -- rls` → Expected: FAIL (fonksiyonlar ve politikalar yok)
 
-- [ ] **Adım 4: Migration'ı yaz**
+- [x] **Adım 4: Migration'ı yaz**
 
 `supabase/migrations/0002_helpers_rls.sql`:
 ```sql
@@ -1080,17 +1080,17 @@ grant execute on all functions in schema public to authenticated, service_role;
 revoke all on all functions in schema internal from public, anon, authenticated;
 ```
 
-- [ ] **Adım 5: Uygula ve testleri çalıştır**
+- [x] **Adım 5: Uygula ve testleri çalıştır**
 
 Run: `npm run db:apply` → Expected: `→ 0002_helpers_rls.sql … ok`
 Run: `npm run db:test -- rls` → Expected: PASS (9 test)
 Run: `npm run db:test` → Expected: schema + rls PASS
 
-- [ ] **Adım 6: Advisors**
+- [x] **Adım 6: Advisors**
 
 `get_advisors` (security + performance) çalıştır. "RLS enabled no policy" uyarısı yalnızca `daily_counters` için kalmalı (bilinçli). "auth_rls_initplan" uyarısı çıkmamalı; tüm çağrılar `(select …)` içinde. Başka bulgu varsa düzelt.
 
-- [ ] **Adım 7: Commit**
+- [x] **Adım 7: Commit**
 ```bash
 git add supabase/migrations/0002_helpers_rls.sql supabase/tests/helpers/users.ts supabase/tests/rls.test.ts .env.example
 git commit -m "feat(db): 0002 yardımcılar ve RLS — rol bazlı okuma, admin yazma, anon kapalı"
