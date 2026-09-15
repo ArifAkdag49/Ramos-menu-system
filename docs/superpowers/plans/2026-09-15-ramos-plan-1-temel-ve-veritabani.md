@@ -78,7 +78,7 @@ supabase/
   - `formatEuro(cents: number): string`, `formatOrderNo(n: number): string`.
   - Kök script'ler: `lint`, `typecheck`, `test`, `build`, `check`, `db:apply`, `db:sql`, `db:test`.
 
-- [ ] **Adım 1: Kök dosyaları oluştur**
+- [x] **Adım 1: Kök dosyaları oluştur**
 
 `package.json`:
 ```json
@@ -139,12 +139,12 @@ export default tseslint.config(
 `.prettierrc.json`: `{ "singleQuote": true, "printWidth": 100, "trailingComma": "all" }`
 `.editorconfig`: `root = true` / `[*]` / `charset = utf-8` / `end_of_line = lf` / `indent_style = space` / `indent_size = 2` / `insert_final_newline = true`
 
-- [ ] **Adım 2: Geliştirme bağımlılıklarını kur**
+- [x] **Adım 2: Geliştirme bağımlılıklarını kur**
 
 Run: `npm i -D typescript vitest eslint @eslint/js typescript-eslint eslint-config-prettier prettier @types/node vite @supabase/supabase-js`
 Expected: `package-lock.json` oluşur, hata yok.
 
-- [ ] **Adım 3: `@ramos/shared` paketini oluştur**
+- [x] **Adım 3: `@ramos/shared` paketini oluştur**
 
 `packages/shared/package.json`:
 ```json
@@ -164,7 +164,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({ test: { environment: 'node', include: ['src/**/*.test.ts'] } });
 ```
 
-- [ ] **Adım 4: İlk testi yaz (kırmızı)**
+- [x] **Adım 4: İlk testi yaz (kırmızı)**
 
 `packages/shared/src/money.test.ts`:
 ```ts
@@ -187,7 +187,7 @@ describe('money', () => {
 Run: `npm test -w @ramos/shared`
 Expected: FAIL — `Cannot find module './money'`
 
-- [ ] **Adım 5: Uygula**
+- [x] **Adım 5: Uygula**
 
 `packages/shared/src/money.ts`:
 ```ts
@@ -201,12 +201,12 @@ export const formatOrderNo = (n: number): string => `#${String(n).padStart(3, '0
 
 Run: `npm test -w @ramos/shared` → Expected: PASS (2 test)
 
-- [ ] **Adım 6: Tüm kontrol zincirini çalıştır**
+- [x] **Adım 6: Tüm kontrol zincirini çalıştır**
 
 Run: `npm run check`
 Expected: lint, typecheck, test ve build hatasız (build henüz boş, `--if-present` sayesinde atlanır).
 
-- [ ] **Adım 7: Commit**
+- [x] **Adım 7: Commit**
 ```bash
 git add package.json package-lock.json tsconfig.base.json eslint.config.js .prettierrc.json .editorconfig packages/shared
 git commit -m "chore: monorepo iskeleti ve @ramos/shared (para biçimleri)"
