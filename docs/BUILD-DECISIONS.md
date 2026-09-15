@@ -9,3 +9,24 @@ Faz B'de belirsizlik ya da sapma olduğunda verilen kararlar (BUILD-PROMPT §2.2
 | 2026-09-15 | Faz A | Çalışma dalı `build/ramos-v1` (`main`'den); git worktree kullanılmaz | `.env`, Playwright, Docker ve zamanlanmış görev ana klasörde çalışır; commit'ler ayrı dalda kalır |
 | 2026-09-15 | Görev 2 | Auth `disable_signup: true` ve `site_url = https://ramos.arxdigitalsevice.com` proje oluşturulur oluşturulmaz ayarlanır; Görev 27 yalnız doğrular | spec §12, §17.1: kayıt kapalı olmalı; açık kaldığı süre sıfırlanır |
 | 2026-09-15 | Tümü | Commit son satırı `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>` | Oturumun güncel imza yönergesi BUILD-PROMPT §2.3'teki satırın yerine geçer |
+| 2026-09-15 | Görev 1 | ESLint yapılandırmasına `**/*.{js,mjs,cjs}` için Node globals eklenir (`globals` paketi) | Plandaki yapılandırma `scripts/*.mjs` dosyalarında `no-undef` verip `npm run check`'i kırardı |
+| 2026-09-15 | Görev 1 | Para testindeki € öncesi boşluk U+00A0 (` `) | Intl de-DE çıktısı NBSP üretir |
+| 2026-09-15 | Görev 1 | `.gitattributes`: `* text=auto eol=lf`; `*.cmd`, `*.bat` → `eol=crlf` | Bu makinede `core.autocrlf=true`; Linux'a gidecek bash betikleri (Görev 29) CRLF ile bozulur, `.cmd` etiketleri CRLF ister |
+| 2026-09-15 | Görev 2 | `.env` Faz A'da oluştu: Görev 2 yalnız boş Supabase anahtarlarını doldurur; `.env.example` tüm anahtarları değersiz listeler | Kullanıcı sırları korunur |
+| 2026-09-15 | Görev 2 | Proje anahtarlarında önce eski `anon`/`service_role` JWT anahtarları; yoksa publishable/secret (karar kaydıyla) | `verify_jwt`, Realtime `setAuth` ve Edge Function ortamı en basit hâliyle çalışır |
+| 2026-09-15 | Görev 2 | `supabase/tests/helpers/sql.ts` ile `scripts/db.mjs` içindeki Management API çağrısı kopya kalır | `db.mjs`, Görev 26'daki main-guard'a kadar içe aktarılınca CLI'yı çalıştırır |
+| 2026-09-15 | Görev 3–9, 26 | "Advisors temiz" = ERROR/WARN yok; INFO'lar değerlendirilir (işaretlenen FK'lara indeks; boş veritabanında `unused_index` ve `daily_counters` politikasızlığı bilinçli) | Boş veritabanında performans INFO'ları kapanamaz |
+| 2026-09-15 | Görev 4–7 | `internal.*` dahil tüm fonksiyonlarda `set search_path = ''` | Advisor `function_search_path_mutable` uyarısı; BUILD-PROMPT §6 |
+| 2026-09-15 | Görev 6 | `mark_order_served` `in_kitchen → served` geçişini de kabul eder (planın netleştirmesi korunur) | Yalnız içecekli siparişte masa kapanabilsin; spec yasaklamıyor; arayüzde ikincil eylem |
+| 2026-09-15 | Görev 4 | `print_jobs` okuma yetkisi admin, waiter, kitchen, printer | Spec §8.2/§8.3 ekranları garson ve mutfağa yazdırma durumunu ve "Tekrar dene"yi gösterir; §12'deki dar satır bunu engellerdi |
+| 2026-09-15 | Görev 11 | Tek ESLint yapılandırması kökte: Vite şablonunun `apps/web/eslint.config.js` dosyası kaldırılır, köke `apps/web` için react-hooks + react-refresh bloğu eklenir | Kök `eslint .` ESLint 9 ve 10'da tutarlı çalışsın |
+| 2026-09-15 | Görev 11 | `apps/web` typecheck/build `tsc -b` ile | Şablonun çözüm tsconfig'i (`files: []`) ile `tsc --noEmit` hiçbir dosyayı denetlemez |
+| 2026-09-15 | Görev 15, 16, 24 | Tasarım kapıları (M3, M4, M6) kontrolcü adımıdır: ekran görüntüleri → muadil skill'lerle eleştiri + axe WCAG AA → kritik/yüksek bulgular için düzeltme → görüntüler yenilenir | BUILD-PROMPT §7, §10 |
+| 2026-09-15 | Görev 17 | Fiş meta satırlarında spec'teki "·" ayırıcı: "Bestellung #047 · Runde 2", "15.09.2026 19:42 · Kellner: Ahmet" | Spec §9.2/§9.3 (spec kazanır); CP857'de "·" var |
+| 2026-09-15 | Görev 17 | Kaydırma testinin beklenen ilk satırı 49 karakterdi; 48 kolon kuralına göre `…mit Pommes` / `   oder Reis und extra Salat` olarak düzeltilir | Spec §9.1 ve aynı testteki ≤ 48 kontrolüyle çelişiyordu |
+| 2026-09-15 | Görev 20 | BOM doğrulaması `[IO.File]::ReadAllBytes(...)[0..2]` ile; zamanlanmış görev denemesi etkileşimsiz kaldırılır | PowerShell 5.1'de `Format-Hex -Count` yok; `uninstall-agent.ps1`'deki Read-Host kullanıcı içindir |
+| 2026-09-15 | Görev 19–20 | Canlı veritabanına aynı anda tek ajan; M5 sonunda `printer_host = 192.168.1.250` ve çalışan ajan kalmaz | Karışıklık ve gereksiz baskı önlenir |
+| 2026-09-15 | Görev 21 | PrinterCard için başarısız iş listesi sorgusu eklenir | Spec §8.4 iş başına "Tekrar dene" ister; veri katmanı yalnız sayıyordu |
+| 2026-09-15 | Görev 26 | VAPID ve WEBHOOK sırları ekrana basılmadan doğrudan `.env` dosyalarına yazılır | Sır kuralı |
+| 2026-09-15 | Görev 28 | `.gitignore`'a `!**/.env.*.example` | `apps/web/.env.production.example` aksi hâlde yok sayılırdı |
+| 2026-09-15 | Görev 28 | Canlı duman testi `test-e2e-canli` hesabı ve `Test-Tisch-Canli` masasıyla; ardından temizlik yeniden çalışır ve `DB_TESTS_ALLOWED=0` kalır | Mevcut temizlik süzgeçleri (`test-%`) bu veriyi kapsasın |

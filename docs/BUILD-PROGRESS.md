@@ -30,7 +30,7 @@
 
 ## Görevler
 ### M0 — Temel (Plan 1)
-- [ ] Görev 1 — Monorepo iskeleti ve araç zinciri
+- [x] Görev 1 — Monorepo iskeleti ve araç zinciri — `c9232b9` — `npm run check` ✓ (shared 2/2), inceleme temiz
 - [ ] Görev 2 — Supabase projesi, ortam dosyaları ve DB betiği
 ### M1 — Veritabanı (Plan 1)
 - [ ] Görev 3 — Migration 0001: şema
