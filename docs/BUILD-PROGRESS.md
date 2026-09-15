@@ -23,6 +23,9 @@
 - Yazıcı: `192.168.1.250:9100` TCP ✓ (ping yanıtsız — yazıcı ICMP'ye cevap vermiyor, sorun değil)
 - Dal `build/ramos-v1` açıldı → **Faz B başladı**
 
+## Oluşturulan kaynaklar (sırsız)
+- **Supabase projesi** (Görev 2): `ramos-siparis` — ref `ypuzbmjzqbjahfkksgps` — eu-central-1 · Postgres 17.6 · Free (org Cicekci). Anahtarlar: eski JWT `anon` / `service_role` (kök `.env`). Auth: `disable_signup: true`, `site_url: https://ramos.arxdigitalsevice.com`. Advisors: 0 / 0.
+
 ## Sunucu komutları günlüğü (Plesk — her komut çalıştırılmadan önce yazılır)
 | Zaman | Görev | Komut | Tür | Sonuç |
 |---|---|---|---|---|
@@ -31,7 +34,7 @@
 ## Görevler
 ### M0 — Temel (Plan 1)
 - [x] Görev 1 — Monorepo iskeleti ve araç zinciri — `c9232b9` — `npm run check` ✓ (shared 2/2), inceleme temiz
-- [ ] Görev 2 — Supabase projesi, ortam dosyaları ve DB betiği
+- [x] Görev 2 — Supabase projesi, ortam dosyaları ve DB betiği — `8dddcaf`, `985de66` — db:sql 17.6 ✓, db:apply ✓, `npm run check` ✓, advisors 0/0; inceleme temiz (1 düzeltme turu: migrations/.gitkeep)
 ### M1 — Veritabanı (Plan 1)
 - [ ] Görev 3 — Migration 0001: şema
 - [ ] Görev 4 — Migration 0002: yardımcılar, RLS, test kullanıcıları
