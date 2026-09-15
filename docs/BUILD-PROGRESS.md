@@ -38,7 +38,7 @@
 ### M1 — Veritabanı (Plan 1)
 - [x] Görev 3 — Migration 0001: şema — `d9d29c5` — `db:test -- schema` 4/4 ✓, advisors 0 ERROR/WARN (INFO: 19 RLS-politikasız → 0002, 8 kişi FK'sı + 15 kullanılmayan indeks kabul), inceleme temiz
 - [x] Görev 4 — Migration 0002: yardımcılar, RLS, test kullanıcıları — `3ae1eba` — `db:test` 15/15 ✓ (rls 9, anon değişmezleri 2), anon: 0 fonksiyon / 0 sequence / 0 tablo yetkisi, 47 politika + 4 storage politikası, advisors 0 ERROR (WARN'lar R34/R35 ile kabul), inceleme temiz
-- [ ] Görev 5 — Migration 0003: `submit_order` ve fiş payload'u
+- [x] Görev 5 — Migration 0003: `submit_order` ve fiş payload'u — `fba2744`, `ceace17` — orders 13/13, `db:test` 28/28 ✓; eşzamanlı aynı `order_id` artık hatasız (R36); canlı fonksiyon gövdeleri commit'lerle birebir; inceleme temiz
 - [ ] Görev 6 — Migration 0004: sipariş yaşam döngüsü, masa, mesai, push, rapor RPC'leri
 - [ ] Görev 7 — Migration 0005: fiş kuyruğu, Realtime broadcast, denetim trigger'ları
 - [ ] Görev 8 — Menü seed'i (107 ürün), masalar, ayarlar + TS tipleri
