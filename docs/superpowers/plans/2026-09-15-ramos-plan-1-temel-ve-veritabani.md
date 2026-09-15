@@ -387,7 +387,7 @@ git commit -m "chore: Supabase projesi bağlantısı, migration/SQL betiği ve D
 - Consumes: `sql()` (Görev 2)
 - Produces: Spec §5'teki tüm tablolar. Seed'in idempotent upsert'i için doğal anahtarlar da eklenir: `categories.slug`, `products.slug`, `ingredients.slug`, `option_groups.slug`. Tekil satırlar: `settings(id = 1)`, `printer_status(id = 'main')`. Tetikleyici fonksiyonu: `public.touch_updated_at()`.
 
-- [ ] **Adım 1: Testi yaz (kırmızı)**
+- [x] **Adım 1: Testi yaz (kırmızı)**
 
 `supabase/tests/schema.test.ts`:
 ```ts
@@ -432,7 +432,7 @@ describe('0001 şema', () => {
 ```
 Run: `npm run db:test -- schema` → Expected: FAIL (tablolar yok)
 
-- [ ] **Adım 2: Migration'ı yaz**
+- [x] **Adım 2: Migration'ı yaz**
 
 `supabase/migrations/0001_schema.sql`:
 ```sql
@@ -723,16 +723,16 @@ alter default privileges in schema public revoke all on tables from anon;
 alter default privileges in schema public revoke execute on functions from anon, public;
 ```
 
-- [ ] **Adım 3: Uygula ve testi çalıştır**
+- [x] **Adım 3: Uygula ve testi çalıştır**
 
 Run: `npm run db:apply` → Expected: `→ 0001_schema.sql … ok`
 Run: `npm run db:test -- schema` → Expected: PASS (4 test)
 
-- [ ] **Adım 4: Advisors**
+- [x] **Adım 4: Advisors**
 
 MCP `get_advisors` (security) çalıştır. Beklenen: bu aşamada "RLS enabled, no policy" INFO uyarıları normal, politikalar 0002'de gelecek. Bunlar dışındaki bulguları düzelt.
 
-- [ ] **Adım 5: Commit**
+- [x] **Adım 5: Commit**
 ```bash
 git add supabase/migrations/0001_schema.sql supabase/tests/schema.test.ts
 git commit -m "feat(db): 0001 şema — enum'lar, 19 tablo, kısıtlar, RLS açık, anon kapalı"
