@@ -1601,7 +1601,7 @@ Yardımcılar: `internal.build_storno_payload(p_order_id uuid, p_item_ids uuid[]
 
 (*) **Spec netleştirmesi:** `in_kitchen → served` geçişi de serbest bırakıldı. Sebep: yalnız içecek içeren siparişlerde mutfak HAZIR'a basmaz; bu geçiş olmazsa sipariş KDS'de takılı kalır ve masa kapatılamaz. Arayüzde bu geçiş, siparişin menüsünde ikincil bir eylem olarak durur.
 
-- [ ] **Adım 1: Testleri yaz (kırmızı)**
+- [x] **Adım 1: Testleri yaz (kırmızı)**
 
 `supabase/tests/lifecycle.test.ts`:
 ```ts
@@ -1786,7 +1786,7 @@ describe('mesai, dil, push, rapor', () => {
 ```
 Run: `npm run db:test -- lifecycle` → Expected: FAIL (fonksiyonlar yok)
 
-- [ ] **Adım 2: Migration'ı yaz**
+- [x] **Adım 2: Migration'ı yaz**
 
 `supabase/migrations/0004_order_lifecycle.sql`:
 ```sql
@@ -2067,12 +2067,12 @@ grant execute on all functions in schema public to authenticated, service_role;
 revoke all on all functions in schema internal from public, anon, authenticated;
 ```
 
-- [ ] **Adım 3: Uygula, testleri çalıştır**
+- [x] **Adım 3: Uygula, testleri çalıştır**
 
 Run: `npm run db:apply` → Expected: `→ 0004_order_lifecycle.sql … ok`
 Run: `npm run db:test` → Expected: schema + rls + orders + lifecycle PASS
 
-- [ ] **Adım 4: Advisors + commit**
+- [x] **Adım 4: Advisors + commit**
 
 `get_advisors` temiz.
 ```bash
