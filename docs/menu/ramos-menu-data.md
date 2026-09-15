@@ -14,6 +14,7 @@ Bu dosya veritabanı seed'inin **tek kaynağıdır**. Build oturumu buradan `sup
 4. Kategori sırası = aşağıdaki sıra (10, 20, 30 …); ürün sırası = tablodaki sıra.
 5. Tüm malzeme/seçenek/kategori adları DE (fiş) + TR (garson arayüzü).
 6. Seed **idempotent** olmalı (tekrar çalıştırınca çoğaltmamalı) — sabit `slug`/doğal anahtar üzerinden upsert.
+7. **Görseller:** Tüm ürünlerde `image_path = null` (görsel alanı boş, arayüz yer tutucu gösterir). Görselleri kullanıcı sonra Admin → Menü → **Toplu görsel yükleme** ile ekler; dosya adı ürün numarasıdır (`05.jpg`, `71a.webp`, `M1.png`). Seed tekrar çalıştırıldığında `image_path` alanına **dokunmaz**.
 
 ---
 

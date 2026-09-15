@@ -17,6 +17,12 @@
 **Spec:** `docs/superpowers/specs/2026-09-15-ramos-siparis-sistemi-design.md` (§8.1, §8.4, §11.3, §11.4, §12, §14, §17.5)
 
 ## Global Constraints
+**Faz B kuralı (her görevde geçerli):**
+- Bu plandaki "kullanıcıya sor", "onay al" ve "kullanıcıdan iste" ifadeleri Faz A'da karşılandı (BUILD-PROMPT §3). **Soru sormadan devam et.**
+- **Onaylı işlemler:** Edge Function yayınları ve secret'lar Faz A'da onaylandı. `VAPID_SUBJECT` = `https://<APP_DOMAIN>`.
+- **Tasarım:** BUILD-PROMPT §10 geçerlidir. Admin panelinde de sade dil ve tek ana eylem kuralı uygulanır. M6 sonunda tasarım kapısı var.
+- **Görseller:** BUILD-PROMPT §11 geçerlidir (tek tek ve toplu yükleme bu planın Görev 22'sinde).
+
 `docs/BUILD-PROMPT.md` §5–§6 geçerlidir. Bu planda özellikle:
 - **Admin görünümü:** Masaüstü öncelikli (1440×900), mobilde de kullanılabilir (390).
 - **Kayıtlar:**
@@ -35,6 +41,7 @@ apps/web/src/features/admin/
   menu/CategoriesPage.tsx · ProductsPage.tsx · ProductEditor.tsx · VariantsEditor.tsx
   menu/IngredientsPage.tsx · OptionGroupsPage.tsx · BulkAssignPage.tsx · TicketPreview.tsx
   menu/money.ts (+test) · menu/menuAdminLogic.ts (+test) · menu/adminMenuApi.ts
+  menu/imageUpload.ts (+test) · menu/ProductImageField.tsx · menu/BulkImagesPage.tsx
   staff/StaffPage.tsx · staff/adminStaffClient.ts (+test)
   tables/TablesAdminPage.tsx
   orders/OrdersPage.tsx · orders/OrderDrawer.tsx · orders/ordersQuery.ts (+test) · AuditLogPage.tsx
@@ -219,6 +226,58 @@ Run: FAIL
 
 Run: `npm test -w apps/web` → PASS
 
+- [ ] **Adım 2b: Ürün görselleri — tek tek ve toplu yükleme**
+
+Görseller şimdilik boş; kullanıcı sonra ekleyecek. Bu adım ekleme araçlarını kurar.
+
+**Files:** `menu/imageUpload.ts` (+ `imageUpload.test.ts`), `menu/ProductImageField.tsx`, `menu/BulkImagesPage.tsx`
+
+**Interfaces:**
+- `compressToWebp(file: File, maxSide: number, quality = 0.82): Promise<Blob>` — `createImageBitmap` → canvas → `toBlob('image/webp', quality)`, en-boy oranı korunur
+- `imagePaths(productId: string, stamp: number): { full: string; thumb: string }` → `products/<id>-<stamp>.webp` ve `products/<id>-<stamp>-thumb.webp`
+- `uploadProductImage(product: { id: string; image_path: string | null }, file: File): Promise<string>`:
+  - tam (1200 px) ve küçük (320 px) sürümü `product-images`'a yükler, `upsert: false`
+  - `products.image_path` alanını günceller
+  - eski iki dosyayı siler
+  - yeni yolu döndürür
+- `removeProductImage(product): Promise<void>` → iki dosyayı siler, `image_path = null`
+- `fileNameToCode(name: string): string | null` → desen `^(\d{1,3}[a-z]?|m\d{1,2})\.(jpe?g|png|webp)$` (büyük/küçük harf duyarsız), sonuç küçük harf
+- `matchFilesToProducts(files: File[], products: { id: string; code: string | null }[]): { matched: { file: File; productId: string }[]; unmatched: File[] }`
+
+**Adım adım:**
+1. Testleri yaz (kırmızı). `imageUpload.test.ts`:
+```ts
+import { describe, expect, it } from 'vitest';
+import { fileNameToCode, imagePaths, matchFilesToProducts } from './imageUpload';
+
+describe('görsel yardımcıları', () => {
+  it.each([['05.jpg', '05'], ['71A.webp', '71a'], ['M1.png', 'm1'], ['100.jpeg', '100'],
+           ['pizza.jpg', null], ['05-final.jpg', null], ['05.gif', null]])('%s → %s', (n, c) =>
+    expect(fileNameToCode(n)).toBe(c));
+  it('yol şablonu', () => expect(imagePaths('p1', 1700)).toEqual({
+    full: 'products/p1-1700.webp', thumb: 'products/p1-1700-thumb.webp' }));
+  it('dosyaları ürün numarasıyla eşler', () => {
+    const f = (name: string) => new File([new Uint8Array([1])], name);
+    const r = matchFilesToProducts([f('05.jpg'), f('M1.png'), f('xyz.png')],
+      [{ id: 'a', code: '05' }, { id: 'b', code: 'M1' }, { id: 'c', code: null }]);
+    expect(r.matched.map((m) => m.productId)).toEqual(['a', 'b']);
+    expect(r.unmatched.map((u) => u.name)).toEqual(['xyz.png']);
+  });
+});
+```
+2. Uygula. Kod eşleştirmesi küçük harfe çevrilerek yapılır: `product.code?.toLowerCase() === fileNameToCode(file.name)`.
+3. **`ProductImageField`** (ürün editöründe "Görsel" bölümü):
+   - Görsel yokken: sürükle-bırak alanı ve "Görsel seç" butonu, altında "Görsel sonra da eklenebilir" notu.
+   - Görsel varken: önizleme + **Değiştir** + **Kaldır** (onaylı).
+   - Yüklenirken: ilerleme ve pasif butonlar. Hata sade dille gösterilir ("Dosya çok büyük (en fazla 5 MB)", "Bu dosya türü desteklenmiyor").
+4. **`BulkImagesPage`** (Menü altında "Toplu görsel yükleme"):
+   - Çok sayıda dosya bırakılır ya da seçilir.
+   - Eşleşme önizlemesi: dosya → ürün (numara · ad · mevcut görsel var mı); eşleşmeyenler kırmızı listede; üzerine yazılacaklar işaretli.
+   - **Yükle:** dosyalar sırayla yüklenir, ilerleme çubuğu gösterilir; sonunda "N yüklendi, M eşleşmedi" özeti.
+   - Sayfanın üstünde kısa açıklama: "Dosya adını ürün numarası yapın: 05.jpg, 71a.webp, M1.png".
+5. **Ürün listesi:** "Görseli yok (N)" filtre çipi; satırda küçük görsel ya da yer tutucu (`ProductImage`).
+6. Run: `npm test -w apps/web -- imageUpload` → PASS
+
 - [ ] **Adım 3: E2E — admin menü düzenleme etkisi**
 
 `apps/web/e2e/admin-menu.spec.ts` (desktop):
@@ -227,6 +286,10 @@ Run: `npm test -w apps/web` → PASS
 3. Başka bir sekmede `test-waiter` ile ürün panelini aç → **Kalb 8,90 €** görünmeli (Realtime `menu`).
 4. Fiyatı geri al.
 5. Toplu atama: test ürününe `g-scharf` grubunu ekle → panelde "Schärfe" görünmeli → bağlantıyı kaldır.
+6. Görsel:
+   1. Test ürününe küçük bir PNG yükle (ürün editöründen) → garson ürün listesinde küçük görsel görünür.
+   2. `T05.png` adlı dosyayla toplu yükleme sayfası test ürününü eşler.
+   3. Görseli kaldır → yer tutucu geri gelir.
 
 Görüntüler: `docs/screenshots/m6-menu-products-1440.png`, `m6-product-editor-1440.png`, `m6-ticket-preview-1440.png`.
 

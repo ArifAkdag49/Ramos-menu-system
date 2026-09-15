@@ -15,8 +15,18 @@
 **Spec:** `docs/superpowers/specs/2026-09-15-ramos-siparis-sistemi-design.md` (§12, §13, §16, §17, §19)
 
 ## Global Constraints
+**Faz B kuralı (her görevde geçerli):**
+- Bu plandaki "kullanıcıya sor", "onay al" ve "kullanıcıdan iste" ifadeleri Faz A'da karşılandı (BUILD-PROMPT §3). **Soru sormadan devam et.**
+- Gerçek cihaz testleri ve fotoğraflar "Kullanıcıya kalan kontroller" listesine yazılır.
+- Son raporda şunları anlat:
+  - Ürün görsellerinin nasıl ekleneceği (Admin → Menü → Toplu görsel yükleme; dosya adı = ürün numarası)
+  - Kalan kontroller listesi
+
 `docs/BUILD-PROMPT.md` §3 (onay noktaları), §4 (ortam), §5 (kısıtlar) ve §6 (Plesk tuzakları) geçerlidir. Bu planda özellikle:
-- **Onaysız dokunma:** Sunucuda, DNS'te, SSL'de ve cron'da yapılacak **her** değişiklikten önce kullanıcı onayı al.
+- **Onay kapsamı:**
+  - Sunucu, SSL ve cron işlemleri **yalnızca Faz A'da onaylanan liste** kapsamında yapılır (BUILD-PROMPT §3); Faz B'de tekrar sorulmaz.
+  - Liste dışındaki hiçbir şey yapılmaz; her sunucu komutu önce `BUILD-PROGRESS.md`'ye yazılır.
+  - Auto mod bir komutu engellerse ilgili adım ⏸ ertelenir ve kalan kontrollere eklenir.
 - **Aynı sunucudaki diğer sistemler:** menupanels Supabase stack'ine, tv-display-system'e (`/opt/tv-display-system`, 04:15 yedeği), diğer Plesk sitelerine ve global nginx ayarına **dokunma**.
 - **Sırlar:** Hiçbir sır repoya ya da ekrana yazılmaz. Sunucudaki `.env` dosyaları `chmod 600`.
 - **Yayın sonrası testler:** DB testleri kapatılır (`DB_TESTS_ALLOWED=0`). E2E testleri yalnızca test masası ve test hesaplarıyla, **ajan kapalıyken** ya da kullanıcı onayıyla çalışır.
@@ -130,7 +140,13 @@ git commit -m "chore(release): anon RPC taraması, güvenlik ve paket kontroller
   - Canlı adres: `https://<alt-alan-adı>`
   - `deploy/deploy-web.ps1 -Domain <alan> -WebRoot <yol> -SysUser <kullanıcı>`: build → yükle → sahiplik → duman testi
 
-- [ ] **Adım 1: Kullanıcıdan bilgi ve onay al (DUR)**
+- [ ] **Adım 1: Faz A girdilerini kontrol et (durma)**
+
+> **Faz B'de:** Aşağıdaki bilgiler Faz A'da toplandı:
+> - `.env` → `APP_DOMAIN`, `DEPLOY_SSH_KEY`, `LE_EMAIL`
+> - DNS durumu ve ön onaylar (`BUILD-PROGRESS.md`)
+>
+> Soru sorma. Eksik bilgi varsa ya da DNS henüz yayılmadıysa (`Resolve-DnsName <APP_DOMAIN>` sunucu IP'sini döndürmüyorsa) yayını ⏸ ertele ve diğer görevlere devam et. Tüm görevler bitince yeniden dene.
 
 Sorulacaklar:
 1. **Alt alan adı:** öneri `ramos.arxdigitalsevice.com`.
@@ -202,7 +218,14 @@ location ~ ^/ { try_files $uri $uri/ /index.html; }
 
 Run (onaylı): `powershell -File deploy/deploy-web.ps1 -Domain ramos.arxdigitalsevice.com -WebRoot <yol> -SysUser <kullanıcı>` → tüm kontroller ✓.
 
-- [ ] **Adım 6: Gerçek cihaz testleri (DUR — kullanıcıyla birlikte)**
+- [ ] **Adım 6: Canlı duman testi (otomatik) + gerçek cihaz testleri (kullanıcıya kalan)**
+
+> **Faz B'de — otomatik kısım:**
+> 1. Canlı adreste Playwright ile telefon ve tablet görünümünde şu akışı çalıştır: giriş → sipariş → KDS → HAZIR → Hazır sekmesi.
+> 2. Bunun için admin API'siyle **geçici** bir garson hesabı aç (`e2e-canli`); test bitince pasifleştir.
+> 3. Siparişleri test masasında değil, ayrı bir geçici masada ver; test sonrası `go-live-cleanup` mantığıyla temizle.
+>
+> **Kullanıcıya kalan kısım:** Aşağıdaki gerçek cihaz adımları (kilitli ekranda push, tablet kurulumu) beklenmez; `BUILD-PROGRESS.md` → "Kullanıcıya kalan kontroller" listesine adım adım yazılır.
 
 1. **Garson telefonu (Android şart, iPhone varsa):**
    - Adresi aç, uygulamayı yükle / ana ekrana ekle.
@@ -235,7 +258,11 @@ git commit -m "chore(deploy): Plesk yayını — SPA yönlendirme, önbellek ba�
 - Consumes: Supabase oturum havuzu (session pooler) bağlantı bilgisi ve DB parolası. MCP ile oluşturulan projede parolayı kullanıcı panelden sıfırlar: Settings → Database → Reset password.
 - Produces: `/opt/backups/ramos/ramos-YYYY-MM-DD.dump` (30 gün saklanır) + `ramos-auth-YYYY-MM-DD.sql` (personel hesapları)
 
-- [ ] **Adım 1: Onay ve bağlantı bilgisi (DUR)**
+- [ ] **Adım 1: Bağlantı bilgisi (Faz A onayıyla — durma)**
+
+> **Faz B'de:** Cron onayı Faz A'da alındı. Aşağıdaki "kullanıcıdan al" maddelerini atla:
+> - **DB parolası:** `.env` → `SUPABASE_DB_PASSWORD` (Görev 2'de Management API ile üretildi).
+> - **Session pooler host'u:** Management API'den al (`GET /v1/projects/{ref}/config/database/pooler`). Alınamazsa yedeği ⏸ ertele ve kalan kontrollere ekle ("Panel → Connect → Session pooler host'u").
 
 Kullanıcıdan şunları al:
 1. Cron kurulumu onayı.

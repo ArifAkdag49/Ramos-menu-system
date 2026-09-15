@@ -31,7 +31,7 @@ Super admin garsonları, menüyü, masaları ve ayarları yönetir.
 ### 1.1 v1'de olanlar
 - **Admin paneli.**
   - Personel hesapları (garson, mutfak).
-  - Menü: kategori, ürün, varyant, çıkarılabilir malzeme, seçim grubu, ekstra.
+  - Menü: kategori, ürün, varyant, çıkarılabilir malzeme, seçim grubu, ekstra, **ürün görseli** (tek tek ve toplu yükleme; başlangıçta hepsi boş).
   - Masalar, sipariş geçmişi, basit raporlar, ayarlar, yazıcı/ajan durumu, test fişi.
 - **Garson PWA'sı (TR/DE).**
   - Masalar ve masa detayı.
@@ -95,6 +95,9 @@ Sipariş sistemi ile TSE'li kasa arasındaki ilişki (AO §146a, KassenSichV, "a
 | 18 | Barındırma | Web: kullanıcının **Plesk sunucusu** (alt alan adı). DB: **yeni Supabase Free** projesi (org Cicekci, eu-central-1) | Vercel Hobby ticari kullanıma kapalı |
 | 19 | Yedek | Plesk sunucusunda gecelik `pg_dump` (Docker) | Supabase Free'de yedek yok |
 | 20 | Test yazıcısı | Geliştirme PC'sinde bir Xprinter var (Windows'ta "XP-80" sürücüsü, USB001) | Ethernet'e bağlanıp gerçek fişle test edilecek |
+| 21 | Ürün görselleri | Her üründe görsel alanı; **şimdilik boş**, arayüz yer tutucu gösterir; kullanıcı sonra admin panelden ekler (tek tek ya da toplu, dosya adı = ürün no) | Storage `product-images`, WebP 1200 + 320 px |
+| 22 | Tasarım yönü | **Sade, şık, herkesin anlayacağı**; kurulu tasarım skill'leri (`ui-ux-pro-max`, `frontend-design` …) zorunlu | Sadelik ilkeleri: BUILD-PROMPT §10 |
+| 23 | Build yürütme | Faz A: bilgiler ve ön onaylar tek seferde → kullanıcı onaylayıp auto moda geçer → Faz B: 30 görev kesintisiz | Fiziksel kontroller sona kalır |
 
 ---
 
@@ -261,6 +264,7 @@ Tüm tablolarda RLS açıktır. `anon` rolünün hiçbir erişimi yoktur. Para *
 - `description text null`
 - `base_price_cents int null` — varyantı olmayan üründe zorunlu. Varyantı olan üründe fiyat varyanttan gelir.
 - `allergens text null` — ör. `"a,c,g,4,7"`
+- `image_path text null` — Storage `product-images` içindeki yol (`products/<id>-<zaman>.webp`; küçük sürüm `-thumb.webp`). Boşsa arayüz yer tutucu gösterir. Seed bu alana dokunmaz.
 - `is_active bool`, `is_sold_out bool default false`, `sort int`
 - `archived_at timestamptz null` — ürün silinmez, arşivlenir
 - zaman damgaları
@@ -521,6 +525,7 @@ Alt menüde üç sekme var: **Masalar · Hazır (rozetli) · Profil**.
     6. Not alanı + ayarlardaki hızlı not çipleri
     7. Adet ve canlı satır fiyatı, **Sepete ekle** butonu (zorunlu grup eksikse pasif kalır ve eksik grup vurgulanır)
   - İstenirse: son 7 günün en çok satan 8 ürünü "Hızlı erişim" satırında gösterilir.
+  - **Ürün görselleri:** Ürün satırının solunda 56 px kare küçük görsel, ürün panelinin üstünde 4:3 geniş görsel. Görsel yoksa marka renklerinde sade bir yer tutucu (alev işareti + ürün numarası) görünür; düzen görselli ve görselsiz aynı kalır. KDS'de görsel yok.
 - **Sepet:**
   - Kalemler özetleriyle görünür: "Kalb · OHNE Zwiebeln · Knoblauch+Kräuter · scharf · +Weichkäse".
   - Her kalem düzenlenebilir, silinebilir, çoğaltılabilir. Siparişe genel not eklenebilir, toplam görünür.
@@ -562,6 +567,10 @@ Alt menüde üç sekme var: **Masalar · Hazır (rozetli) · Profil**.
   - Malzeme kütüphanesi (DE/TR).
   - Seçim grupları: min/max, fiş biçimi, seçenekler (fiyat farkı, varsayılan, exclusive).
   - **Toplu atama:** bir malzeme setini veya seçim grubunu seçili ürünlere tek seferde bağlama (ör. Döner seti → 12 ürün).
+  - **Ürün görselleri:**
+    - Ürün editöründe yükle / değiştir / kaldır. Tarayıcıda WebP'ye sıkıştırılır: 1200 px + 320 px küçük sürüm.
+    - **Toplu yükleme:** Çok sayıda dosya bırakılır; dosya adı ürün numarasıyla eşleşir (`05.jpg`, `71a.webp`, `M1.png`). Eşleşmeyenler listelenir.
+    - Ürün listesinde "Görseli yok" filtresi.
   - **Fiş önizleme:** seçili ürünle örnek fiş, ortak paketin satır render'ıyla gösterilir.
 - **Personel:**
   - Garson/mutfak/admin ekleme: ad, kullanıcı adı, rol, PIN, dil.
@@ -781,6 +790,7 @@ Not: TCP'ye yazmanın başarılı olması "kağıda basıldı" demek değildir. 
   - `settings`: personel ve printer okur, admin yazar.
   - `audit_log`: admin okur.
   - `profiles`: herkes kendi satırını okur, admin tümünü okur. Değişiklikler RPC veya Edge Function ile yapılır.
+- **Ürün görselleri (Storage):** `product-images` bucket'ı herkese açık okunur (menü görselleri gizli değil). Yükleme, silme ve listeleme yalnızca admin yapar (`storage.objects` politikaları); izinli türler webp/jpeg/png, en fazla 5 MB.
 - **Pasifleştirme:** `is_active = false` + Auth ban uygulanır. RLS yardımcıları her sorguda aktifliği kontrol ettiği için etki anında başlar.
 - **Sırlar:**
   - `.env` dosyaları commit edilmez.
@@ -827,7 +837,16 @@ Not: TCP'ye yazmanın başarılı olması "kağıda basıldı" demek değildir. 
   - KDS'de kalem satırları 10" tablette ≥ 22 px.
   - Kontrast WCAG AA.
 - **Hareket:** Kısa ve anlamlı mikro animasyonlar (sepete ekleme, gönderildi, hazır rozeti nabzı). `prefers-reduced-motion` desteklenir.
-- **Build'de kullanılacak skill'ler:** `ui-ux-pro-max` (design system), `frontend-design`, `ui-styling`. Her ekran `webapp-testing` (Playwright) ile ekran görüntüsü alınarak doğrulanır.
+- **Tasarım yönü — sade ve şık:** Garson, aşçı ve patron ilk bakışta anlamalı.
+  - Her ekranda tek ana eylem; günlük dil; ikon + yazı; en fazla 2 seviye derinlik.
+  - Renk anlamı sabit; boş durumlar yol gösterir.
+  - Hedef: ürün eklemek en fazla 3 dokunuş.
+  - Ayrıntılı ilkeler: BUILD-PROMPT §10.
+- **Build'de zorunlu skill'ler:**
+  - `ui-ux-pro-max` (design system + UX kontrol listeleri), `frontend-design` (sanat yönü), `ui-styling`, `design-system`, `motion-framer`, `dataviz` (admin), `design:ux-copy` (metinler).
+  - Kapılarda `design:accessibility-review` ve `design:design-critique`.
+  - Her ekran `webapp-testing` (Playwright) ile ekran görüntüsü alınarak doğrulanır.
+  - M3, M4 ve M6 sonunda **tasarım kapısı** var: kritik bulgular düzeltilmeden sonraki aşamaya geçilmez.
 
 ---
 
@@ -928,6 +947,11 @@ Adımların tamamı ekran görüntüleriyle `docs/KURULUM.md`'de anlatılır.
 
 ## 18. Build aşamaları (özet — ayrıntılar `docs/BUILD-PROMPT.md`'de)
 
+**Yürütme:**
+- **Faz A (etkileşimli):** Tüm bilgiler ve ön onaylar tek seferde toplanır.
+- **Faz B:** Kullanıcı onaylayıp auto moda geçince 30 görev kesintisiz yapılır.
+- **Sona kalanlar:** Fiziksel doğrulamalar (gerçek fiş fotoğrafı, telefonda push) son kontrol listesine yazılır.
+
 | Aşama | İçerik | Çıkış ölçütü |
 |---|---|---|
 | M0 | Repo iskeleti (npm workspaces), araçlar, Supabase projesi, `.env`'ler, tasarım tokenları | `npm run check` yeşil, proje erişilebilir |
@@ -942,7 +966,7 @@ Adımların tamamı ekran görüntüleriyle `docs/KURULUM.md`'de anlatılır.
 
 ---
 
-## 19. Açık noktalar ve varsayımlar (build sırasında kullanıcıya sorulacak)
+## 19. Açık noktalar ve varsayımlar (Faz A'da tek seferde sorulur; fiziksel doğrulamalar sona kalır)
 1. **Masa sayısı:** Varsayılan Tisch 1–12.
 2. **Uygulamanın alt alan adı** (öneri `ramos.arxdigitalsevice.com`) ve Plesk SSH erişiminin teyidi (M8).
 3. **Hesap bilgileri:** İlk admin kullanıcı adı ve parolası (M2; repoya yazılmaz). Garson adları ve PIN'leri, kullanıcı admin panelden kendisi girer.

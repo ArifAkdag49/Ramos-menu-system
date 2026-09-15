@@ -14,6 +14,11 @@
 **Spec:** `docs/superpowers/specs/2026-09-15-ramos-siparis-sistemi-design.md` (§8.3, §9, §10, §11, §13)
 
 ## Global Constraints
+**Faz B kuralı (her görevde geçerli):**
+- Bu plandaki "kullanıcıya sor", "onay al" ve "kullanıcıdan iste" ifadeleri Faz A'da karşılandı (BUILD-PROMPT §3). **Soru sormadan devam et.**
+- Yazıcıya ulaşılamazsa gerçek yazıcı adımları ⏸ ertelenir; fiş fotoğraf onayı "Kullanıcıya kalan kontroller" listesine yazılır.
+- **Tasarım:** BUILD-PROMPT §10 geçerlidir. KDS için sadelik: büyük yazı, tek ana eylem (HAZIR). M4 sonunda tasarım kapısı var.
+
 `docs/BUILD-PROMPT.md` §5 ve §6'nın Xprinter bölümü eksiksiz geçerlidir. Bu planda özellikle:
 - **Fiş biçimi:** Almanca, 48 kolon, fiyat yok. İçecekler en sonda "GETRÄNKE" başlığıyla.
 - **Init:** `ESC @` + `FS .` + `ESC t 61`. Karakter tablosu no ve transliterasyon ayarlardan (`settings`) okunur.
@@ -1093,7 +1098,12 @@ WantedBy=multi-user.target
 ```
 Kurulum adımları (kopyala, `.env`, `systemctl enable --now ramos-print-agent`) `docs/KURULUM.md`'de Görev 30'da yazılır.
 
-- [ ] **Adım 4: Gerçek Xprinter testi (DUR — kullanıcı gerekli)**
+- [ ] **Adım 4: Gerçek Xprinter testi (Faz A girdileriyle — durma)**
+
+> **Faz B'de:**
+> - **`PRINTER_DEV_HOST` verildiyse:** Aşağıdaki 1–3. maddeleri atla; `printer_host`'u bu IP ile ayarlayıp 4. maddeden itibaren **otomatik** yürüt.
+> - **Fotoğraf onayı ve karakter kontrolü:** Beklenmez; `BUILD-PROGRESS.md` → "Kullanıcıya kalan kontroller" listesine yazılır. Türkçe karakterlerin doğruluğu kullanıcı fotoğrafına kadar bilinemez; varsayılan `cp857 / 61` kalır.
+> - **IP verilmediyse ya da yazıcıya ulaşılamıyorsa:** Bu adımı ⏸ ertele. Sahte yazıcı testleri yeşilse M5 tamam sayılır. Sona bırak.
 
 1. Kullanıcıdan şunları iste:
    - Geliştirme PC'sindeki Xprinter'ı (Windows'ta "XP-80", USB001) **Ethernet kablosuyla modeme** bağlaması.

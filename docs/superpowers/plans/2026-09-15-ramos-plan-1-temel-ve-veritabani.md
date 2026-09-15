@@ -15,6 +15,12 @@
 **Spec:** `docs/superpowers/specs/2026-09-15-ramos-siparis-sistemi-design.md` (özellikle §3, §5, §6, §7, §11.1, §12) · Menü: `docs/menu/ramos-menu-data.md`
 
 ## Global Constraints
+**Faz B kuralı (her görevde geçerli):**
+- Bu plandaki "kullanıcıya sor", "onay al" ve "kullanıcıdan iste" ifadeleri Faz A'da karşılandı (BUILD-PROMPT §3). **Soru sormadan devam et.**
+- Fiziksel doğrulamaları (fotoğraf, telefon) `docs/BUILD-PROGRESS.md` → "Kullanıcıya kalan kontroller" listesine yaz.
+- Dış bir sebeple yapılamayan adımı ⏸ ertele.
+- BUILD-PROMPT §10 (tasarım) ve §11 (ürün görselleri) de geçerlidir.
+
 `docs/BUILD-PROMPT.md` §5'teki kısıtların **hepsi** bu plandaki her görev için geçerlidir. Bu planda özellikle önemli olanlar:
 - **Para ve zaman:** Para kuruş (int). Saat dilimi `Europe/Berlin`, iş günü başlangıcı `05:00`.
 - **Güvenlik:**
@@ -220,7 +226,9 @@ git commit -m "chore: monorepo iskeleti ve @ramos/shared (para biçimleri)"
   - `scripts/db.mjs` → `runSql(query: string): Promise<unknown[]>`, CLI komutları `apply` ve `sql <sorgu | --file yol>`
   - `supabase/tests/helpers/sql.ts` → `sql<T = Record<string, unknown>>(query: string): Promise<T[]>`
 
-- [ ] **Adım 1: Kullanıcıdan onay ve token al (DUR)**
+- [ ] **Adım 1: Faz A girdilerini kontrol et (durma)**
+
+> **Faz B'de:** Proje oluşturma onayı ve PAT Faz A'da alındı (BUILD-PROMPT §3). `.env` içinde `SUPABASE_ACCESS_TOKEN` dolu olmalı; doluysa aşağıdaki soru metnini **atla**. Bu metin yalnızca Faz A atlanmışsa geçerlidir.
 
 Kullanıcıya sor: "Supabase'de **ramos-siparis** adında yeni bir ücretsiz proje (Cicekci org'u, Frankfurt) oluşturacağım, maliyeti 0 $. Onaylıyor musun?"
 
@@ -230,7 +238,7 @@ Ayrıca bir **Personal Access Token** iste (supabase.com → Account → Access 
 
 Supabase MCP varsa sırasıyla: `list_organizations` (Cicekci = `mdsctajrlrckvwhkcfnd` doğrula) → `get_cost` (type `project`) → `confirm_cost` → `create_project` (`name: "ramos-siparis"`, `region: "eu-central-1"`, `organization_id: "mdsctajrlrckvwhkcfnd"`). Ardından `get_project` ile `ACTIVE_HEALTHY` olana kadar bekle.
 
-MCP yoksa Management API'yi kullan:
+**Tercih edilen yol Management API'dir:** `db_pass`'ı biz üretip `.env`'e yazarız, M8'deki gecelik yedek bu parolayla kurulur. Yukarıdaki MCP yolu yalnızca API çağrısı başarısız olursa kullanılır. Management API ile:
 ```bash
 curl -s -X POST https://api.supabase.com/v1/projects \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
@@ -471,6 +479,7 @@ create table public.products (
   description      text,
   base_price_cents int check (base_price_cents >= 0),
   allergens        text,
+  image_path       text,                          -- Storage yolu (product-images); boş = yer tutucu
   is_active        boolean not null default true,
   is_sold_out      boolean not null default false,
   sort             int not null default 0,
@@ -908,6 +917,18 @@ describe('RLS (0002)', () => {
     expect(rows.some((r) => r.role === 'printer')).toBe(false);
   });
 
+  it('ürün görselini yalnız admin yükler; herkese açık adresten okunur', async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const path = `test/rls-${Date.now()}.png`;
+    const w = await c.waiter.storage.from('product-images').upload(path, png, { contentType: 'image/png' });
+    expect(w.error).not.toBeNull();
+    const a = await c.admin.storage.from('product-images').upload(path, png, { contentType: 'image/png' });
+    expect(a.error).toBeNull();
+    const url = c.admin.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+    expect((await fetch(url)).status).toBe(200);
+    expect((await c.admin.storage.from('product-images').remove([path])).error).toBeNull();
+  });
+
   it('iş günü 05:00 Berlin saatinde döner', async () => {
     const [row] = await sql<{ a: string; b: string }>(`
       select public.business_date('2026-09-15 04:59:00+02')::text as a,
@@ -1038,6 +1059,21 @@ create policy audit_log_read on public.audit_log for select to authenticated
 -- daily_counters: politika yok → yalnızca security definer RPC'ler kullanır.
 -- orders / order_items / table_sessions / print_jobs: yazma politikası yok → yalnızca RPC.
 
+-- ---------- Storage: ürün görselleri (herkese açık okuma, yalnız admin yazar/siler/listeler) ----------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('product-images', 'product-images', true, 5242880, array['image/webp', 'image/jpeg', 'image/png'])
+on conflict (id) do nothing;
+
+create policy product_images_admin_select on storage.objects for select to authenticated
+  using (bucket_id = 'product-images' and (select public.has_role('admin')));
+create policy product_images_admin_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'product-images' and (select public.has_role('admin')));
+create policy product_images_admin_update on storage.objects for update to authenticated
+  using (bucket_id = 'product-images' and (select public.has_role('admin')))
+  with check (bucket_id = 'product-images' and (select public.has_role('admin')));
+create policy product_images_admin_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'product-images' and (select public.has_role('admin')));
+
 -- ---------- fonksiyon yetkileri ----------
 revoke execute on all functions in schema public from public, anon;
 grant execute on all functions in schema public to authenticated, service_role;
@@ -1047,7 +1083,7 @@ revoke all on all functions in schema internal from public, anon, authenticated;
 - [ ] **Adım 5: Uygula ve testleri çalıştır**
 
 Run: `npm run db:apply` → Expected: `→ 0002_helpers_rls.sql … ok`
-Run: `npm run db:test -- rls` → Expected: PASS (8 test)
+Run: `npm run db:test -- rls` → Expected: PASS (9 test)
 Run: `npm run db:test` → Expected: schema + rls PASS
 
 - [ ] **Adım 6: Advisors**
@@ -2500,6 +2536,7 @@ git commit -m "feat(db): 0005 fiş kuyruğu (claim/complete/retry/reprint/test),
     - Grup: `g-<anahtar>` (`g-sosse`, `g-pizza-mix` …)
   - `npm run db:seed` → idempotent. Admin'in sonradan yaptığı eklemeleri silmez, seed alanlarını günceller. `printer_host` alanına dokunmaz.
   - `npm run db:types` → `packages/shared/src/database.types.ts`
+  - Seed **`image_path` alanına dokunmaz**: tüm ürünler görselsiz başlar. Görseller sonradan admin panelden eklenir ve seed tekrar çalışınca silinmez (upsert'in `do update set` listesinde `image_path` yoktur).
 
 - [ ] **Adım 1: Seed testini yaz (kırmızı)**
 
@@ -2921,7 +2958,7 @@ const extras: MenuGroup = { id: 'g-e', name_de: 'Extras', name_tr: null, min_sel
     { id: 'wk', name_de: 'Extra Weichkäse', name_tr: null, price_delta_cents: 100, is_default: false, is_exclusive: false, sort: 1 },
     { id: 'fl', name_de: 'Extra Fleisch', name_tr: null, price_delta_cents: 200, is_default: false, is_exclusive: false, sort: 2 }] };
 const teller: MenuProduct = { id: 'p08', category_id: 'c', code: '08', name: 'Drehspieß Teller', description: null,
-  base_price_cents: null, allergens: null, is_sold_out: false, sort: 1,
+  base_price_cents: null, allergens: null, image_path: null, is_sold_out: false, sort: 1,
   variants: [
     { id: 'h', name_de: 'Hähnchen', name_tr: 'Tavuk', price_cents: 1250, is_default: true, sort: 1 },
     { id: 'k', name_de: 'Kalb', name_tr: 'Dana', price_cents: 1350, is_default: false, sort: 2 }],
@@ -3029,7 +3066,7 @@ export interface MenuVariant extends Named { id: string; price_cents: number; is
 export interface MenuIngredient extends Named { id: string; sort: number }
 export interface MenuProduct {
   id: string; category_id: string; code: string | null; name: string; description: string | null;
-  base_price_cents: number | null; allergens: string | null; is_sold_out: boolean; sort: number;
+  base_price_cents: number | null; allergens: string | null; image_path: string | null; is_sold_out: boolean; sort: number;
   variants: MenuVariant[]; ingredients: MenuIngredient[]; groups: MenuGroup[];
 }
 export interface Selection { variantId: string | null; optionIds: string[]; removedIngredientIds: string[] }

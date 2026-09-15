@@ -15,6 +15,12 @@
 **Spec:** `docs/superpowers/specs/2026-09-15-ramos-siparis-sistemi-design.md` (§4, §7, §8.1, §8.2, §8.5, §11.2, §12, §14, §15)
 
 ## Global Constraints
+**Faz B kuralı (her görevde geçerli):**
+- Bu plandaki "kullanıcıya sor", "onay al" ve "kullanıcıdan iste" ifadeleri Faz A'da karşılandı (BUILD-PROMPT §3). **Soru sormadan devam et.**
+- Fiziksel doğrulamaları `docs/BUILD-PROGRESS.md` → "Kullanıcıya kalan kontroller" listesine yaz.
+- **Tasarım:** BUILD-PROMPT §10'daki sadelik ilkeleri ve zorunlu tasarım skill'leri geçerlidir. M3 sonunda tasarım kapısı var.
+- **Görseller:** BUILD-PROMPT §11 geçerlidir; ürün görselleri şimdilik boş, yer tutucu gösterilir.
+
 `docs/BUILD-PROMPT.md` §5'teki kısıtların hepsi geçerlidir. Bu planda özellikle:
 - **Ekran ve dokunma:** Telefon öncelikli (390×844), dokunma hedefleri ≥ 48 px, ana eylemler alt bölgede.
 - **Tema ve tipografi:** Koyu tema, tokenlar `--bg #0A0A0A`, `--lime #88B600`, `--gold #C49736`, `--danger #E5484D`; Montserrat.
@@ -360,7 +366,14 @@ describe('admin-staff', () => {
 ```
 Run: `npm run db:test -- staff` → Expected: PASS (4 test)
 
-- [ ] **Adım 6: İlk admin ve yazıcı hesabı betikleri (DUR — kullanıcı bilgisi gerekli)**
+- [ ] **Adım 6: İlk admin ve yazıcı hesabı betikleri (Faz A girdileriyle — durma)**
+
+> **Faz B'de:** Aşağıdaki "Kullanıcıdan şunları iste" cümlesini **atla**. Faz A'da toplanan değerleri kullan:
+> - admin kullanıcı adı ve görünen ad (`BUILD-PROGRESS.md` başlığında)
+> - `ADMIN_PASSWORD` (`.env`, kullanıcı yazdı)
+> - `STAFF_EMAIL_DOMAIN` ve `SEED_TABLE_COUNT`
+>
+> Admin oluşturulduktan sonra `ADMIN_PASSWORD` satırını `.env`'den **sil**.
 
 Kullanıcıdan şunları iste: ilk **admin kullanıcı adı**, **görünen ad**, **parola** (≥ 10 karakter), `STAFF_EMAIL_DOMAIN` teyidi ve **masa sayısı**. Masa sayısı 12'den farklıysa kök `.env`'e `SEED_TABLE_COUNT=<n>` yaz ve `npm run db:seed` çalıştır. Seed yalnızca eksik masaları ekler; fazla masalar admin panelden pasifleştirilir.
 
@@ -473,6 +486,14 @@ Betik bozuk symlink hatası verirse şu adımlarla düzelt:
 2. `src/ui-ux-pro-max/{scripts,data}` klasörlerini skill klasörüne kopyala.
 
 Çıktıdan boşluk, köşe yuvarlaklığı, gölge ve hareket değerlerini al. **Marka renkleri sabittir** (spec §14).
+
+**Tasarım yönü: sade, şık, herkesin anlayacağı.** BUILD-PROMPT §10'daki sadelik ilkeleri bu projenin tasarım anayasasıdır.
+- `frontend-design`: sanat yönünü netleştir.
+- `design-system`: token katmanlarını kur (temel → anlamsal → bileşen).
+- `ui-styling`: erişilebilir primitive'leri kur (Sheet, Dialog, Tabs).
+- `design:ux-copy`: ilk TR/DE metin tonunu belirle (kısa, günlük dil).
+
+Kararları `docs/design/DESIGN.md` dosyasına yaz: renk anlamları, tipografi ölçeği, boşluk ölçeği, bileşen örnekleri. Sonraki tüm UI görevleri buna uyar.
 
 `apps/web/src/styles/tokens.css`:
 ```css
@@ -947,7 +968,7 @@ export function useBroadcastInvalidation(topics: Topic[]): 'connected' | 'connec
 - Sorgu anahtarı `qk.menu`, `staleTime` 5 dk.
 - İç içe select dizesi:
 ```ts
-const PRODUCT_SELECT = `id, category_id, code, name, description, base_price_cents, allergens, is_sold_out, sort,
+const PRODUCT_SELECT = `id, category_id, code, name, description, base_price_cents, allergens, image_path, is_sold_out, sort,
   product_variants(id, name_de, name_tr, price_cents, is_default, sort, is_active),
   product_ingredients(sort, ingredients(id, name_de, name_tr, is_active)),
   product_option_groups(sort, option_groups(id, name_de, name_tr, min_select, max_select, ticket_format, sort, is_active,
@@ -1286,6 +1307,57 @@ export function searchProducts<T extends Pick<MenuProduct, 'code' | 'name'>>(pro
   - Aksi hâlde `ProductSheet` açılır.
 
 Run: `npm test -w apps/web` → Expected: PASS
+
+- [ ] **Adım 2b: Ürün görselleri — şimdilik boş yer tutucu**
+
+Her ürünün görsel alanı var; görseller sonradan admin panelinden eklenecek (Plan 4 · Görev 22). Bu adımda yalnızca gösterim ve yer tutucu yapılır. Menü eşleyicisi (`menuMapper`) `image_path: row.image_path ?? null` alanını taşır.
+
+Files: `apps/web/src/lib/images.ts` (+ `images.test.ts`), `apps/web/src/ui/ProductImage.tsx` (+ `ProductImage.test.tsx`)
+
+`src/lib/images.ts`:
+```ts
+export type ImageSize = 'thumb' | 'full';
+export const PRODUCT_BUCKET = 'product-images';
+
+export function productImageUrl(path: string | null | undefined, size: ImageSize = 'full'): string | null {
+  if (!path) return null;
+  const p = size === 'thumb' ? path.replace(/\.webp$/, '-thumb.webp') : path;
+  return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/${PRODUCT_BUCKET}/${p}`;
+}
+```
+`src/lib/images.test.ts`:
+```ts
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { productImageUrl } from './images';
+
+beforeEach(() => vi.stubEnv('VITE_SUPABASE_URL', 'https://x.supabase.co'));
+describe('productImageUrl', () => {
+  it('boş yol → null', () => expect(productImageUrl(null)).toBeNull());
+  it('tam ve küçük sürüm', () => {
+    expect(productImageUrl('products/p1-1700.webp')).toBe('https://x.supabase.co/storage/v1/object/public/product-images/products/p1-1700.webp');
+    expect(productImageUrl('products/p1-1700.webp', 'thumb')).toBe('https://x.supabase.co/storage/v1/object/public/product-images/products/p1-1700-thumb.webp');
+  });
+});
+```
+`src/ui/ProductImage.tsx`:
+- **Props:** `{ path: string | null; size: 'thumb' | 'full'; code: string | null; alt: string; className?: string }`.
+- **Görsel varsa:** sabit en-boy oranlı kutu (`thumb` = 1:1, `full` = 4:3) içinde `<img src={productImageUrl(path, size)} alt={alt} loading="lazy" decoding="async" width height className="object-cover">`. `onError` → yer tutucuya düşer.
+- **Yer tutucu:** `data-testid="product-image-placeholder"`, `aria-hidden`. Görünümü:
+  - `--surface-2` zemin, ince `--border` çerçeve
+  - ortada küçük alev (`public/brand/flame.png` varsa o, yoksa lucide `Flame`, `--gold` %70 opaklık)
+  - altta ürün numarası (tabular, `--muted`)
+  - Sade ve şık olmalı; görsel gelince düzen kaymaz.
+- **Kullanım yerleri:**
+  - `OrderPage` ürün satırında solda 56×56 `thumb`
+  - `ProductSheet` üstünde `full` (en fazla 240 px yükseklik)
+  - KDS'de kullanılmaz
+
+`src/ui/ProductImage.test.tsx`:
+1. `path = null` → yer tutucu ürün numarasını gösterir, `<img>` yok.
+2. `path = 'products/p1-1700.webp'`, `size = 'thumb'` → `img` src'si `-thumb.webp` ile biter, `loading = "lazy"`.
+3. `img`'de `fireEvent.error` → yer tutucu görünür.
+
+Run: `npm test -w apps/web -- images ProductImage` → PASS
 
 - [ ] **Adım 3: Ekran görüntüleri ve commit**
 
