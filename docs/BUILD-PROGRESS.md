@@ -36,7 +36,7 @@
 - [x] Görev 1 — Monorepo iskeleti ve araç zinciri — `c9232b9` — `npm run check` ✓ (shared 2/2), inceleme temiz
 - [x] Görev 2 — Supabase projesi, ortam dosyaları ve DB betiği — `8dddcaf`, `985de66` — db:sql 17.6 ✓, db:apply ✓, `npm run check` ✓, advisors 0/0; inceleme temiz (1 düzeltme turu: migrations/.gitkeep)
 ### M1 — Veritabanı (Plan 1)
-- [ ] Görev 3 — Migration 0001: şema
+- [x] Görev 3 — Migration 0001: şema — `d9d29c5` — `db:test -- schema` 4/4 ✓, advisors 0 ERROR/WARN (INFO: 19 RLS-politikasız → 0002, 8 kişi FK'sı + 15 kullanılmayan indeks kabul), inceleme temiz
 - [ ] Görev 4 — Migration 0002: yardımcılar, RLS, test kullanıcıları
 - [ ] Görev 5 — Migration 0003: `submit_order` ve fiş payload'u
 - [ ] Görev 6 — Migration 0004: sipariş yaşam döngüsü, masa, mesai, push, rapor RPC'leri
