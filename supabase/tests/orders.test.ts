@@ -102,4 +102,17 @@ describe('submit_order', () => {
     await submit(waiter, [doener(), doener({ quantity: 0 })], id);
     expect(await sql(`select 1 from public.orders where id = '${id}'`)).toEqual([]);
   });
+
+  it('aynı order_id ile eşzamanlı iki gönderim hatasız döner ve tek sipariş oluşturur', async () => {
+    const id = crypto.randomUUID();
+    // İki bağlantıyı önceden aç: iki çağrı sunucuya gerçekten aynı anda ulaşsın. HTTP/1.1'de ikinci istek yeni
+    // TLS bağlantısı kurarken gecikir ve yarış çoğu zaman oluşmaz (tarayıcıda HTTP/2 ikisini birlikte gönderir).
+    await Promise.all([waiter.from('settings').select('id'), waiter.from('settings').select('id')]);
+    const [a, b] = await Promise.all([submit(waiter, [doener()], id), submit(waiter, [doener()], id)]);
+    expect(a.error).toBeNull();
+    expect(b.error).toBeNull();
+    expect([a.data.duplicate, b.data.duplicate].filter((d) => d === true)).toHaveLength(1);
+    expect(await sql(`select 1 from public.orders where id = '${id}'`)).toHaveLength(1);
+    expect(await sql(`select 1 from public.print_jobs where order_id = '${id}'`)).toHaveLength(1);
+  });
 });
