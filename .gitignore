@@ -1,0 +1,36 @@
+# bağımlılıklar ve derleme çıktıları
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# ortam / gizli bilgiler (ASLA commit etme)
+.env
+.env.*
+!.env.example
+apps/**/.env
+!apps/**/.env.example
+
+# testler
+playwright-report/
+test-results/
+blob-report/
+
+# supabase yerel
+supabase/.temp/
+supabase/.branches/
+
+# yazdırma ajanı
+apps/print-agent/logs/
+*.log
+
+# büyük kaynak dosyalar (yerelde durur, repoya girmez)
+docs/menu/source/*.pdf
+
+# işletim sistemi / editör
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
