@@ -312,7 +312,7 @@ export type Line =
   - TISCHWECHSEL: `TISCH 3 -> TISCH 5` (2× yükseklik, kalın) + `Offene Bestellungen: #047, #052`.
   - TESTDRUCK: `Drucker: <host>:<port>`, `Zeichensatz: <codepage> (<no>)`, `Transliteration: an/aus`, `sampleLine`, ardından örnek kalemler.
 
-- [ ] **Adım 1: Testleri yaz (kırmızı)**
+- [x] **Adım 1: Testleri yaz (kırmızı)**
 
 `packages/shared/src/ticket.test.ts`:
 ```ts
@@ -383,7 +383,7 @@ describe('renderTicket', () => {
 ```
 Run: `npm test -w @ramos/shared -- ticket` → Expected: FAIL
 
-- [ ] **Adım 2: Uygula**
+- [x] **Adım 2: Uygula**
 
 `packages/shared/src/ticket.ts` — yapı:
 ```ts
@@ -430,7 +430,7 @@ const BANNER: Record<string, string> = {
 
 Run: `npm test -w @ramos/shared` → Expected: PASS (ticket + önceki testler)
 
-- [ ] **Adım 3: Commit**
+- [x] **Adım 3: Commit**
 ```bash
 git add packages/shared/src/ticket.ts packages/shared/src/ticket.test.ts packages/shared/src/index.ts
 git commit -m "feat(shared): Almanca mutfak fişi satır modeli — türler, bantlar, 48 kolon kaydırma, transliterasyon"
