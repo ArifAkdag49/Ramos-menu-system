@@ -226,7 +226,7 @@ git commit -m "chore: monorepo iskeleti ve @ramos/shared (para biçimleri)"
   - `scripts/db.mjs` → `runSql(query: string): Promise<unknown[]>`, CLI komutları `apply` ve `sql <sorgu | --file yol>`
   - `supabase/tests/helpers/sql.ts` → `sql<T = Record<string, unknown>>(query: string): Promise<T[]>`
 
-- [ ] **Adım 1: Faz A girdilerini kontrol et (durma)**
+- [x] **Adım 1: Faz A girdilerini kontrol et (durma)**
 
 > **Faz B'de:** Proje oluşturma onayı ve PAT Faz A'da alındı (BUILD-PROMPT §3). `.env` içinde `SUPABASE_ACCESS_TOKEN` dolu olmalı; doluysa aşağıdaki soru metnini **atla**. Bu metin yalnızca Faz A atlanmışsa geçerlidir.
 
@@ -234,7 +234,7 @@ Kullanıcıya sor: "Supabase'de **ramos-siparis** adında yeni bir ücretsiz pro
 
 Ayrıca bir **Personal Access Token** iste (supabase.com → Account → Access Tokens). Migration, test ve fonksiyon yayını script'le yapılacak. Token'ı yalnızca `.env` dosyasına yaz.
 
-- [ ] **Adım 2: Projeyi oluştur**
+- [x] **Adım 2: Projeyi oluştur**
 
 Supabase MCP varsa sırasıyla: `list_organizations` (Cicekci = `mdsctajrlrckvwhkcfnd` doğrula) → `get_cost` (type `project`) → `confirm_cost` → `create_project` (`name: "ramos-siparis"`, `region: "eu-central-1"`, `organization_id: "mdsctajrlrckvwhkcfnd"`). Ardından `get_project` ile `ACTIVE_HEALTHY` olana kadar bekle.
 
@@ -246,7 +246,7 @@ curl -s -X POST https://api.supabase.com/v1/projects \
 ```
 `db_pass` değerini şu komutla üret: `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`. Değeri `.env` içinde `SUPABASE_DB_PASSWORD` olarak sakla. M8'deki yedek için gerekir. MCP ile oluşturulduysa parola M8'de panelden sıfırlanır.
 
-- [ ] **Adım 3: Anahtarları al ve `.env` dosyasını doldur**
+- [x] **Adım 3: Anahtarları al ve `.env` dosyasını doldur**
 ```bash
 curl -s "https://api.supabase.com/v1/projects/<ref>/api-keys?reveal=true" -H "Authorization: Bearer <PAT>"
 ```
@@ -266,7 +266,7 @@ STAFF_EMAIL_DOMAIN=staff.arxdigitalsevice.com
 
 Run: `git check-ignore .env` → Expected: `.env` (dosya yok sayılıyor).
 
-- [ ] **Adım 4: `scripts/db.mjs` dosyasını yaz**
+- [x] **Adım 4: `scripts/db.mjs` dosyasını yaz**
 ```js
 // Supabase Management API ile SQL çalıştırır ve migration uygular.
 // Kullanım: node --env-file=.env scripts/db.mjs apply
@@ -326,7 +326,7 @@ if (cmd === 'apply') {
 }
 ```
 
-- [ ] **Adım 5: Test yardımcılarını ve DB test yapılandırmasını oluştur**
+- [x] **Adım 5: Test yardımcılarını ve DB test yapılandırmasını oluştur**
 
 `supabase/vitest.config.ts`:
 ```ts
@@ -361,7 +361,7 @@ export async function sql<T = Record<string, unknown>>(query: string): Promise<T
 }
 ```
 
-- [ ] **Adım 6: Bağlantıyı doğrula**
+- [x] **Adım 6: Bağlantıyı doğrula**
 
 Run: `npm run db:sql -- "select current_setting('server_version') as v"`
 Expected: `[{ "v": "17.x" }]`
@@ -369,7 +369,7 @@ Expected: `[{ "v": "17.x" }]`
 Run: `npm run db:apply`
 Expected: `Migration durumu güncel.` (henüz dosya yok; `internal.migrations` tablosu oluştu)
 
-- [ ] **Adım 7: Commit**
+- [x] **Adım 7: Commit**
 ```bash
 git add .env.example scripts/db.mjs supabase/vitest.config.ts supabase/tests/helpers/sql.ts package.json
 git commit -m "chore: Supabase projesi bağlantısı, migration/SQL betiği ve DB test altyapısı"
