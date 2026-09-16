@@ -46,17 +46,34 @@ export const transliterate = (s: string): string => s.replace(/[şŞğĞıİ]/g,
 export const sanitize = (s: string): string =>
   s.replace(/→/g, '->').replace(/…/g, '...').replace(/[„“”]/g, '"').replace(/[‚‘’]/g, "'");
 
+// Word-wraps `text` to `width` columns with a hanging indent of `indent` spaces on
+// continuation lines (the first line is always flush-left/unindented — see pushWrapped
+// and pushSubLine below for how callers get an indented *first* line when they need one).
+// A single word longer than the line it would start on is hard-split across as many
+// lines as it needs (R43): no characters are dropped, and an over-long first word never
+// produces a blank leading line — the very first hard-split chunk uses the full `width`
+// budget, not `width - indent`, exactly like a normal first line would.
 export function wrap(text: string, width: number, indent: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   const out: string[] = [];
   let cur = '';
   for (const w of words) {
-    const candidate = cur ? `${cur} ${w}` : w;
-    const limit = out.length ? width - indent : width;
-    if (candidate.length <= limit) cur = candidate;
-    else {
-      out.push(cur);
-      cur = w.slice(0, width - indent);
+    let rest = w;
+    while (rest.length > 0) {
+      const limit = out.length ? width - indent : width;
+      const candidate = cur ? `${cur} ${rest}` : rest;
+      if (candidate.length <= limit) {
+        cur = candidate;
+        break;
+      }
+      if (cur) {
+        out.push(cur);
+        cur = '';
+        continue;
+      }
+      // `rest` alone doesn't fit on an empty line: hard-split off as much as fits.
+      out.push(rest.slice(0, limit));
+      rest = rest.slice(limit);
     }
   }
   if (cur) out.push(cur);
@@ -105,6 +122,13 @@ function pushSubLine(lines: Line[], text: string, columns: number, style: TextSt
   }
 }
 
+// A width:2 (double-width) line only has columns/2 usable print columns (R46).
+const DOUBLE_WIDTH_BUDGET = 24;
+
+function pushDoubleWidth(lines: Line[], text: string, style: TextStyle = {}): void {
+  for (const part of wrap(text, DOUBLE_WIDTH_BUDGET, 0)) pushText(lines, part, { ...style, width: 2 });
+}
+
 function renderItem(lines: Line[], item: TicketItem, columns: number, clean: (s: string) => string): void {
   const codePart = item.code ? `${clean(item.code)} ` : '';
   const mainText = `${item.qty}x ${codePart}${clean(item.name)}`;
@@ -143,19 +167,22 @@ function closeTicket(lines: Line[], p: TicketPayload, columns: number, clean: (s
 }
 
 function renderOrderBody(lines: Line[], p: TicketPayload, columns: number, clean: (s: string) => string): void {
-  pushText(lines, clean(p.table).toLocaleUpperCase('de-DE'), { height: 2, width: 2, bold: true });
+  pushDoubleWidth(lines, clean(p.table).toLocaleUpperCase('de-DE'), { height: 2, bold: true });
 
+  // Meta: STORNO gets "zu Bestellung #NNN" instead of "Bestellung #NNN · Runde N", but
+  // every kind on this path (order/addition/storno/reprint) still gets the date + waiter
+  // line (R47) — the kitchen benefits from knowing when a cancellation was issued too.
   if (p.kind === 'storno') {
-    if (p.refOrderNo != null) pushText(lines, `zu Bestellung ${formatOrderNo(p.refOrderNo)}`);
-  } else {
-    if (p.orderNo != null) {
-      const round = p.round ?? 1;
-      pushText(lines, `Bestellung ${formatOrderNo(p.orderNo)}${round > 1 ? ` · Runde ${round}` : ''}`);
-    }
-    const kellner = p.waiter ? ` · Kellner: ${clean(p.waiter)}` : '';
-    pushText(lines, `${fmt(p.createdAt)}${kellner}`);
+    if (p.refOrderNo != null) pushWrapped(lines, `zu Bestellung ${formatOrderNo(p.refOrderNo)}`, columns, 0);
+  } else if (p.orderNo != null) {
+    const round = p.round ?? 1;
+    pushWrapped(lines, `Bestellung ${formatOrderNo(p.orderNo)}${round > 1 ? ` · Runde ${round}` : ''}`, columns, 0);
   }
+  const kellner = p.waiter ? ` · Kellner: ${clean(p.waiter)}` : '';
+  pushWrapped(lines, `${fmt(p.createdAt)}${kellner}`, columns, 0);
 
+  // Spec §9.3: a rule separates the meta block from the item list.
+  lines.push({ kind: 'rule' });
   renderItems(lines, p.items, columns, clean);
 
   lines.push({ kind: 'rule' });
@@ -170,7 +197,7 @@ function renderOrderBody(lines: Line[], p: TicketPayload, columns: number, clean
 function renderTableMoveBody(lines: Line[], p: TicketPayload, columns: number, clean: (s: string) => string): void {
   const from = clean(p.fromTable ?? '').toLocaleUpperCase('de-DE');
   const to = clean(p.toTable ?? '').toLocaleUpperCase('de-DE');
-  pushText(lines, `${from} -> ${to}`, { height: 2, bold: true });
+  pushDoubleWidth(lines, `${from} -> ${to}`, { height: 2, bold: true });
 
   const nums = (p.openOrderNos ?? []).map((n) => formatOrderNo(n)).join(', ');
   pushWrapped(lines, `Offene Bestellungen: ${nums}`, columns, 0);
@@ -179,11 +206,13 @@ function renderTableMoveBody(lines: Line[], p: TicketPayload, columns: number, c
 }
 
 function renderTestBody(lines: Line[], p: TicketPayload, columns: number, clean: (s: string) => string): void {
+  // Spec §9.4: TESTDRUCK also prints the date (R45).
+  pushWrapped(lines, fmt(p.createdAt), columns, 0);
   const s = p.settings;
   if (s) {
-    pushText(lines, `Drucker: ${clean(s.host)}:${s.port}`);
-    pushText(lines, `Zeichensatz: ${clean(s.codepage)} (${s.codepageNumber})`);
-    pushText(lines, `Transliteration: ${s.transliterate ? 'an' : 'aus'}`);
+    pushWrapped(lines, `Drucker: ${clean(s.host)}:${s.port}`, columns, 0);
+    pushWrapped(lines, `Zeichensatz: ${clean(s.codepage)} (${s.codepageNumber})`, columns, 0);
+    pushWrapped(lines, `Transliteration: ${s.transliterate ? 'an' : 'aus'}`, columns, 0);
   }
   if (p.sampleLine) pushWrapped(lines, clean(p.sampleLine), columns, 0);
   renderItems(lines, p.items, columns, clean);
