@@ -10,7 +10,12 @@
     "retry": "Tekrar dene",
     "loading": "Yükleniyor",
     "search": "Ara",
-    "elapsedMinutes": "{{count}} dk"
+    "elapsedMinutes": "{{count}} dk",
+    "add": "Ekle",
+    "select": "Seç",
+    "edit": "Düzenle",
+    "duplicate": "Çoğalt",
+    "remove": "Sil"
   },
   "roles": {
     "admin": "Yönetici",
@@ -46,7 +51,36 @@
       "empty": "Bu masada sipariş yok",
       "cancelReason": "İptal: {{reason}}"
     },
-    "order": { "title": "Sipariş al" },
+    "order": {
+      "title": "Sipariş al",
+      "searchPlaceholder": "Ürün no veya adı",
+      "categoriesLabel": "Kategoriler",
+      "soldOut": "Tükendi",
+      "priceFrom": "{{price}}’dan",
+      "added": "{{name}} sepete eklendi",
+      "cartTitle": "Sepet",
+      "cartEmpty": "Sepet boş — ürün ekle",
+      "removedPrefix": "ÇIKAR",
+      "addToCart": "Sepete ekle · {{price}}",
+      "update": "Güncelle · {{price}}",
+      "allergensLabel": "Alerjen kodları",
+      "variantLabel": "Seçenek",
+      "ingredientsTitle": "Malzemeler — çıkarmak için dokun",
+      "noteLabel": "Not",
+      "notePlaceholder": "Mutfağa not (opsiyonel)",
+      "quantity": {
+        "increase": "Adeti artır",
+        "decrease": "Adeti azalt",
+        "value": "Adet {{count}}"
+      },
+      "hint": {
+        "optional": "İsteğe bağlı",
+        "exactlyOne": "1 seçin",
+        "exactlyN": "Tam {{n}} seçin — {{chosen}}/{{n}}",
+        "upToN": "En fazla {{n}} seçin",
+        "rangeMinMax": "{{min}}–{{max}} seçin"
+      }
+    },
     "ready": { "title": "Hazır", "empty": "Bekleyen hazır yemek yok" },
     "profile": { "title": "Profil", "language": "Dil" },
     "actions": {
@@ -70,7 +104,32 @@
     "nav": { "label": "Garson gezinmesi" }
   },
   "kitchen": {
-    "title": "Mutfak"
+    "title": "Mutfak",
+    "start": {
+      "title": "Mutfak ekranını başlat",
+      "hint": "Ses ve ekranın açık kalması için dokun",
+      "button": "Başlat"
+    },
+    "columns": { "active": "Mutfakta", "ready": "Hazır" },
+    "empty": { "active": "Mutfakta bekleyen sipariş yok", "ready": "Hazır bekleyen sipariş yok" },
+    "actions": {
+      "ready": "HAZIR",
+      "undo": "Geri al (30 sn)",
+      "readyDone": "Hazır ✓",
+      "reprint": "Tekrar bas",
+      "more": "Diğer işlemler"
+    },
+    "badge": {
+      "nachbestellung": "EK SİPARİŞ",
+      "storno": "İPTAL"
+    },
+    "printBadge": { "queued": "Kuyrukta" },
+    "soldOut": {
+      "title": "Tükendi",
+      "button": "Tükendi",
+      "search": "Ürün ara",
+      "empty": "Ürün bulunamadı"
+    }
   },
   "admin": {
     "dashboard": { "title": "Canlı durum" },

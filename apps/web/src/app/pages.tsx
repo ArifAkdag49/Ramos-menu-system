@@ -3,9 +3,10 @@ import { Navigate } from 'react-router';
 import { homeFor, useAuth } from '../lib/auth';
 
 /**
- * Görev 14 (sipariş girişi) ve 15–16, 21'de tamamen değiştirilecek yer tutucu ekranlar.
- * Şimdilik yalnız başlığı gösterirler; başlıklar i18n'den gelir. Garson sekmeleri (Masalar,
- * Masa detayı, Hazır, Profil) Görev 13'te `features/waiter/*`'a taşındı.
+ * Görev 21'de tamamen değiştirilecek yer tutucu admin ekranları. Şimdilik yalnız başlığı
+ * gösterirler; başlıklar i18n'den gelir. Garson sekmeleri (Masalar, Masa detayı, Hazır, Profil,
+ * Sipariş girişi) Görev 13/14'te `features/waiter/*`'a, mutfak ekranı Görev 16'da
+ * `features/kitchen/KitchenPage`'e taşındı.
  */
 function Screen({ title }: { title: string }) {
   return (
@@ -13,16 +14,6 @@ function Screen({ title }: { title: string }) {
       <h1 className="text-2xl font-semibold">{title}</h1>
     </main>
   );
-}
-
-export function WaiterOrderPage() {
-  const { t } = useTranslation();
-  return <Screen title={t('waiter.order.title')} />;
-}
-
-export function KitchenPage() {
-  const { t } = useTranslation();
-  return <Screen title={t('kitchen.title')} />;
 }
 
 export function AdminDashboardPage() {

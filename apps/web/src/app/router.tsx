@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { LoginPage } from '../features/auth/LoginPage';
+import { KitchenPage } from '../features/kitchen/KitchenPage';
+import { OrderPage } from '../features/waiter/OrderPage';
 import { ProfilePage } from '../features/waiter/ProfilePage';
 import { ReadyPage } from '../features/waiter/ReadyPage';
 import { TableDetailPage } from '../features/waiter/TableDetailPage';
@@ -16,8 +18,6 @@ import {
   AdminStaffPage,
   AdminTablesPage,
   HomeRedirect,
-  KitchenPage,
-  WaiterOrderPage,
 } from './pages';
 import { RoleGate } from './RoleGate';
 
@@ -42,7 +42,7 @@ export const router = createBrowserRouter([
       { path: 'profile', element: <ProfilePage /> },
     ],
   },
-  { path: '/waiter/table/:tableId/order', element: gate(WAITER, <WaiterOrderPage />) },
+  { path: '/waiter/table/:tableId/order', element: gate(WAITER, <OrderPage />) },
 
   { path: '/kitchen', element: gate(KITCHEN, <KitchenPage />) },
 

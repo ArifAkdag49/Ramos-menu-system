@@ -10,7 +10,12 @@
     "retry": "Nochmal versuchen",
     "loading": "Lädt",
     "search": "Suchen",
-    "elapsedMinutes": "{{count}} Min."
+    "elapsedMinutes": "{{count}} Min.",
+    "add": "Hinzufügen",
+    "select": "Auswählen",
+    "edit": "Bearbeiten",
+    "duplicate": "Duplizieren",
+    "remove": "Entfernen"
   },
   "roles": {
     "admin": "Admin",
@@ -46,7 +51,36 @@
       "empty": "Dieser Tisch hat noch keine Bestellung",
       "cancelReason": "Storniert: {{reason}}"
     },
-    "order": { "title": "Bestellung aufnehmen" },
+    "order": {
+      "title": "Bestellung aufnehmen",
+      "searchPlaceholder": "Nummer oder Name",
+      "categoriesLabel": "Kategorien",
+      "soldOut": "Ausverkauft",
+      "priceFrom": "ab {{price}}",
+      "added": "{{name}} in den Warenkorb gelegt",
+      "cartTitle": "Warenkorb",
+      "cartEmpty": "Warenkorb ist leer — Gericht hinzufügen",
+      "removedPrefix": "OHNE",
+      "addToCart": "In den Warenkorb · {{price}}",
+      "update": "Aktualisieren · {{price}}",
+      "allergensLabel": "Allergene",
+      "variantLabel": "Variante",
+      "ingredientsTitle": "Zutaten — zum Entfernen antippen",
+      "noteLabel": "Notiz",
+      "notePlaceholder": "Notiz an die Küche (optional)",
+      "quantity": {
+        "increase": "Menge erhöhen",
+        "decrease": "Menge verringern",
+        "value": "Menge {{count}}"
+      },
+      "hint": {
+        "optional": "Optional",
+        "exactlyOne": "1 auswählen",
+        "exactlyN": "Genau {{n}} auswählen — {{chosen}}/{{n}}",
+        "upToN": "Bis zu {{n}} auswählen",
+        "rangeMinMax": "{{min}}–{{max}} auswählen"
+      }
+    },
     "ready": { "title": "Fertig", "empty": "Kein fertiges Essen wartet" },
     "profile": { "title": "Profil", "language": "Sprache" },
     "actions": {
@@ -70,7 +104,32 @@
     "nav": { "label": "Kellner-Navigation" }
   },
   "kitchen": {
-    "title": "Küche"
+    "title": "Küche",
+    "start": {
+      "title": "Küchenbildschirm starten",
+      "hint": "Für Ton und Bildschirm-Sperre antippen",
+      "button": "Starten"
+    },
+    "columns": { "active": "In der Küche", "ready": "Fertig" },
+    "empty": { "active": "Keine Bestellung in der Küche", "ready": "Kein fertiges Essen wartet" },
+    "actions": {
+      "ready": "FERTIG",
+      "undo": "Rückgängig (30 s)",
+      "readyDone": "Fertig ✓",
+      "reprint": "Nochmal drucken",
+      "more": "Weitere Aktionen"
+    },
+    "badge": {
+      "nachbestellung": "NACHBESTELLUNG",
+      "storno": "STORNO"
+    },
+    "printBadge": { "queued": "In der Warteschlange" },
+    "soldOut": {
+      "title": "Ausverkauft",
+      "button": "Ausverkauft",
+      "search": "Gericht suchen",
+      "empty": "Kein Gericht gefunden"
+    }
   },
   "admin": {
     "dashboard": { "title": "Live-Status" },
