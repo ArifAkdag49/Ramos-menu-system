@@ -40,8 +40,8 @@
 - [x] Görev 4 — Migration 0002: yardımcılar, RLS, test kullanıcıları — `3ae1eba` — `db:test` 15/15 ✓ (rls 9, anon değişmezleri 2), anon: 0 fonksiyon / 0 sequence / 0 tablo yetkisi, 47 politika + 4 storage politikası, advisors 0 ERROR (WARN'lar R34/R35 ile kabul), inceleme temiz
 - [x] Görev 5 — Migration 0003: `submit_order` ve fiş payload'u — `fba2744`, `ceace17` — orders 13/13, `db:test` 28/28 ✓; eşzamanlı aynı `order_id` artık hatasız (R36); canlı fonksiyon gövdeleri commit'lerle birebir; inceleme temiz
 - [x] Görev 6 — Migration 0004: sipariş yaşam döngüsü, masa, mesai, push, rapor RPC'leri — `3f94a5f` — `db:test` 41/41 ✓, advisors 0 ERROR; inceleme temiz (0004 brief ile birebir). İki düzeltme Görev 7'deki ek migration'da: masa kilidi (R41) ve teslim edilmiş siparişte otomatik iptal koruması (R42); rapor saatlik dağılımı (R39)
-- [ ] Görev 7 — Migration 0005: fiş kuyruğu, Realtime broadcast, denetim trigger'ları
-- [ ] Görev 8 — Menü seed'i (107 ürün), masalar, ayarlar + TS tipleri
+- [x] Görev 7 — Migration 0005: fiş kuyruğu, Realtime broadcast, denetim trigger'ları — `2302625`, `f1563c3`, `e23e792` — `db:test` 54/54 ✓, `npm run check` ✓, advisors 0 ERROR; inceleme temiz (1 düzeltme turu: `complete_print_job` artık yalnız sahiplenilmiş `printing` işini kapatıyor — çift fiş yolu kapandı). Ayrıca Görev 6'nın üç düzeltmesi (R39 rapor saati, R41 masa kilidi, R42 teslim edilmiş sipariş) bu görevde uygulandı
+- [x] Görev 8 — Menü seed'i (107 ürün), masalar, ayarlar + TS tipleri — `ff4e3bb` — seed 5/5, `db:test` 59/59 ✓, `npm run check` ✓; fiyat sağlamaları birebir (93 ürün / 951,50 €, 28 varyant / 252,50 €); `image_path` hiçbir upsert'te yok (görseller seed'de korunur); menü §6'daki açık noktalar olduğu gibi girildi; inceleme temiz
 - [x] Görev 9 — Ortak alan mantığı: fiyat, seçim kuralları, sepet, hata anahtarları — `1b99bd0` — 28 paylaşılan test ✓, `npm run check` ✓; 33 hata anahtarı migration'larla birebir; kurallar canlı `submit_order` ile karşılaştırıldı; inceleme temiz (tek sapma: commit imza satırı, R51)
 ### M2 — Giriş ve altyapı (Plan 2)
 - [ ] Görev 10 — `admin-staff` Edge Function ve hesap betikleri
