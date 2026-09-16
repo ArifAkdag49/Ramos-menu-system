@@ -463,7 +463,7 @@ git commit -m "feat(shared): Almanca mutfak fişi satır modeli — türler, ban
     - `printWithChecks(host, port, bytes): Promise<{ before: PrinterState; after: PrinterState }>` → ön kontrolde engelleyici sorun varsa **göndermeden** `PrinterError` fırlatır
   - Sahte yazıcı (`fake-printer.ts`): `startFakePrinter({ port?: number; status?: [number, number, number]; silent?: boolean }): Promise<{ port: number; jobs: Uint8Array[]; setStatus(s): void; stop(): Promise<void> }>`
 
-- [ ] **Adım 1: Paketi oluştur**
+- [x] **Adım 1: Paketi oluştur**
 
 `apps/print-agent/package.json`:
 ```json
@@ -492,7 +492,7 @@ git commit -m "feat(shared): Almanca mutfak fişi satır modeli — türler, ban
 
 Not: `tsx watch` TTY'siz arka planda takılabiliyor; geliştirmede **watch kullanma**.
 
-- [ ] **Adım 2: Testleri yaz (kırmızı)**
+- [x] **Adım 2: Testleri yaz (kırmızı)**
 
 `src/status.test.ts`:
 ```ts
@@ -587,7 +587,7 @@ describe('transport (sahte yazıcı)', () => {
 ```
 Run: `npm test -w @ramos/print-agent` → Expected: FAIL
 
-- [ ] **Adım 3: Uygula**
+- [x] **Adım 3: Uygula**
 
 `src/status.ts`:
 ```ts
@@ -690,7 +690,7 @@ Kütüphane API'si (`width`, `height`, `invert`, `rule`, `newline(n)`, `codepage
 
 Run: `npm test -w @ramos/print-agent` → Expected: PASS (status, escpos, transport)
 
-- [ ] **Adım 4: Commit**
+- [x] **Adım 4: Commit**
 ```bash
 git add apps/print-agent package.json package-lock.json
 git commit -m "feat(agent): ESC/POS kodlama (Xprinter CP857=61, FS ., GS V 66 0), TCP gönderim, DLE EOT durum, sahte yazıcı"
