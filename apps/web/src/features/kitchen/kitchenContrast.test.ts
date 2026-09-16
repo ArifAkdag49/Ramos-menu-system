@@ -2,7 +2,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { contrastRatio, overlay, readTokens } from '../../test/contrast';
-import { TONE_CLASS, TONE_SOLID } from '../../ui/tone';
+import { TONE_CLASS, TONE_SOLID, type Tone } from '../../ui/tone';
+import { KDS_BADGE_CLASS } from './KdsBadge';
 
 /**
  * M4 tasarım kapısı — KDS kontrast kapısı. Sayılar `tokens.css`'ten okunup WCAG 2.1 formülüyle
@@ -91,5 +92,70 @@ describe('O2 — tipografi rolleri tokena bağlı, ham piksel yok', () => {
 
   it('dosyada ham piksel boyutu kalmadı (`text-[22px]` gibi)', () => {
     expect(orderCardSrc).not.toMatch(/text-\[\d+px\]/);
+  });
+});
+
+/**
+ * Kapı 2. turu R1 — Y6 kart zeminlerini çoğalttı (`surface`, `surface-late`, `surface-warn`),
+ * ama rozetler `ui/tone.ts`'in yarı saydam `bg-<renk>/15` tintini kullandığı için tint yeni
+ * zeminlerin üzerinde inceldi ve info ("Kuyrukta") ile ready (altın) AA'nın altına düştü.
+ *
+ * Bu blok, rozet × kart-zemini kombinasyonlarının **tamamını** ölçer. Render testi değil:
+ * sınıf dizileri tokenlara çözülür ve oran WCAG 2.1 formülüyle hesaplanır, yani bir kart zemini
+ * eklendiğinde ya da bir rozet tinte döndüğünde test kırılır.
+ */
+describe('R1 — KDS rozetleri HER kart zemininde okunur', () => {
+  /** `OrderCard`'ın `CARD_TONE` eşlemesindeki üç zemin (ok/ready → surface, warn, late). */
+  const CARD_SURFACES = ['surface', 'surface-late', 'surface-warn'] as const;
+  /** KDS kartında gerçekten çizilen rozetler: EK SİPARİŞ, İPTAL, Kuyrukta/Basılamadı, Hazır ✓. */
+  const BADGE_TONES: Tone[] = ['info', 'ready', 'danger', 'warning'];
+
+  /** `"border-x/40 bg-y[/15] text-z"` → rozetin verilen kart zemini üzerindeki gerçek oranı. */
+  function badgeRatio(classes: string, cardSurface: string): number {
+    const bgm = /(?:^|\s)bg-([a-z0-9-]+?)(?:\/(\d+))?(?=\s|$)/.exec(classes);
+    const fgm = /(?:^|\s)text-([a-z0-9-]+)(?=\s|$)/.exec(classes);
+    if (!bgm?.[1] || !fgm?.[1]) throw new Error(`sınıf dizisi çözülemedi: ${classes}`);
+    const alpha = bgm[2] ? Number(bgm[2]) / 100 : 1;
+    // Yarı saddam zemin ALTINDAKİ kartın zeminine biner; opak zemin karttan bağımsızdır.
+    const bg = alpha === 1 ? token(bgm[1]) : overlay(token(bgm[1]), token(cardSurface), alpha);
+    return contrastRatio(token(fgm[1]), bg);
+  }
+
+  for (const surface of CARD_SURFACES) {
+    for (const tone of BADGE_TONES) {
+      it(`${tone} rozeti / ${surface} kartı ≥ ${MARGIN}:1`, () => {
+        expect(badgeRatio(KDS_BADGE_CLASS[tone], surface)).toBeGreaterThanOrEqual(MARGIN);
+      });
+    }
+  }
+
+  it('KDS rozetinin zemini kartın tonundan BAĞIMSIZ (opak) — oran her zeminde aynı', () => {
+    for (const tone of BADGE_TONES) {
+      expect(KDS_BADGE_CLASS[tone]).not.toMatch(/bg-[a-z0-9-]+\/\d+/);
+      const ratios = CARD_SURFACES.map((s) => badgeRatio(KDS_BADGE_CLASS[tone], s));
+      expect(new Set(ratios).size).toBe(1);
+    }
+  });
+
+  it('kanıt: yarı saydam tint rozet (ui/tone.ts TONE_CLASS) yeni zeminlerde AA altına düşüyor', () => {
+    // Kapının 2. tur ölçümü: info 5,23 → 4,26 (late) / 4,23 (warn); ready 5,46 → 4,34 / 4,36.
+    // Bu yüzden KDS `ui/Badge` kullanmıyor. Sayı bir gün düzelirse bu test de düşer ve
+    // KdsBadge'in gerekçesi gözden geçirilir.
+    for (const surface of ['surface-late', 'surface-warn']) {
+      for (const tone of ['info', 'ready'] as const) {
+        expect(badgeRatio(TONE_CLASS[tone], surface)).toBeLessThan(AA);
+      }
+    }
+    // Aynı rozetler düz `surface` üzerinde sorunsuzdu — sorun tintin kendisi değil, ZEMİN.
+    for (const tone of ['info', 'ready'] as const) {
+      expect(badgeRatio(TONE_CLASS[tone], 'surface')).toBeGreaterThanOrEqual(MARGIN);
+    }
+  });
+
+  it('OrderCard yarı saydam tint rozet kullanmaz — `ui/Badge` yerine `KdsBadge`', () => {
+    expect(orderCardSrc).not.toMatch(/from '\.\.\/\.\.\/ui\/Badge'/);
+    expect(orderCardSrc).toContain('KdsBadge');
+    // Süre kutusu da aynı opak paletten beslenir.
+    expect(orderCardSrc).toContain('KDS_BADGE_CLASS[ELAPSED_TONE[tone]]');
   });
 });

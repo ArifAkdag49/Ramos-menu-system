@@ -4,12 +4,12 @@ import { AlertTriangle, Check, Clock, MoreHorizontal, Printer, RotateCw, Timer }
 import { useState, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OrderItemView, OrderView } from '../../data/orders';
-import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { IconButton } from '../../ui/IconButton';
 import { Sheet } from '../../ui/Sheet';
-import { TONE_SOLID, type Tone } from '../../ui/tone';
+import type { Tone } from '../../ui/tone';
 import { Elapsed } from '../common/Elapsed';
+import { KDS_BADGE_CLASS, KdsBadge } from './KdsBadge';
 import { canUndo, cardElapsed, itemLines, visibleItems, type KitchenTone } from './kitchenLogic';
 
 /**
@@ -24,7 +24,7 @@ const CARD_TONE: Record<KitchenTone, string> = {
   ready: 'border-gold/40 bg-surface',
 };
 
-/** Süre kutusunun tonu. `ui/tone.ts`'in opak eşlemesi kullanılır: kontrastı zaten sınanmış. */
+/** Süre kutusunun tonu. KDS'nin opak rozet paleti kullanılır: kart zemini ne olursa olsun sabit. */
 const ELAPSED_TONE: Record<KitchenTone, Tone> = {
   ok: 'open',
   warn: 'warning',
@@ -77,9 +77,14 @@ export function OrderCard({
   return (
     <li
       data-tone={tone}
-      className={clsx('flex flex-col gap-3 rounded-card border-2', CARD_TONE[tone], compact ? 'gap-2 p-3' : 'p-4')}
+      className={clsx('flex flex-col gap-2 rounded-card border-2', CARD_TONE[tone], compact ? 'p-3' : 'p-4')}
     >
-      <div className="flex items-start justify-between gap-3">
+      {/* R3 — süre kutusu KENDİ satırından çıkarılıp başlığın karşısına alındı ve ikincil
+          kontroller (EK SİPARİŞ rozeti, "⋯") zaten 64 px olan eylem satırına indi: kart
+          651 → ~587 px. Y6'nın kazanımları (30 px süre, kart kenarlığı + zemini, ikon + yazı)
+          aynen duruyor. `flex-wrap`: çok uzun masa adında süre kutusu alt satıra iner,
+          kırpılmaz. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex min-w-0 flex-col gap-1">
           <span
             lang="de"
@@ -93,19 +98,8 @@ export function OrderCard({
             <span>{order.waiter_name}</span>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {order.round_no > 1 ? <Badge tone="warning">{t('kitchen.badge.nachbestellung')}</Badge> : null}
-          {compact ? null : (
-            <IconButton
-              label={t('kitchen.actions.more')}
-              icon={<MoreHorizontal aria-hidden size={22} />}
-              onClick={() => setMoreOpen(true)}
-            />
-          )}
-        </div>
+        <ElapsedBox since={since} tone={tone} compact={compact} />
       </div>
-
-      <ElapsedBox since={since} tone={tone} compact={compact} />
 
       {compact ? null : <PrintBadge order={order} onRetry={onRetry} />}
 
@@ -116,6 +110,7 @@ export function OrderCard({
       </ul>
 
       <div className="flex items-center gap-2">
+        {order.round_no > 1 ? <KdsBadge tone="warning">{t('kitchen.badge.nachbestellung')}</KdsBadge> : null}
         {order.status === 'in_kitchen' ? (
           <Button
             fullWidth
@@ -140,9 +135,16 @@ export function OrderCard({
             {t('kitchen.actions.undo')}
           </Button>
         ) : (
-          <Badge tone="ready" className={clsx('flex-1 justify-center', compact ? 'min-h-12' : 'min-h-16 text-xl')}>
+          <KdsBadge tone="ready" className={clsx('flex-1 justify-center', compact ? 'min-h-12' : 'min-h-16 text-xl')}>
             {t('kitchen.actions.readyDone')}
-          </Badge>
+          </KdsBadge>
+        )}
+        {compact ? null : (
+          <IconButton
+            label={t('kitchen.actions.more')}
+            icon={<MoreHorizontal aria-hidden size={22} />}
+            onClick={() => setMoreOpen(true)}
+          />
         )}
       </div>
 
@@ -181,8 +183,8 @@ function ElapsedBox({ since, tone, compact }: { since: string; tone: KitchenTone
       data-tone={tone}
       data-testid="kds-elapsed"
       className={clsx(
-        'inline-flex items-center gap-2 self-start rounded-control border font-extrabold',
-        TONE_SOLID[ELAPSED_TONE[tone]],
+        'inline-flex items-center gap-2 rounded-control border font-extrabold',
+        KDS_BADGE_CLASS[ELAPSED_TONE[tone]],
         compact ? 'px-2 py-1' : 'px-3 py-1.5',
       )}
     >
@@ -215,7 +217,7 @@ function OrderCardItem({ item, locale, compact = false }: { item: OrderItemView;
           {item.quantity}× {item.product_code ? `${item.product_code} ` : ''}
           {item.product_name}
         </p>
-        {cancelled ? <Badge tone="danger">{t('kitchen.badge.storno')}</Badge> : null}
+        {cancelled ? <KdsBadge tone="danger">{t('kitchen.badge.storno')}</KdsBadge> : null}
       </div>
       {lines.variant ? <p className={clsx('text-muted', compact ? 'text-sm' : 'text-lg')}>{lines.variant}</p> : null}
       {compact
@@ -247,9 +249,9 @@ function PrintBadge({ order, onRetry }: { order: OrderView; onRetry?: () => void
   if (order.print.status === 'failed') {
     return (
       <div className="flex items-center gap-2">
-        <Badge tone="danger" icon={<Printer aria-hidden size={16} />}>
+        <KdsBadge tone="danger" icon={<Printer aria-hidden size={16} />}>
           {t('status.failed')}
-        </Badge>
+        </KdsBadge>
         {onRetry ? (
           <Button size="md" variant="ghost" icon={<RotateCw aria-hidden size={18} />} onClick={onRetry}>
             {t('common.retry')}
@@ -260,9 +262,9 @@ function PrintBadge({ order, onRetry }: { order: OrderView; onRetry?: () => void
   }
   if (order.print.status === 'pending' || order.print.status === 'printing') {
     return (
-      <Badge tone="info" icon={<Printer aria-hidden size={16} />}>
+      <KdsBadge tone="info" icon={<Printer aria-hidden size={16} />}>
         {t('kitchen.printBadge.queued')}
-      </Badge>
+      </KdsBadge>
     );
   }
   return null;
