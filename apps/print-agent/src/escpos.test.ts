@@ -1,9 +1,22 @@
-import { renderTicket } from '@ramos/shared';
+import { renderTicket, type Line } from '@ramos/shared';
 import { describe, expect, it } from 'vitest';
 import { encodeLines } from './escpos';
+import { sendBytes } from './transport';
+import { startFakePrinter } from './fake-printer';
 
-const hex = (b: Uint8Array) => Buffer.from(b).toString('hex');
-const bytes = (s: string) => Buffer.from(s.replace(/\s/g, ''), 'hex').toString('hex');
+// Fix round 1 (Görev 18 review): assertions now search the raw Uint8Array/Buffer
+// directly (Buffer.indexOf/includes on a Buffer needle is byte-aligned) instead of
+// substring-searching a hex STRING, where a match can start on an odd hex-nibble
+// offset and report a false positive that doesn't correspond to real byte data.
+const ascii = (s: string) => Buffer.from(s, 'ascii');
+
+function countCRLF(buf: Uint8Array): number {
+  let count = 0;
+  for (let i = 0; i + 1 < buf.length; i++) {
+    if (buf[i] === 0x0a && buf[i + 1] === 0x0d) count++;
+  }
+  return count;
+}
 
 describe('encodeLines (Xprinter)', () => {
   const lines = renderTicket({
@@ -12,20 +25,92 @@ describe('encodeLines (Xprinter)', () => {
     items: [{ qty: 1, code: '59', name: 'Kuzu Şiş', isBeverage: false, variant: null, without: ['Zwiebeln'],
               groups: [{ label: 'Soße', format: 'label_values', values: ['Kräuter'] }], note: null }],
   });
-  const out = hex(encodeLines(lines, { codepage: 'cp857', codepageNumber: 61 }));
+  const out = Buffer.from(encodeLines(lines, { codepage: 'cp857', codepageNumber: 61 }));
 
-  it('init: ESC @ + FS . ve ESC t 61', () => {
-    expect(out.startsWith(bytes('1b40 1c2e'))).toBe(true);
-    expect(out).toContain(bytes('1b74 3d'));
+  it('init: ESC @ + FS . + ESC t 61, baştan (gereksiz boş satır yok — Minor 7)', () => {
+    expect(out.subarray(0, 7)).toEqual(Buffer.from([0x1b, 0x40, 0x1c, 0x2e, 0x1b, 0x74, 0x3d]));
   });
+
   it('CP857: Ş=9E ş=9F ä=84', () => {
-    expect(out).toContain(bytes('4b757a75 20 9e 69 9f'));   // "Kuzu Şiş"
-    expect(out).toContain(bytes('4b72 84 75746572'));        // "Kräuter"
+    expect(out.includes(Buffer.concat([ascii('Kuzu '), Buffer.from([0x9e]), ascii('i'), Buffer.from([0x9f])]))).toBe(true); // "Kuzu Şiş"
+    expect(out.includes(Buffer.concat([ascii('Kr'), Buffer.from([0x84]), ascii('uter')]))).toBe(true); // "Kräuter"
   });
-  it('OHNE satırı ters renk (GS B 1 … GS B 0)', () => {
-    const i = out.indexOf(Buffer.from('OHNE: Zwiebeln').toString('hex'));
-    expect(out.lastIndexOf(bytes('1d4201'), i)).toBeGreaterThan(-1);
-    expect(out.indexOf(bytes('1d4200'), i)).toBeGreaterThan(i);
+
+  it('OHNE satırı 3 boşluk girintiliyle ters renkte basılır (Critical 1 + GS B 1 … GS B 0)', () => {
+    const needle = ascii('   OHNE: Zwiebeln'); // leading 3-space indent must survive verbatim
+    const i = out.indexOf(needle);
+    expect(i).toBeGreaterThan(-1);
+    expect(out.lastIndexOf(Buffer.from([0x1d, 0x42, 0x01]), i)).toBeGreaterThan(-1);
+    expect(out.indexOf(Buffer.from([0x1d, 0x42, 0x00]), i)).toBeGreaterThan(i);
   });
-  it('kısmi kesimle biter: GS V 66 0', () => expect(out.endsWith(bytes('1d564200'))).toBe(true));
+
+  it('kısmi kesimle biter: GS V 66 0', () => {
+    expect(out.subarray(out.length - 4)).toEqual(Buffer.from([0x1d, 0x56, 0x42, 0x00]));
+  });
+});
+
+describe('encodeLines — girinti asla yeniden sarılmaz/temizlenmez (R61, Critical 1)', () => {
+  it('6 boşluklu asılı girintili devam satırı baytı baytına korunur', () => {
+    const manual: Line[] = [
+      { kind: 'text', text: 'MAIN LINE', bold: true },
+      { kind: 'text', text: '      continuation line' },
+    ];
+    const out = Buffer.from(encodeLines(manual, { codepage: 'cp857', codepageNumber: 61 }));
+    expect(out.includes(ascii('      continuation line'))).toBe(true);
+  });
+
+  it('sağdaki/soldaki tek boşluklar da korunur (satır 0 kolonunda değilse dahi)', () => {
+    const manual: Line[] = [{ kind: 'text', text: ' x  y ' }];
+    const out = Buffer.from(encodeLines(manual, { codepage: 'cp857', codepageNumber: 61 }));
+    expect(out.includes(ascii(' x  y '))).toBe(true);
+  });
+});
+
+describe('encodeLines — codepage adı/numarası tek doğruluk kaynağı (R60, Important 4)', () => {
+  const oneLine: Line[] = [{ kind: 'text', text: 'x' }];
+
+  it('uyuşmayan çift (cp857 + 91) yüksek sesle hata verir, sessizce yanlış tabloya düşmez', () => {
+    expect(() => encodeLines(oneLine, { codepage: 'cp857', codepageNumber: 91 })).toThrow();
+  });
+
+  it('bilinmeyen codepage adı hata verir', () => {
+    expect(() => encodeLines(oneLine, { codepage: 'bilinmeyen', codepageNumber: 0 })).toThrow();
+  });
+
+  it('windows1254/91 (WPC1254 kurtarma yolu) doğru tabloyla kodlar: Ş=DE, ESC t 91', () => {
+    const out = Buffer.from(encodeLines([{ kind: 'text', text: 'Ş' }], { codepage: 'windows1254', codepageNumber: 91 }));
+    expect(out.subarray(4, 7)).toEqual(Buffer.from([0x1b, 0x74, 0x5b])); // ESC t 91 (0x5b)
+    expect(out.includes(Buffer.from([0xde]))).toBe(true); // windows1254: Ş = 0xDE (cp857 would wrongly say 0x9E)
+  });
+});
+
+describe('encodeLines — rule() ASCII "-" kullanır (Minor 6)', () => {
+  it('kutu çizim karakteri (─, cp437 0xC4) değil, düz tire basılır', () => {
+    const out = Buffer.from(encodeLines([{ kind: 'rule' }], { codepage: 'cp857', codepageNumber: 61 }));
+    expect(out.includes(ascii('-'.repeat(48)))).toBe(true);
+    expect(out.includes(Buffer.from([0xc4]))).toBe(false);
+  });
+});
+
+describe('encodeLines — besleme tam istenen kadar (Minor 7 + 8)', () => {
+  it('baştan boş satır yok, tek "feed" satırı tek CRLF üretir (çift besleme yok)', () => {
+    const out = encodeLines([{ kind: 'feed', lines: 1 }], { codepage: 'cp857', codepageNumber: 61 });
+    expect(countCRLF(out)).toBe(1);
+  });
+});
+
+describe('encodeLines -> transport tümleştirmesi (Minor 9): encoder çıktısı sahte yazıcıya baytı baytına ulaşır', () => {
+  it('sendBytes ile gönderilen encodeLines çıktısı fake printer jobs\'ta değişmeden görünür', async () => {
+    const lines: Line[] = [{ kind: 'text', text: 'X' }, { kind: 'feed', lines: 1 }];
+    const encoded = encodeLines(lines, { codepage: 'cp857', codepageNumber: 61 });
+    const fp = await startFakePrinter({});
+    try {
+      await sendBytes('127.0.0.1', fp.port, encoded);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(fp.jobs).toHaveLength(1);
+      expect(Buffer.from(fp.jobs[0]!)).toEqual(Buffer.from(encoded));
+    } finally {
+      await fp.stop();
+    }
+  });
 });
