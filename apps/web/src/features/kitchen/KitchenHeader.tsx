@@ -16,12 +16,13 @@ export function KitchenHeader({ onOpenSoldOut }: { onOpenSoldOut: () => void }) 
   const signOut = useAuth((s) => s.signOut);
 
   return (
-    <header className="sticky top-0 z-10 flex h-[var(--header-h)] items-center justify-between gap-3 border-b border-border bg-surface px-6">
-      <h1 className="text-2xl font-semibold">{t('kitchen.title')}</h1>
-      <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-10 flex h-[var(--header-h)] items-center justify-between gap-2 border-b border-border bg-surface px-3 sm:gap-3 sm:px-6">
+      <h1 className="min-w-0 truncate text-xl font-semibold sm:text-2xl">{t('kitchen.title')}</h1>
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <Button
           variant="secondary"
           icon={<PackageX aria-hidden size={20} />}
+          className="px-3! sm:px-4!"
           onClick={onOpenSoldOut}
         >
           {t('kitchen.soldOut.button')}
@@ -42,6 +43,7 @@ export function KitchenHeader({ onOpenSoldOut }: { onOpenSoldOut: () => void }) 
         <Button
           variant="ghost"
           icon={<LogOut aria-hidden size={20} />}
+          className="px-3! sm:px-4!"
           onClick={() => void signOut()}
         >
           {t('common.logout')}

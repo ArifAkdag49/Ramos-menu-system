@@ -16,6 +16,7 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet } from 'react-router';
 import { useAuth } from '../../lib/auth';
+import { Button } from '../../ui/Button';
 import { IconButton } from '../../ui/IconButton';
 import { Sheet } from '../../ui/Sheet';
 import { ToastHost } from '../../ui/ToastHost';
@@ -76,6 +77,7 @@ const SECTIONS: NavItem[] = [
  */
 export function AdminLayout() {
   const { t } = useTranslation();
+  const signOut = useAuth((s) => s.signOut);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = () => setDrawerOpen(false);
 
@@ -94,7 +96,16 @@ export function AdminLayout() {
           icon={<Menu aria-hidden size={24} />}
           onClick={() => setDrawerOpen(true)}
         />
-        <span className="truncate text-lg font-semibold">RAMO&apos;S</span>
+        <span className="min-w-0 flex-1 truncate text-lg font-semibold">RAMO&apos;S</span>
+        {/* Telefonda çıkış çekmeceye gömülü kalmasın — üst çubukta her an görünür. */}
+        <Button
+          variant="ghost"
+          icon={<LogOut aria-hidden size={20} />}
+          className="shrink-0 px-3!"
+          onClick={() => void signOut()}
+        >
+          {t('common.logout')}
+        </Button>
       </header>
 
       <Sheet
