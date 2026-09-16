@@ -57,7 +57,7 @@
 - [x] Görev 17 — Fiş satır modeli (`renderTicket`) — `c54460d`, `fd603f4` — 19/19 paylaşılan test ✓, `npm run check` ✓; inceleme temiz (1 düzeltme turu: meta/kalem ayracı, uzun kelime bölme, çift genişlik bütçesi, TESTDRUCK tarihi, STORNO meta satırı)
 - [x] Görev 18 — Ajan çekirdeği: ESC/POS, TCP, durum, sahte yazıcı — `e7c5f26`, `12fef1d`, `bb42271` — 22/22 test ✓, typecheck+lint temiz; inceleme 2 Critical (girinti kağıda ulaşmıyordu; `sendBytes` sonsuza kadar asılabiliyordu) + 3 Important buldu, 1 düzeltme turunda kapandı; yeniden inceleme gerçek bayt ve gerçek soketlerle doğruladı: 22/22 satır `linesToText` ile birebir, iş başına tek TCP bağlantısı, `ESC t 91` kurtarma yolu gerçekten doğru Türkçe basıyor, 15/15 karakter doğru kod noktasında
 - [x] Görev 19 — Ajan döngüsü: kuyruk, yazıcı kapısı, heartbeat, ayar yenileme, CLI — `3055db2`, `7b4a1bb`, `dfb14cf`, `192cec0`, `a157953` — 8 dosya / 80 test ✓, typecheck + `eslint .` + build temiz; sahte yazıcıyla canlı döngü testi geçti (iş ~30 sn'de `printed`, girinti kağıda ulaştı, CP857 gidiş-dönüş doğru, R55 koşuya özgü kimlik canlı doğrulandı). 4 düzeltme turu: çift fiş yolları (sınırsız onay denemesi R68, gerçek yazıcı mutex'i R69, kapanışta yeni iş sahiplenmeyi durdurma R70), istemci tarafı RPC zaman aşımı (R71) ve onun livelock regresyonu (R78: `complete` 10 sn / diğerleri 25 sn), kapanış log'u (R72), idempotent `stop()`, ikinci Ctrl+C görünürlüğü, takılı onay işareti. Son inceleme (opus) R71'in çift fiş açmadığını bağımsız kanıtladı: zaman aşımına uğrayan `claim`de hiçbir şey basılmıyor, iptal edilen `complete`in ikinci denemesi `job_not_printing`'i yutuyor, `AbortSignal.timeout` her yerde yeniden denenebilir sayılıyor. Gerçek kesinti/SIGINT/livelock doğrulaması Görev 20'de
-- [ ] Görev 20 — Paketleme, otomatik başlatma, gerçek Xprinter testi
+- [x] Görev 20 — Paketleme, otomatik başlatma, gerçek Xprinter testi — `0eda7f6`, `3b4b887` — 9 dosya / 96 test ✓, typecheck + eslint + build temiz; tek dosya paket (`dist/ramos-agent.mjs`), Windows Zamanlanmış Görevi (BOM'lu `.ps1`), systemd birimi. GERÇEK XPRINTER: 7 fiş basıldı (TESTDRUCK, sipariş, ek sipariş, STORNO, TISCHWECHSEL, kurtarma, kurulu yoldan uçtan uca test) — hepsi `printed`, 0 çift baskı; gecikmeler 0,23–0,28 sn (hedef 5 sn). Kurulum→kaldırma denendi: kurulan ajan makineye özgü kimlikle iş sahiplenip bastı, kaldırma iki süreci öldürdü, öksüz ajan kalmadı. İnceleme 7 Important buldu (R82: kaldırma yolun yazımına duyarlıydı → öksüz ajan fiş basmaya devam edebilirdi, kilit PID'i otoriter yapıldı; R83: kurulum geliştiricinin `AGENT_ID`'sini taşıyordu → iki makine aynı kuyruktan iş kapardı; R84: sessiz sonsuz döngü; R85: Linux'ta kalıcı fail-closed kilit), düzeltme turunda hepsi kapandı — I1 canlı kanıtlandı. ⏸ ertelendi: gerçek yarı-açık TCP ve livelock doğrulaması (üretmenin her yolu bu oturumu keserdi)
 ### M6 — Admin (Plan 4)
 - [ ] Görev 21 — Admin kabuğu ve canlı durum · + R79: `printer_status.last_error` operatöre gösterilecek (`derivePrinterProblem`'e `complete_stuck*` dalı + i18n) — yoksa takılı onay işareti DB'de kalıp kimseye görünmüyor
 - [ ] Görev 22 — Menü yönetimi (tek/toplu görsel yükleme dahil)
@@ -76,7 +76,11 @@
 _Henüz yok._
 
 ## Kullanıcıya kalan kontroller
-- [ ] Gerçek fiş fotoğrafları: TESTDRUCK, sipariş, STORNO, TISCHWECHSEL (Görev 20) — Türkçe/Almanca karakterler doğru mu?
+- [ ] Gerçek fiş fotoğrafları: TESTDRUCK (CLI ve kuyruk yoluyla), sipariş, ek sipariş, STORNO, TISCHWECHSEL (Görev 20) — `ÄÖÜ äöü ß · Şş Ğğ İı Çç` satırı doğru mu? Bozuksa `printer_codepage = windows1254` / `91`, o da olmazsa `printer_transliterate = true`
+- [ ] Fiş kesimi (`GS V 66 0`) ve 48 kolon taşması kağıtta kontrol edilmeli
+- [ ] Fiş içeriği mutfak gözüyle doğru mu (OHNE / Soße / +Extra / GETRÄNKE sırası, STORNO, TISCHWECHSEL)
+- [ ] Restorandaki XP-Q80A: Ethernet IP ayarı ve self-test'te `61 = PC857` doğrulaması
+- [ ] Oturum kapat/aç ile ajanın otomatik kalkması (bu oturumda eşzamanlı ajanlar yüzünden denenemedi; kurulum/kaldırma ve kurulu yoldan baskı doğrulandı)
 - [ ] Telefonda kilitli ekran push testi: Android (ve varsa iPhone, ana ekrana ekleyerek) (Görev 28)
 - [ ] Mutfak tableti: ana ekrana ekle, ekran zaman aşımı "hiçbir zaman", ses açık (KURULUM §4)
 - [ ] Restoran PC'si: ajan kurulumu + XP-Q80A'nın ağa bağlanıp IP ayarı (KURULUM §2–3)
