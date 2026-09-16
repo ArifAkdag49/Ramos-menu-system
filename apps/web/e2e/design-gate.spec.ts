@@ -52,6 +52,33 @@ async function scan(page: Page, screen: string): Promise<void> {
   });
 }
 
+/**
+ * 2. tur — düzeltmelerin yan etkisini ölçer. Eleştiri "daha kalabalık göründü" gibi bir izlenim
+ * değil, sayı olmalı: ürün satırı kaç piksel, ekrana kaç satır sığıyor, KDS kartları hangi tonda.
+ */
+function logMetrics(label: string, data: Record<string, unknown>): void {
+  console.log(`[ölçüm] ${label}: ${JSON.stringify(data)}`);
+}
+
+/**
+ * Bir seçicinin tüm örneklerinin kutu ölçüleri. `page.evaluate` kullanılmaz: e2e tsconfig'i
+ * `lib: ["ES2023"]` ile derleniyor, DOM globalleri yok (`tsconfig.node.json`).
+ */
+async function boxes(page: Page, selector: string): Promise<{ top: number; bottom: number; height: number }[]> {
+  const items = page.locator(selector);
+  const n = await items.count();
+  const out: { top: number; bottom: number; height: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const box = await items.nth(i).boundingBox();
+    if (box) out.push({ top: Math.round(box.y), bottom: Math.round(box.y + box.height), height: Math.round(box.height) });
+  }
+  return out;
+}
+
+/** Görünen alana TAM sığan öğe sayısı. */
+const fullyVisible = (list: { bottom: number }[], viewportHeight: number) =>
+  list.filter((b) => b.bottom <= viewportHeight).length;
+
 function writeAxeReport(file: string): void {
   mkdirSync(AXE_DIR, { recursive: true });
   writeFileSync(`${AXE_DIR}/${file}`, JSON.stringify(summaries, null, 2), 'utf8');
@@ -300,11 +327,12 @@ test('M3 kapısı: garson ekranları dolu sahnede — görüntüler + WCAG AA', 
     // 1 — masa ızgarası (dolu, hazır ve boş masalar bir arada)
     await expect(page.locator('button[data-tone="ready"]').first()).toBeVisible();
     await expect(page.locator('button[data-tone="open"]').first()).toBeVisible();
+    // O1: sıra artık durumdan geliyor — hazır → açık → boş.
+    await expect(page.locator('main button[data-tone]').first()).toHaveAttribute('data-tone', 'ready');
     await page.screenshot({ path: SHOT('m3-tables-390.png') });
     await scan(page, 'm3-tables');
 
-    // 2 — "Açık" süzgeci: dolu masalar 12 boş masanın ardında kaldığı için tek çare bu çip
-    //     (devredilen bulgu b'nin gerçek biçimi — sıralama değil, süzgeç).
+    // 2 — "Açık" süzgeci (sıralamanın yanındaki ikinci yol)
     await page.getByRole('button', { name: 'Açık', exact: true }).click();
     await expect(page.locator('button[data-tone="free"]')).toHaveCount(0);
     await page.screenshot({ path: SHOT('m3-tables-filter-390.png') });
@@ -327,6 +355,15 @@ test('M3 kapısı: garson ekranları dolu sahnede — görüntüler + WCAG AA', 
     await expect(page.getByRole('button', { name: /^ekle$|^seç$/i }).first()).toBeVisible();
     await page.screenshot({ path: SHOT('m3-order-menu-390.png') });
     await scan(page, 'm3-order-menu');
+    // R2: `line-clamp-2` + fiyat/düğme alt satırı ürün satırını büyüttü mü, ekrana kaç ürün sığıyor?
+    const rowBoxes = await boxes(page, 'li:has([data-testid="product-row-actions"])');
+    logMetrics('ürün satırı (TR)', {
+      satırSayısı: rowBoxes.length,
+      ilkSatırYüksekliği: rowBoxes[0]?.height ?? null,
+      enYüksekSatır: Math.max(...rowBoxes.map((b) => b.height)),
+      tamGörünenSatır: fullyVisible(rowBoxes, 844),
+      listeninBaşlangıcı: rowBoxes[0]?.top ?? null,
+    });
 
     // 5 — ürün paneli: 08 Drehspieß Teller (4 seçim grubu, 5 malzeme, 2 varyant)
     await page.getByLabel(/ara/i).fill('08');
@@ -370,6 +407,14 @@ test('M3 kapısı: garson ekranları dolu sahnede — görüntüler + WCAG AA', 
     await expect(cart.getByRole('button', { name: /mutfağa gönder/i })).toBeVisible();
     await page.screenshot({ path: SHOT('m3-cart-full-390.png') });
     await scan(page, 'm3-cart');
+    // Devredilen bulgu (a): toast panelin üst kenarına değmemeli.
+    const toastBox = await boxes(page, '[data-testid="toast-bubble"]');
+    const sheetBox = await boxes(page, '[role="dialog"]');
+    logMetrics('toast ↔ panel', {
+      toast: toastBox[0] ? [toastBox[0].top, toastBox[0].bottom] : null,
+      panelÜstü: sheetBox[0]?.top ?? null,
+      boşluk: toastBox[0] && sheetBox[0] ? sheetBox[0].top - toastBox[0].bottom : null,
+    });
 
     // 8 — onay paneli
     await cart.getByRole('button', { name: /mutfağa gönder/i }).click();
@@ -431,11 +476,22 @@ test('M4 kapısı: KDS dolu mutfak ekranı — görüntüler + WCAG AA', async (
     await page.screenshot({ path: SHOT('m4-kds-start-1280.png') });
     await page.getByRole('button', { name: /başlat|starten/i }).click();
 
-    // 1 — dolu mutfak: birden çok kart, geç kalmış kart (kırmızı süre), HAZIR sütunu
+    // 1 — dolu mutfak: birden çok kart, geç kalmış kart (kırmızı kart tonu), HAZIR sütunu
     await expect(page.getByRole('button', { name: /^HAZIR$|^FERTIG$/ }).first()).toBeVisible();
-    await expect(page.locator('[data-tone="danger"]').first()).toBeVisible();
+    await expect(page.locator('section > ul > li[data-tone="late"]')).toHaveCount(1);
+    await expect(page.locator('section > ul > li[data-tone="warn"]')).toHaveCount(1);
     await page.screenshot({ path: SHOT('m4-kds-1280.png') });
     await scan(page, 'm4-kitchen');
+    // R2: renkli kart zeminleri kalabalık ekranda gürültü yapıyor mu — kaç kart renkli?
+    const cardBoxes = await boxes(page, 'section > ul > li[data-tone]');
+    logMetrics('KDS kartları', {
+      aktifKart: cardBoxes.length,
+      ok: await page.locator('section > ul > li[data-tone="ok"]').count(),
+      warn: await page.locator('section > ul > li[data-tone="warn"]').count(),
+      late: await page.locator('section > ul > li[data-tone="late"]').count(),
+      ilkKartYüksekliği: cardBoxes[0]?.height ?? null,
+      tamGörünenKart: fullyVisible(cardBoxes, 800),
+    });
 
     // 2 — tükendi çekmecesi (dolu)
     await page.getByRole('button', { name: /tükendi|ausverkauft/i }).first().click();
