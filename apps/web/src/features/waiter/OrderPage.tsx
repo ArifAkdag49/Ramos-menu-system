@@ -126,7 +126,7 @@ export function OrderPage() {
   return (
     <div className="flex min-h-dvh flex-col">
       <div className="sticky top-0 z-10 bg-surface">
-        <header className="flex items-center gap-3 border-b border-border px-4 py-3">
+        <header className="flex h-[var(--header-h)] items-center gap-3 border-b border-border px-4">
           <IconButton label={t('common.back')} icon={<ArrowLeft aria-hidden size={22} />} onClick={() => navigate(`/waiter/table/${id}`)} />
           <h1 className="min-w-0 flex-1 truncate text-xl font-semibold">{table ? localTableName(table.name, locale) : t('waiter.order.title')}</h1>
           <button

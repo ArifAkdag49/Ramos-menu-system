@@ -2,7 +2,7 @@ import { clsx } from 'clsx';
 import { domAnimation, LazyMotion, useReducedMotion } from 'motion/react';
 import * as m from 'motion/react-m';
 import type { ReactNode } from 'react';
-import { TONE_CLASS, type Tone } from './tone';
+import { TONE_SOLID, type Tone } from './tone';
 import { toastMotion } from './toastMotion';
 
 /**
@@ -12,9 +12,12 @@ import { toastMotion } from './toastMotion';
  * monte kalır, mesaj içine yazılır. Birçok ekran okuyucu, bölge duyuru anında yeni oluşursa
  * hiçbir şey seslendirmez. Bu yüzden `<Toast>` ekranda sürekli dururken `children` gelip gider.
  */
+// R81: üst konum sayfa başlığının ALTINDAN başlar. Yükseklik `tokens.css`'teki `--header-h`
+// değişkeninden gelir — aynı değişkeni `WaiterLayout` ve `OrderPage` başlıkları da kullanır,
+// yani ölçü üç yerde ayrı ayrı yazılı değil.
 const POSITION: Record<'bottom' | 'top', string> = {
   bottom: 'bottom-[calc(1rem+env(safe-area-inset-bottom))]',
-  top: 'top-[calc(1rem+env(safe-area-inset-top))]',
+  top: 'top-[calc(var(--header-h)+0.5rem+env(safe-area-inset-top))]',
 };
 
 export function Toast({
@@ -46,10 +49,11 @@ export function Toast({
         // yakalar, böylece ileride biri `motion.div` yazarsa fark edilir.
         <LazyMotion features={domAnimation} strict>
           <m.div
+            data-testid="toast-bubble"
             {...toastMotion(!!reduced)}
             className={clsx(
               'flex items-center gap-2 rounded-card border px-4 py-3 text-base shadow-[var(--shadow-overlay)]',
-              TONE_CLASS[tone],
+              TONE_SOLID[tone],
               className,
             )}
           >

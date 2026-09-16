@@ -39,6 +39,11 @@
   --tap-min: 48px;
   --tap-primary: 56px;
 
+  /* Sayfa başlığı yüksekliği (garson iskeleti ve sipariş girişi `sticky top-0` başlıkları).
+     R81 — toast panel açıkken üste taşınıyor; başlığın ÜSTÜNE binmemesi için aynı değerden
+     ofset alır. Değer yalnız burada durur: üç yer de `var(--header-h)` ile okur. */
+  --header-h: 4.5rem;
+
   --state-empty: var(--color-muted);
   --state-open: var(--color-lime);
   --state-ready: var(--color-gold);

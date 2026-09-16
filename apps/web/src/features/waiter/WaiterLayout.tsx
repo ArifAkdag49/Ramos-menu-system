@@ -23,7 +23,7 @@ export function WaiterLayout() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
+      <header className="sticky top-0 z-10 flex h-[var(--header-h)] items-center justify-between gap-3 border-b border-border bg-surface px-4">
         <span className="truncate text-base font-semibold">{profile?.display_name}</span>
         <button
           type="button"

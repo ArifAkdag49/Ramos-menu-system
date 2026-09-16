@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { contrastRatio, overlay, readTokens } from '../test/contrast';
-import { TONE_CLASS } from './tone';
+import { TONE_CLASS, TONE_SOLID } from './tone';
 
 // Dosya diskten okunur. `?raw` içe aktarımı işe yaramıyor: Tailwind eklentisi `.css` modülünü
 // vitest içinde de derliyor ve içerik taraması boş kaldığı için tema değişkenleri budanıyor.
@@ -41,6 +41,23 @@ describe('TONE_CLASS kontrastı — metin, kendi tint zemini üzerinde okunur', 
       expect(ratio).toBeGreaterThanOrEqual(MARGIN);
     });
   }
+});
+
+/**
+ * R81 — toast baloncuğu opak `surface-2` üzerinde durur (arkasında sayfa başlığı olabilir).
+ * Renk artık yalnız kenarlık ve metinde; metnin o düz yüzeyde de okunur kalması şart.
+ */
+describe('TONE_SOLID kontrastı — metin, opak surface-2 üzerinde okunur', () => {
+  const base = token('bg');
+  for (const [tone, classes] of Object.entries(TONE_SOLID)) {
+    it(`${tone}: metin/zemin oranı ${MARGIN}:1 üstünde`, () => {
+      expect(measure(classes, base).ratio).toBeGreaterThanOrEqual(MARGIN);
+    });
+  }
+
+  it('hiçbir tonda yarı saydam zemin kalmadı', () => {
+    for (const classes of Object.values(TONE_SOLID)) expect(classes).not.toMatch(/bg-[a-z0-9-]+\/\d+/);
+  });
 });
 
 describe('marka renkleri düz koyu yüzeylerde AA geçer (DESIGN.md §2.1)', () => {
