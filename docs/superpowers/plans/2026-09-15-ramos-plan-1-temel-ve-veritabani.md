@@ -2935,7 +2935,7 @@ git commit -m "feat(db): menü seed'i (107 ürün, 9 seçim grubu, 31 malzeme), 
   - **Hatalar (`errors.ts`):** `RPC_ERROR_KEYS`, `RpcErrorKey`, `isRpcErrorKey(s)`.
   - Kurallar sunucudakiyle (§6.1, `submit_order`) aynıdır. Arayüz bunları anlık geri bildirim için kullanır, son söz sunucunundur.
 
-- [ ] **Adım 1: Testleri yaz (kırmızı)**
+- [x] **Adım 1: Testleri yaz (kırmızı)**
 
 `packages/shared/src/pricing.test.ts`:
 ```ts
@@ -3053,7 +3053,7 @@ describe('RPC hata anahtarları', () => {
 ```
 Run: `npm test -w @ramos/shared` → Expected: FAIL (modüller yok)
 
-- [ ] **Adım 2: Uygula**
+- [x] **Adım 2: Uygula**
 
 `packages/shared/src/domain.ts`:
 ```ts
@@ -3192,7 +3192,7 @@ export * from './errors';
 ```
 Run: `npm test -w @ramos/shared` → Expected: PASS. `errors.test` başarısızsa eksik veya fazla anahtarı listeden düzelt; migration değiştirilmez.
 
-- [ ] **Adım 3: M1 kapanışı**
+- [x] **Adım 3: M1 kapanışı**
 
 Run: `npm run check` ve `npm run db:test` → ikisi de yeşil olmalı. `get_advisors` temiz.
 ```bash
