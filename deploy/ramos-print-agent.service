@@ -1,0 +1,30 @@
+# Ramo's yazdırma ajanı — Linux / Raspberry Pi systemd birimi.
+#
+# Kurulum (ayrıntısı docs/KURULUM.md, Görev 30):
+#   sudo useradd -r -s /usr/sbin/nologin ramos
+#   sudo mkdir -p /opt/ramos-print-agent /var/log/ramos-print-agent
+#   sudo cp dist/ramos-agent.mjs /opt/ramos-print-agent/
+#   sudo cp apps/print-agent/.env /opt/ramos-print-agent/.env   # AGENT_PASSWORD taşır: chmod 600
+#   sudo chown -R ramos:ramos /opt/ramos-print-agent /var/log/ramos-print-agent
+#   sudo cp deploy/ramos-print-agent.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now ramos-print-agent
+#
+# Ajan `.env` dosyasını çalıştırılan dosyanın klasöründe arar (/opt/ramos-print-agent/.env).
+# Node'un `process.loadEnvFile` çağrısı var olan ortam değişkenlerinin ÜZERİNE YAZMAZ; bu
+# yüzden aşağıdaki LOG_DIR, `.env` içinde bir LOG_DIR satırı olsa bile geçerli kalır.
+
+[Unit]
+Description=Ramo's Print Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/ramos-print-agent
+ExecStart=/usr/bin/node /opt/ramos-print-agent/ramos-agent.mjs run
+Restart=always
+RestartSec=5
+User=ramos
+Environment=LOG_DIR=/var/log/ramos-print-agent
+
+[Install]
+WantedBy=multi-user.target
