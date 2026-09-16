@@ -12,7 +12,8 @@
       4) Bulunamazsa ve yazıcı USB ile bağlıysa ağda boş bir adres seçilip yazıcıya yazılır
       5) Adres bu PC'nin ajan ayarına (.env → PRINTER_HOST) yazılır
       6) Test fişi
-      7) Ajan Zamanlanmış Görev olarak kurulur ve siteye bağlandığı doğrulanır
+      7) Prize takılıyken uyku / hazırda bekletme / kapak kapanınca uyku kapatılır (onayla)
+      8) Ajan Zamanlanmış Görev olarak kurulur ve siteye bağlandığı doğrulanır
 
     Yerel PRINTER_HOST, sitedeki genel yazıcı ayarının önüne geçer: farklı ağlardaki
     bilgisayarlar kendi yazıcılarını kullanır. Aynı anda YALNIZ BİR bilgisayarda ajan açık olmalı.
@@ -58,7 +59,7 @@ $LogDir = Get-RamosPath $LogDir
 $PackageRoot = Get-RamosPath (Join-Path $PSScriptRoot '..')
 $AgentFile = Join-Path $PackageRoot 'dist\ramos-agent.mjs'
 $PackageEnv = Join-Path $PackageRoot '.env'
-$TotalSteps = 7
+$TotalSteps = 8
 $script:NodeExe = $null
 $agentId = "ramos-$($env:COMPUTERNAME.ToLowerInvariant())"
 # Paketteki .env bilerek AGENT_ID taşımaz (her bilgisayar kendi kimliğini alır). Sihirbazın
@@ -224,6 +225,46 @@ function Send-PrinterIp([string]$printerName, [string]$ip) {
     $octets = ([Net.IPAddress]::Parse($ip)).GetAddressBytes()
     $bytes = [byte[]](@(0x1F, 0x1B, 0x1F, 0x91, 0x00, 0x49, 0x50) + $octets)
     return [RamosRawPrinter]::Send($printerName, $bytes)
+}
+
+# ---- Güç ayarları (powercfg) ----
+# Kapak ayarı masaüstü bilgisayarlarda yoktur ve LIDACTION kısa adı her makinede listelenmez;
+# bu yüzden tam kimlikler kullanılır.
+$SubButtons = '4f971e89-eebd-4455-a8de-9e59040e7347'
+$LidAction = '5ca83367-6e45-459f-a27b-476b1d01c936'
+
+function Invoke-PowerCfg([string[]]$PowerArgs) {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & powercfg @PowerArgs 2>&1 | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
+# Etkin güç planındaki bir ayarın "prize takılı" (AC) değeri; okunamazsa $null.
+# `powercfg /query` çıktısı Windows diline göre değişir ama sayılar hep 0x........ biçimindedir
+# ve son iki onaltılık değer sırasıyla AC ve DC (pil) değerleridir.
+function Get-PowerAcValue([string]$sub, [string]$setting) {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $out = @(& powercfg /query SCHEME_CURRENT $sub $setting 2>&1 | ForEach-Object { "$_" })
+        if ($LASTEXITCODE -ne 0) { return $null }
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+    $hex = @([regex]::Matches(($out -join "`n"), '0x[0-9a-fA-F]{8}') | ForEach-Object { $_.Value })
+    if ($hex.Count -lt 2) { return $null }
+    return [Convert]::ToInt64($hex[$hex.Count - 2], 16)
+}
+
+function Write-SleepManualHelp {
+    Write-Host '   Elle ayarlamak için:'
+    Write-Host '   - Ayarlar > Sistem > Güç (ve pil) > Ekran ve uyku > prize takılıyken uyku: Hiçbir zaman'
+    Write-Host '   - Dizüstünde: Denetim Masası > Güç Seçenekleri > Kapağı kapatınca > Prize takılı: Hiçbir şey yapma'
 }
 
 # Adreste ESC/POS yazıcı cevap veriyor mu (`status --host`, giriş gerektirmez).
@@ -509,7 +550,62 @@ if ($DryRun -or $SkipTestPrint) {
 }
 
 # ------------------------------------------------------------------------------------------
-Write-Step 7 'Yazdırma ajanı kuruluyor'
+Write-Step 7 'Bilgisayarın uyku ayarı'
+
+$hasBattery = [bool](Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue)
+$standby = Get-PowerAcValue 'SUB_SLEEP' 'STANDBYIDLE'
+$hibernate = Get-PowerAcValue 'SUB_SLEEP' 'HIBERNATEIDLE'
+$lid = if ($hasBattery) { Get-PowerAcValue $SubButtons $LidAction } else { $null }
+
+$needs = @()
+if ($null -ne $standby -and $standby -ne 0) { $needs += "uyku ($([Math]::Round($standby / 60)) dk sonra)" }
+if ($null -ne $hibernate -and $hibernate -ne 0) { $needs += "hazırda bekletme ($([Math]::Round($hibernate / 60)) dk sonra)" }
+if ($null -ne $lid -and $lid -ne 0) { $needs += 'kapak kapanınca uyku' }
+
+if ($null -eq $standby) {
+    Write-Warn 'Uyku ayarı okunamadı; elle kontrol edin.'
+    Write-SleepManualHelp
+} elseif ($needs.Count -eq 0) {
+    Write-Ok 'Prize takılıyken bilgisayar uykuya geçmiyor, değişiklik gerekmiyor.'
+} else {
+    Write-Info ('Prize takılıyken açık olanlar: ' + ($needs -join ', '))
+    Write-Info 'Bilgisayar uykuya geçerse fişler basılmaz.'
+    if ($DryRun) {
+        Write-Info 'Deneme modu: değiştirilmedi.'
+    } elseif (Confirm-Yes 'Prize takılıyken bunlar kapatılsın mı? (pil ayarlarına ve ekranın kapanmasına dokunulmaz)') {
+        $failed = @()
+        if ($null -ne $standby -and $standby -ne 0 -and -not (Invoke-PowerCfg @('/change', 'standby-timeout-ac', '0'))) { $failed += 'uyku' }
+        if ($null -ne $hibernate -and $hibernate -ne 0 -and -not (Invoke-PowerCfg @('/change', 'hibernate-timeout-ac', '0'))) { $failed += 'hazırda bekletme' }
+        if ($null -ne $lid -and $lid -ne 0) {
+            $lidOk = (Invoke-PowerCfg @('/setacvalueindex', 'SCHEME_CURRENT', $SubButtons, $LidAction, '0')) -and (Invoke-PowerCfg @('/setactive', 'SCHEME_CURRENT'))
+            if (-not $lidOk) { $failed += 'kapak' }
+        }
+        # Sonucu yeniden okuyarak doğrula: komutun başarı kodu yetmez.
+        $stillOn = @()
+        if ((Get-PowerAcValue 'SUB_SLEEP' 'STANDBYIDLE') -ne 0) { $stillOn += 'uyku' }
+        $h2 = Get-PowerAcValue 'SUB_SLEEP' 'HIBERNATEIDLE'
+        if ($null -ne $h2 -and $h2 -ne 0) { $stillOn += 'hazırda bekletme' }
+        if ($null -ne $lid) {
+            $l2 = Get-PowerAcValue $SubButtons $LidAction
+            if ($null -ne $l2 -and $l2 -ne 0) { $stillOn += 'kapak' }
+        }
+        if ($failed.Count -eq 0 -and $stillOn.Count -eq 0) {
+            Write-Ok 'Prize takılıyken uyku kapatıldı.'
+        } else {
+            Write-Warn ('Değiştirilemedi: ' + ((@($failed) + @($stillOn) | Select-Object -Unique) -join ', ') + ' (yönetici izni gerekebilir).')
+            Write-SleepManualHelp
+        }
+    } else {
+        Write-Warn 'Değiştirilmedi. Bilgisayar uykuya geçerse fişler basılmaz.'
+        Write-SleepManualHelp
+    }
+}
+if ($hasBattery) {
+    Write-Warn 'Bu bir dizüstü bilgisayar: prize takılı kalmalı. Pildeyken uyku ayarına dokunulmadı.'
+}
+
+# ------------------------------------------------------------------------------------------
+Write-Step 8 'Yazdırma ajanı kuruluyor'
 
 if ($DryRun) {
     Write-Info 'Deneme modu: ajan kurulmadı.'

@@ -17,6 +17,8 @@ Sihirbaz şunları kendisi yapar:
   - Yazıcı başka bir ağın adresinde kalmışsa ve USB ile bağlıysa, yazıcıya bu ağdan
     boş bir adres yazar (bir kez USB kablosu takmanız yeterli)
   - Bir test fişi basar
+  - Sorarak, prize takılıyken bilgisayarın uykuya geçmesini kapatır (dizüstünde kapak
+    kapanınca uyumasını da). Uykudaki bilgisayar fiş basamaz.
   - Bilgisayar her açıldığında kendiliğinden çalışacak şekilde kurar
 
 Sonunda yeşil "KURULUM TAMAM" yazısını görmelisiniz.
@@ -28,6 +30,12 @@ Yazdırma programı aynı anda yalnız BİR bilgisayarda açık olmalı. İki bi
 olursa sipariş hangisine düşerse orada basılır.
 Başka bir bilgisayara geçmeden önce eski bilgisayarda "Kaldir.cmd" çalıştırın.
 Sihirbaz, başka bir bilgisayarda çalışan program görürse sizi uyarır.
+
+
+BİLGİSAYAR AÇIK KALMALI
+-----------------------
+Fişleri bu bilgisayar gönderir: açık ve oturumu açık olmalı. Dizüstü bilgisayar prize takılı
+kalmalı (pildeyken uyku ayarı değiştirilmez). Ekranın kapanması sorun değildir.
 
 
 YAZICI BULUNAMAZSA
