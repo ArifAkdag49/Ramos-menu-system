@@ -92,9 +92,13 @@ describe('ToastHost üst konumu sayfa başlığını örtmez (R81)', () => {
     expect(source('src/styles/tokens.css')).toMatch(/--header-h:\s*[^;]+;/);
   });
 
-  it('her iki sayfa başlığı da aynı değişkeni kullanır — ikinci bir sabit yok', () => {
+  it('yapışkan başlıkların HEPSİ aynı değişkeni kullanır — ikinci bir sabit yok', () => {
+    // KDS de dahil: mutfakta bir panel (tükendi çekmecesi, kart "⋯" paneli) açıkken hata toast'ı
+    // üst konuma geçiyor. KDS başlığı kendi yüksekliğini ayrı yazarsa toast ya başlığın üstüne
+    // biner ya da altında boşluk bırakır — bugün 80 px ile 80 px RASTLANTISAL olarak denk düşüyordu.
     expect(source('src/features/waiter/WaiterLayout.tsx')).toContain('h-[var(--header-h)]');
     expect(source('src/features/waiter/OrderPage.tsx')).toContain('h-[var(--header-h)]');
+    expect(source('src/features/kitchen/KitchenHeader.tsx')).toContain('h-[var(--header-h)]');
   });
 
   it('üst konum başlık yüksekliği kadar ofsetlidir', () => {
