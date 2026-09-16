@@ -1,0 +1,89 @@
+{
+  "common": {
+    "save": "Kaydet",
+    "cancel": "Vazgeç",
+    "back": "Geri",
+    "close": "Kapat",
+    "confirm": "Onayla",
+    "ok": "Tamam",
+    "logout": "Çıkış",
+    "retry": "Tekrar dene",
+    "loading": "Yükleniyor",
+    "search": "Ara"
+  },
+  "login": {
+    "title": "Giriş",
+    "subtitle": "Kullanıcı adın ve PIN'inle gir",
+    "username": "Kullanıcı adı",
+    "pin": "PIN",
+    "submit": "Giriş"
+  },
+  "waiter": {
+    "tables": { "title": "Masalar" },
+    "table": { "title": "Masa" },
+    "order": { "title": "Sipariş al" },
+    "ready": { "title": "Hazır" },
+    "profile": { "title": "Profil" }
+  },
+  "kitchen": {
+    "title": "Mutfak"
+  },
+  "admin": {
+    "dashboard": { "title": "Canlı durum" },
+    "menu": { "title": "Menü" },
+    "staff": { "title": "Personel" },
+    "tables": { "title": "Masalar" },
+    "orders": { "title": "Siparişler" },
+    "reports": { "title": "Raporlar" },
+    "settings": { "title": "Ayarlar" }
+  },
+  "status": {
+    "in_kitchen": "Mutfakta",
+    "ready": "Hazır",
+    "served": "Teslim edildi",
+    "cancelled": "İptal",
+    "pending": "Kuyrukta",
+    "printing": "Basılıyor",
+    "printed": "Basıldı",
+    "failed": "Basılamadı"
+  },
+  "errors": {
+    "login_failed": "Kullanıcı adı veya PIN hatalı",
+    "network": "İnternet yok — bağlantı gelince tekrar dene",
+    "unknown": "Bir şeyler ters gitti — tekrar dene",
+    "not_authorized": "Bu işlem için yetkin yok",
+    "order_id_conflict": "Bu sipariş zaten kaydedilmiş — masayı tazele",
+    "table_inactive": "Bu masa kullanımda değil — başka masa seç",
+    "empty_order": "Sepet boş — önce ürün ekle",
+    "too_many_items": "Tek siparişte çok fazla kalem var — ikiye böl",
+    "note_too_long": "Not çok uzun — kısalt",
+    "quantity_invalid": "Adet hatalı — 1 ve üzeri olmalı",
+    "product_unavailable": "Bu ürün şu an satışta değil — sepetten çıkar",
+    "product_sold_out": "Bu ürün tükendi — sepetten çıkar",
+    "variant_required": "Seçenek seç (ör. Hähnchen / Kalb)",
+    "variant_invalid": "Seçilen seçenek bu üründe yok — yeniden seç",
+    "option_invalid": "Bu seçim bu üründe yok — yeniden seç",
+    "option_group_min": "Bu gruptan en az bir seçim yap",
+    "option_group_max": "Bu gruptan çok fazla seçim yaptın — birini çıkar",
+    "option_exclusive_conflict": "Bu seçim diğerleriyle birlikte olmaz — birini bırak",
+    "ingredient_invalid": "Bu malzeme bu üründe yok — yeniden seç",
+    "reason_required": "Sebep seç",
+    "reason_too_long": "Sebep çok uzun — kısalt",
+    "item_not_found": "Bu kalem bulunamadı — masayı tazele",
+    "item_already_cancelled": "Bu kalem zaten iptal edilmiş",
+    "session_closed": "Masa kapandı — yeniden aç",
+    "order_not_in_kitchen": "Sipariş artık mutfakta değil — listeyi tazele",
+    "order_not_ready": "Sipariş henüz hazır değil",
+    "undo_window_expired": "Geri alma süresi doldu",
+    "order_not_open": "Bu sipariş kapandı — listeyi tazele",
+    "open_orders_in_kitchen": "Mutfakta bekleyen sipariş var — önce onları bitir",
+    "target_table_busy": "Seçtiğin masa dolu — boş bir masa seç",
+    "product_not_found": "Ürün bulunamadı — menüyü tazele",
+    "session_not_found": "Masa kaydı bulunamadı — masayı tazele",
+    "locale_invalid": "Dil seçimi hatalı",
+    "order_not_found": "Sipariş bulunamadı — listeyi tazele",
+    "job_not_failed": "Bu baskı zaten sırada — tekrar denemeye gerek yok",
+    "job_not_found": "Baskı işi bulunamadı — listeyi tazele",
+    "job_not_printing": "Bu baskı artık basılmıyor — listeyi tazele"
+  }
+}

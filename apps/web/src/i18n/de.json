@@ -1,0 +1,89 @@
+{
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "back": "Zurück",
+    "close": "Schließen",
+    "confirm": "Bestätigen",
+    "ok": "OK",
+    "logout": "Abmelden",
+    "retry": "Nochmal versuchen",
+    "loading": "Lädt",
+    "search": "Suchen"
+  },
+  "login": {
+    "title": "Anmelden",
+    "subtitle": "Mit Benutzername und PIN anmelden",
+    "username": "Benutzername",
+    "pin": "PIN",
+    "submit": "Anmelden"
+  },
+  "waiter": {
+    "tables": { "title": "Tische" },
+    "table": { "title": "Tisch" },
+    "order": { "title": "Bestellung aufnehmen" },
+    "ready": { "title": "Fertig" },
+    "profile": { "title": "Profil" }
+  },
+  "kitchen": {
+    "title": "Küche"
+  },
+  "admin": {
+    "dashboard": { "title": "Live-Status" },
+    "menu": { "title": "Speisekarte" },
+    "staff": { "title": "Personal" },
+    "tables": { "title": "Tische" },
+    "orders": { "title": "Bestellungen" },
+    "reports": { "title": "Berichte" },
+    "settings": { "title": "Einstellungen" }
+  },
+  "status": {
+    "in_kitchen": "In der Küche",
+    "ready": "Fertig",
+    "served": "Serviert",
+    "cancelled": "Storniert",
+    "pending": "In der Warteschlange",
+    "printing": "Druckt",
+    "printed": "Gedruckt",
+    "failed": "Nicht gedruckt"
+  },
+  "errors": {
+    "login_failed": "Benutzername oder PIN falsch",
+    "network": "Kein Internet — bei Verbindung nochmal versuchen",
+    "unknown": "Etwas ist schiefgelaufen — nochmal versuchen",
+    "not_authorized": "Dafür fehlt die Berechtigung",
+    "order_id_conflict": "Diese Bestellung ist schon gespeichert — Tisch aktualisieren",
+    "table_inactive": "Dieser Tisch ist nicht in Betrieb — anderen Tisch wählen",
+    "empty_order": "Warenkorb ist leer — zuerst etwas hinzufügen",
+    "too_many_items": "Zu viele Positionen in einer Bestellung — bitte aufteilen",
+    "note_too_long": "Notiz ist zu lang — bitte kürzen",
+    "quantity_invalid": "Menge ist falsch — mindestens 1",
+    "product_unavailable": "Dieses Gericht ist gerade nicht im Verkauf — aus dem Warenkorb nehmen",
+    "product_sold_out": "Dieses Gericht ist ausverkauft — aus dem Warenkorb nehmen",
+    "variant_required": "Bitte eine Variante wählen (z. B. Hähnchen / Kalb)",
+    "variant_invalid": "Diese Variante gibt es hier nicht — neu wählen",
+    "option_invalid": "Diese Auswahl gibt es hier nicht — neu wählen",
+    "option_group_min": "Mindestens eine Auswahl aus dieser Gruppe treffen",
+    "option_group_max": "Zu viele Auswahlen in dieser Gruppe — eine entfernen",
+    "option_exclusive_conflict": "Diese Auswahl geht nicht zusammen — eine davon entfernen",
+    "ingredient_invalid": "Diese Zutat gibt es hier nicht — neu wählen",
+    "reason_required": "Bitte einen Grund wählen",
+    "reason_too_long": "Grund ist zu lang — bitte kürzen",
+    "item_not_found": "Diese Position wurde nicht gefunden — Tisch aktualisieren",
+    "item_already_cancelled": "Diese Position ist schon storniert",
+    "session_closed": "Tisch ist geschlossen — neu öffnen",
+    "order_not_in_kitchen": "Bestellung ist nicht mehr in der Küche — Liste aktualisieren",
+    "order_not_ready": "Bestellung ist noch nicht fertig",
+    "undo_window_expired": "Zeit zum Rückgängigmachen ist abgelaufen",
+    "order_not_open": "Diese Bestellung ist abgeschlossen — Liste aktualisieren",
+    "open_orders_in_kitchen": "In der Küche warten noch Bestellungen — zuerst abschließen",
+    "target_table_busy": "Der gewählte Tisch ist belegt — freien Tisch wählen",
+    "product_not_found": "Gericht nicht gefunden — Speisekarte aktualisieren",
+    "session_not_found": "Tischdaten nicht gefunden — Tisch aktualisieren",
+    "locale_invalid": "Sprachauswahl ist falsch",
+    "order_not_found": "Bestellung nicht gefunden — Liste aktualisieren",
+    "job_not_failed": "Dieser Druck ist schon in der Warteschlange — kein neuer Versuch nötig",
+    "job_not_found": "Druckauftrag nicht gefunden — Liste aktualisieren",
+    "job_not_printing": "Dieser Druck läuft nicht mehr — Liste aktualisieren"
+  }
+}

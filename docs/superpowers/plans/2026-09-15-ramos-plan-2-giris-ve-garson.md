@@ -448,7 +448,7 @@ git commit -m "feat(auth): admin-staff Edge Function (oluştur/güncelle/PIN/pas
     - Çeviri anahtar kökleri: `common.*`, `login.*`, `waiter.*`, `kitchen.*`, `admin.*`, `status.*`, `errors.<rpcKey>` (+ `errors.login_failed`, `errors.network`, `errors.unknown`)
   - Yönlendirme: `<RoleGate roles={Role[]}>` · rotalar BUILD-PROMPT §5'teki gibi
 
-- [ ] **Adım 1: Uygulamayı oluştur ve bağımlılıkları kur**
+- [x] **Adım 1: Uygulamayı oluştur ve bağımlılıkları kur**
 ```bash
 npm create vite@latest apps/web -- --template react-ts
 npm i -w apps/web react-router @tanstack/react-query zustand i18next react-i18next @supabase/supabase-js motion @fontsource-variable/montserrat lucide-react clsx
@@ -475,7 +475,7 @@ export default defineConfig({
 ```
 `src/test/setup.ts`: `import '@testing-library/jest-dom/vitest';`
 
-- [ ] **Adım 2: Tasarım sistemi ve tokenlar (`ui-ux-pro-max` + `frontend-design`)**
+- [x] **Adım 2: Tasarım sistemi ve tokenlar (`ui-ux-pro-max` + `frontend-design`)**
 
 `ui-ux-pro-max` design system çıktısını al:
 ```bash
@@ -524,7 +524,7 @@ body { font-family: var(--font-sans); -webkit-tap-highlight-color: transparent; 
 - Hepsi ≥ 48 px dokunma hedefi, görünür odak halkası (`focus-visible:ring-2 ring-lime`) ve `aria-*` etiketleriyle yazılır.
 - `Button` varyantları: `primary` (lime zemin, `#0A0A0A` metin), `secondary` (surface-2), `danger`, `ghost`; `loading` durumunda spinner gösterir ve tıklanamaz.
 
-- [ ] **Adım 3: Testleri yaz (kırmızı)**
+- [x] **Adım 3: Testleri yaz (kırmızı)**
 
 `src/lib/rpc.test.ts`:
 ```ts
@@ -597,7 +597,7 @@ describe('LoginPage', () => {
 ```
 Run: `npm test -w apps/web` → Expected: FAIL (modüller yok)
 
-- [ ] **Adım 4: Uygula**
+- [x] **Adım 4: Uygula**
 
 `src/lib/supabase.ts`:
 ```ts
@@ -738,7 +738,7 @@ Henüz yazılmamış sayfalar (Görev 13–16, 21) bu görevde tek satırlık bi
 
 Run: `npm test -w apps/web` → Expected: PASS
 
-- [ ] **Adım 5: E2E giriş testi ve ekran görüntüsü (`webapp-testing`)**
+- [x] **Adım 5: E2E giriş testi ve ekran görüntüsü (`webapp-testing`)**
 
 `apps/web/playwright.config.ts`:
 ```ts
@@ -773,7 +773,7 @@ test('garson girişi /waiter sayfasına yönlenir; yanlış PIN hata verir', asy
 ```
 Run: `npm run e2e -w apps/web -- login` → Expected: PASS (3 görünüm). Ekran görüntülerini aç ve tasarımı gözle kontrol et: kontrast, hizalama, dokunma alanları.
 
-- [ ] **Adım 6: Commit**
+- [x] **Adım 6: Commit**
 ```bash
 git add apps/web packages/shared/src/index.ts docs/screenshots package.json package-lock.json
 git commit -m "feat(web): uygulama iskeleti — marka tokenları, giriş, rol yönlendirme, TR/DE, RPC hata eşleme"
