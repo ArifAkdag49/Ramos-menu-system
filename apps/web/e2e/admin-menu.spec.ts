@@ -95,7 +95,10 @@ test('admin menü yönetimi: fiyat, toplu atama ve ürün görseli', async ({ br
     // 1 — ürün listesi: arama, "Görseli yok (N)" süzgeci
     await admin.goto(`${BASE}/admin/menu`);
     await expect(admin.getByRole('heading', { name: 'Menü' })).toBeVisible();
-    await expect(admin.getByRole('button', { name: /Görseli yok \(\d+\)/ })).toBeVisible();
+    // Görüntü DOLU listeyi belgelemeli: "Yükleniyor" hâlinde çekilen kare referans olamaz ve
+    // süzgeç çipi o anda "(0)" yazar. Önce gerçek satırlar ve sıfırdan büyük sayı beklenir.
+    await expect(admin.getByRole('button', { name: /Drehspieß Sandwich/ }).first()).toBeVisible();
+    await expect(admin.getByRole('button', { name: /Görseli yok \([1-9]\d*\)/ })).toBeVisible();
     await admin.screenshot({ path: SHOT('m6-menu-products-1440.png') });
 
     // 2 — Kalb 8,50 → 8,90
@@ -138,11 +141,26 @@ test('admin menü yönetimi: fiyat, toplu atama ve ürün görseli', async ({ br
     await admin.getByRole('button', { name: /bağlantıyı kaldır/i }).click();
     await expect(admin.getByText(/1 ürün güncellendi/)).toBeVisible();
 
+    // Bağlantı gerçekten koptu mu? Toast "yazdım" der, "silindi" demez — garson panelinde
+    // grubun KAYBOLDUĞUNU görmeden bu adım kanıtlanmış olmaz.
+    await openProductSheet(waiter);
+    await expect(waiter.getByRole('dialog').getByText(/Schärfe|Acılık/)).toHaveCount(0);
+
     // 6 — görsel: tek yükleme → garson listesinde küçük görsel
     await openEditor(admin);
     await admin.getByRole('dialog').getByLabel('Görsel seç').setInputFiles(writePng('tek.png'));
     await expect(admin.getByRole('dialog').getByRole('button', { name: 'Değiştir' })).toBeVisible({ timeout: 30_000 });
-    await admin.getByRole('dialog').getByTestId('ticket-preview').scrollIntoViewIfNeeded();
+    // Önizleme görüntüsü fişin İLGİNÇ hâlini belgelemeli: ters renkli OHNE satırı ve bir grup
+    // seçimi. Boş seçimle çekilen kare, biçimi göstermediği için tasarım kapısında işe yaramaz.
+    const editorPanel = admin.getByRole('dialog');
+    await editorPanel.getByRole('button', { name: 'Zwiebeln' }).click();
+    await editorPanel.getByRole('button', { name: 'Knoblauch' }).click();
+    const preview = editorPanel.getByTestId('ticket-preview');
+    await expect(preview).toContainText('OHNE: Zwiebeln');
+    await expect(preview).toContainText('Soße: Knoblauch');
+    // `scrollIntoViewIfNeeded` kutunun yalnız üstünü görünür kılıyor ve kâğıdın alt kenarı sabit
+    // "Kaydet" çubuğunun altında kalıyordu; ortalayarak fişin tamamı kareye giriyor.
+    await preview.evaluate((el) => el.scrollIntoView({ block: 'center' }));
     await admin.screenshot({ path: SHOT('m6-ticket-preview-1440.png') });
 
     await waiter.goto(`${BASE}/waiter`);
@@ -160,8 +178,10 @@ test('admin menü yönetimi: fiyat, toplu atama ve ürün görseli', async ({ br
 
     // 6c — görseli kaldır → yer tutucu geri gelir
     await openEditor(admin);
-    await admin.getByRole('dialog').getByRole('button', { name: 'Kaldır' }).click();
-    await admin.getByRole('dialog').getByRole('button', { name: 'Kaldır' }).click();
+    // `exact` şart: varyant satırlarındaki "Bu seçeneği kaldır" düğmeleri de "Kaldır" içeriyor.
+    const removeImage = admin.getByRole('dialog').getByRole('button', { name: 'Kaldır', exact: true });
+    await removeImage.click();
+    await removeImage.click();
     await expect(admin.getByRole('dialog').getByRole('button', { name: 'Görsel seç' })).toBeVisible({ timeout: 30_000 });
   } finally {
     // Fikstür ürününü olduğu gibi bırak: fiyat, grup bağlantısı ve görsel geri alınır.
