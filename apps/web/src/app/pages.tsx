@@ -12,11 +12,6 @@ function Screen({ title }: { title: string }) {
   return <h1 className="text-2xl font-semibold">{title}</h1>;
 }
 
-export function AdminStaffPage() {
-  const { t } = useTranslation();
-  return <Screen title={t('admin.staff.title')} />;
-}
-
 export function AdminTablesPage() {
   const { t } = useTranslation();
   return <Screen title={t('admin.tables.title')} />;

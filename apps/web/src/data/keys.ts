@@ -14,6 +14,8 @@ export const qk = {
   printer: ['printer-status'] as const,
   settings: ['settings'] as const,
   staff: ['staff'] as const,
+  // `staff` ön ekinin altında: personel yazımı `qk.staff`'ı geçersiz kılınca ad haritası da tazelenir.
+  adminStaff: ['staff', 'admin'] as const,
   bill: (sessionId: string) => ['bill', sessionId] as const,
   report: (from: string, to: string) => ['report', from, to] as const,
   audit: (limit: number) => ['audit', limit] as const,

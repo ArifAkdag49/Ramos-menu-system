@@ -9,6 +9,7 @@ import { IngredientsPage } from '../features/admin/menu/IngredientsPage';
 import { MenuLayout } from '../features/admin/menu/MenuLayout';
 import { OptionGroupsPage } from '../features/admin/menu/OptionGroupsPage';
 import { ProductsPage } from '../features/admin/menu/ProductsPage';
+import { StaffPage } from '../features/admin/staff/StaffPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { KitchenPage } from '../features/kitchen/KitchenPage';
 import { OrderPage } from '../features/waiter/OrderPage';
@@ -22,7 +23,6 @@ import {
   AdminOrdersPage,
   AdminReportsPage,
   AdminSettingsPage,
-  AdminStaffPage,
   AdminTablesPage,
   HomeRedirect,
 } from './pages';
@@ -70,7 +70,7 @@ export const router = createBrowserRouter([
           { path: 'images', element: <BulkImagesPage /> },
         ],
       },
-      { path: 'staff', element: <AdminStaffPage /> },
+      { path: 'staff', element: <StaffPage /> },
       { path: 'tables', element: <AdminTablesPage /> },
       { path: 'orders', element: <AdminOrdersPage /> },
       { path: 'reports', element: <AdminReportsPage /> },
