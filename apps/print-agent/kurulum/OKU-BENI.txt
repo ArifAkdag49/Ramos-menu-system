@@ -6,15 +6,29 @@ Rongta, HPRT, Munbyn, Bixolon ...) siteye bağlar.
 Siparişleri yazıcıya bu bilgisayar gönderir; bilgisayar açık kaldığı sürece fişler basılır.
 
 
+YAZICI NASIL BAĞLANABİLİR
+------------------------
+Üç yolun hepsinde sipariş gelince fiş kendiliğinden basılır:
+
+  1) KABLOYLA MODEME: Yazıcının ethernet kablosu modeme takılı. Bu bilgisayar da aynı modeme
+     bağlı (kablo ya da Wi-Fi).
+  2) USB İLE BU BİLGİSAYARA: Yazıcının USB kablosu bu bilgisayara takılı. Yazıcının Windows
+     sürücüsü yoksa kurulum onu Windows'un kendi sürücüsüyle ekler.
+  3) WI-FI İLE: Yazıcı önce modemin Wi-Fi ağına bağlanmış olmalı (yazıcının kılavuzu, uygulaması
+     ya da WPS düğmesi). Bağlandıktan sonra kurulum onu kablolu yazıcı gibi bulur.
+     Bilgisayarı yazıcının KENDİ Wi-Fi ağına bağlıyorsanız bilgisayarın internete ayrıca
+     (kabloyla) bağlı olması gerekir; siparişler internetten gelir.
+
+
 KURULUM
 -------
-1) Yazıcıyı açın. Ethernet kablosu modeme takılı olsun.
-2) Bu bilgisayar da aynı modeme bağlı olsun (kablo ya da Wi-Fi).
-3) "Kurulum.cmd" dosyasına çift tıklayın ve ekrandaki soruları cevaplayın.
+1) Yazıcıyı açın ve yukarıdaki yollardan biriyle bağlayın.
+2) "Kurulum.cmd" dosyasına çift tıklayın ve ekrandaki soruları cevaplayın.
 
 Sihirbaz şunları kendisi yapar:
   - Node.js yoksa kurar (Windows izin isterse "Evet" deyin)
   - Yazıcıyı ağda bulur (marka fark etmez: Epson, Xprinter, SNRO, Rongta, HPRT ...)
+  - Ağda yoksa USB ile bu bilgisayara bağlı olup olmadığını sorar
   - Bazı yazıcılar sorulara cevap vermez ama basar. Böyle bir cihaz bulursa ona kısa bir
     "RAMO'S KURULUM" deneme fişi gönderir ve "fiş çıktı mı?" diye sorar: fiş çıktıysa "e"
     yazıp Enter'a basın.

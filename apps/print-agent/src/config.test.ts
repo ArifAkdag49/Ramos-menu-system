@@ -123,3 +123,24 @@ describe('updateEnvFile', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe('PRINTER_USB', () => {
+  const full = {
+    SUPABASE_URL: 'https://x.supabase.co',
+    SUPABASE_ANON_KEY: 'anon',
+    AGENT_EMAIL: 'drucker@staff.example.com',
+    AGENT_PASSWORD: 'secret1234',
+    AGENT_ID: 'ramos-pc-1',
+  };
+
+  it('Windows yazıcı adını ve yardımcı yolunu kırpıp okur; boşsa alanlar eklenmez', () => {
+    const cfg = readConfig({ ...full, PRINTER_USB: ' POS-80 Küche ', PRINTER_USB_EXE: ' C:\\Ramos\\ramos-usb.exe ' });
+    expect(cfg.PRINTER_USB).toBe('POS-80 Küche');
+    expect(cfg.PRINTER_USB_EXE).toBe('C:\\Ramos\\ramos-usb.exe');
+    expect(readConfig({ ...full, PRINTER_USB: '' })).not.toHaveProperty('PRINTER_USB');
+  });
+
+  it('aşırı uzun adı reddeder', () => {
+    expect(() => readConfig({ ...full, PRINTER_USB: 'x'.repeat(201) })).toThrowError(/PRINTER_USB çok uzun/);
+  });
+});

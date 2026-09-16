@@ -301,6 +301,12 @@ describe('createSupabaseApi — kurulum sihirbazı: yerel PRINTER_HOST site ayar
     client.from.mockReturnValue(chain);
   }
 
+  it('PRINTER_USB doluysa adres `usb:<yazıcı adı>` olur ve PRINTER_HOST/site adresi kullanılmaz', async () => {
+    const api = await createSupabaseApi({ ...env, PRINTER_USB: 'POS-80', PRINTER_HOST: '192.168.178.250' }, log);
+    stubSettings();
+    expect(await api.settings()).toMatchObject({ host: 'usb:POS-80', codepageNumber: 61 });
+  });
+
   it('PRINTER_HOST yoksa sitedeki printer_host/port kullanılır', async () => {
     const api = await createSupabaseApi(env, log);
     stubSettings();

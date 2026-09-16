@@ -16,6 +16,7 @@ import { defaultProcIo, isSameAgentProcess, probeProcess } from './proc';
 import { createShutdownHandler } from './shutdown';
 import { PrinterRediscovery } from './rediscover';
 import { printWithChecks, queryStatus, sendBytes } from './transport';
+import { createUsbPrinter } from './usb';
 
 const [cmd = 'run', ...rest] = process.argv.slice(2);
 const arg = (name: string): string | undefined => {
@@ -136,12 +137,22 @@ const STARTUP_BACKOFF_MS = [1000, 2000, 5000, 10000, 30000, 60000];
 
 type AgentExtras = Pick<ConstructorParameters<typeof Agent>[1], 'rediscovery' | 'onHostChanged'>;
 
+/** USB modunda ramos-usb.exe'nin yolu: .env'deki PRINTER_USB_EXE, yoksa ajan dosyasının yanı. */
+function usbExePath(cfg: AgentEnv): string {
+  return cfg.PRINTER_USB_EXE ?? path.join(path.dirname(process.argv[1] ?? '.'), 'ramos-usb.exe');
+}
+
+/** Yazıcıya giden yol: .env'de PRINTER_USB varsa Windows USB kuyruğu, yoksa TCP 9100. */
+function printerPortFor(cfg: AgentEnv): PrinterPort {
+  return cfg.PRINTER_USB ? createUsbPrinter({ exe: usbExePath(cfg), printerName: cfg.PRINTER_USB }) : tcpPrinter;
+}
+
 async function startAgentWithRetry(cfg: AgentEnv, log: Logger, extras: AgentExtras = {}): Promise<{ api: AgentApi; agent: Agent }> {
   for (let attempt = 0; ; attempt++) {
     let api: AgentApi | undefined;
     try {
       api = await createSupabaseApi(cfg, log);
-      const agent = new Agent(api, { printer: tcpPrinter, log, ...extras });
+      const agent = new Agent(api, { printer: printerPortFor(cfg), log, ...extras });
       await agent.start();
       return { api, agent };
     } catch (e) {
@@ -199,12 +210,14 @@ async function cmdRun(): Promise<void> {
     cfg.PRINTER_HOST = host;
     persist({ PRINTER_HOST: host });
   };
-  const { api, agent } = await startAgentWithRetry(cfg, log, { rediscovery, onHostChanged });
+  // USB yazıcının ağ adresi yoktur: ağda yeniden arama yalnız ağ yazıcısında.
+  const extras: AgentExtras = cfg.PRINTER_USB ? {} : { rediscovery, onHostChanged };
+  const { api, agent } = await startAgentWithRetry(cfg, log, extras);
   const settings = await api.settings().catch(() => null);
   log.info('ajan çalışıyor', {
     host: settings?.host ?? null,
     port: settings?.port ?? null,
-    hostSource: cfg.PRINTER_HOST ? 'bu PC (.env PRINTER_HOST)' : 'site ayarı',
+    hostSource: cfg.PRINTER_USB ? `USB (Windows yazıcısı: ${cfg.PRINTER_USB})` : cfg.PRINTER_HOST ? 'bu PC (.env PRINTER_HOST)' : 'site ayarı',
   });
 
   const shutdown = createShutdownHandler(agent, log, () => {
@@ -237,6 +250,17 @@ async function resolveHostPort(log: Logger): Promise<{ host: string; port: numbe
 const silentLog: Logger = { info: () => {}, warn: () => {}, error: () => {} };
 
 async function cmdStatus(): Promise<void> {
+  // `--host` verilmediyse ve bu PC USB yazıcı kullanıyorsa Windows kuyruğunun durumu gösterilir.
+  if (!arg('host')) {
+    const cfg = loadConfig();
+    if (cfg.PRINTER_USB) {
+      const usb = createUsbPrinter({ exe: usbExePath(cfg), printerName: cfg.PRINTER_USB });
+      const queue = await usb.queueStatus();
+      const state = await usb.status({ host: `usb:${cfg.PRINTER_USB}`, port: 0, codepage: '', codepageNumber: 0, transliterate: false });
+      console.log(JSON.stringify({ usb: queue, state }, null, 2));
+      return;
+    }
+  }
   const { host, port } = await resolveHostPort(silentLog);
   const state = await queryStatus(host, port);
   console.log(JSON.stringify(state, null, 2));
@@ -314,8 +338,22 @@ async function cmdTestPrint(): Promise<void> {
     const lines = renderTicketForPrinter(payload, { transliterate: data.printer_transliterate, ascii });
     const bytes = encodeLines(lines, { codepage: data.printer_codepage, codepageNumber: data.printer_codepage_number });
 
-    console.log(`Test baskısı gönderiliyor: ${host}:${port}${ascii ? ' (sade harf)' : ''}`);
-    const result = await printWithChecks(host, port, bytes);
+    let result: unknown;
+    if (cfg.PRINTER_USB && !hostArg) {
+      console.log(`Test baskısı gönderiliyor: USB (Windows yazıcısı: ${cfg.PRINTER_USB})${ascii ? ' (sade harf)' : ''}`);
+      const usb = createUsbPrinter({ exe: usbExePath(cfg), printerName: cfg.PRINTER_USB });
+      const usbSettings = {
+        host: `usb:${cfg.PRINTER_USB}`,
+        port: 0,
+        codepage: data.printer_codepage,
+        codepageNumber: data.printer_codepage_number,
+        transliterate: data.printer_transliterate,
+      };
+      result = await usb.print(usbSettings, bytes);
+    } else {
+      console.log(`Test baskısı gönderiliyor: ${host}:${port}${ascii ? ' (sade harf)' : ''}`);
+      result = await printWithChecks(host, port, bytes);
+    }
     console.log(JSON.stringify(result, null, 2));
   } finally {
     await sb.auth.signOut();

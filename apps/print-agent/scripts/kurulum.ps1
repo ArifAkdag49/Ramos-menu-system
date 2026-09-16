@@ -10,10 +10,11 @@
          başka bir bilgisayarda çalışan ajan varsa uyarılır
       3) Ağ taranır (TCP 9100 + ESC/POS durum cevabı). Durum sorusuna cevap vermeyen cihazlara
          (bazı Star / ucuz modeller) kısa bir deneme fişi gönderilir, "fiş çıktı mı?" diye sorulur.
-      4) Bulunamazsa (markadan bağımsız): tek yönetici izniyle bilgisayara markaların fabrika
-         ağlarından geçici adresler eklenip yazıcı aranır; bulunursa o ağın adresi kalıcı kalır
-         ("köprü"), yazıcının kendi adresine dokunulmaz. Olmazsa ayar fişindeki adres sorulur.
-         Son çare: yazıcı USB ile bağlıysa adres USB'den yazılır (Xprinter ve uyumluları).
+      4) Ağda bulunamazsa: USB ile bu bilgisayara bağlı yazıcı sorulur (sürücüsü yoksa Windows'un
+         "Generic / Text Only" sürücüsüyle eklenir; fişler kuyruğa RAW gider). USB değilse tek
+         yönetici izniyle markaların fabrika ağlarında aranır ve bulunan ağın adresi bilgisayarda
+         kalıcı kalır ("köprü"); o da olmazsa ayar fişindeki adres sorulur.
+         Wi-Fi yazıcılar önce modemin Wi-Fi ağına bağlanmış olmalı; sonra kablolu yazıcı gibi bulunur.
       5) Adres bu PC'nin ajan ayarına (.env → PRINTER_HOST) yazılır
       6) Test fişi; özel harfler (ä ö ü ß ş ğ ı) bozuksa bu PC için sade harf modu (PRINTER_ASCII=1)
       7) Prize takılıyken uyku / hazırda bekletme / kapak kapanınca uyku kapatılır (onayla)
@@ -29,10 +30,7 @@
     Taramayı atlar, bu adresi kullanır (ör. 192.168.1.250).
 
 .PARAMETER ForceUsb
-    Yazıcı ağda bulunsa bile USB ile IP yazma yolunu kullanır (ileri düzey).
-
-.PARAMETER UsbIp
-    Otomatik seçim yerine yazıcıya bu adresi yazar (ağ ya da USB yolu; ileri düzey).
+    Ağ taramasını beklemeden USB ile bağlı yazıcıyı kullanır (ileri düzey).
 
 .PARAMETER KnownPrinterIp
     Otomatik arama bulamazsa "ayar fişindeki IP" sorusu yerine bu adres kullanılır.
@@ -49,7 +47,6 @@ param(
     [string]$LogDir = "$env:LOCALAPPDATA\RamosPrintAgent\logs",
     [string]$PrinterHost,
     [switch]$ForceUsb,
-    [string]$UsbIp,
     [string]$KnownPrinterIp,
     [switch]$SkipTestPrint,
     [switch]$Yes,
@@ -160,80 +157,132 @@ function ConvertTo-IpInt([string]$ip) {
     $b = ([Net.IPAddress]::Parse($ip)).GetAddressBytes()
     return [uint32](([uint64]$b[0] * 16777216) + ([uint64]$b[1] * 65536) + ([uint64]$b[2] * 256) + [uint64]$b[3])
 }
-function ConvertFrom-IpInt([uint64]$n) {
-    return '{0}.{1}.{2}.{3}' -f (($n -shr 24) -band 255), (($n -shr 16) -band 255), (($n -shr 8) -band 255), ($n -band 255)
+
+# ---- USB yardımcıları (4. adım) ----
+# USB ile bu bilgisayara bağlı yazıcıya fişler Windows yazıcı kuyruğu üzerinden RAW gönderilir
+# (ajan: usb.ts). Bunu yapan ramos-usb.exe, paketteki usb\ramos-usb.cs'den bu bilgisayarın kendi
+# C# derleyicisiyle (.NET Framework 4, Windows 10/11'de hazır) kurulum klasörüne derlenir.
+
+$ReceiptPrinterPattern = 'XP|Xprinter|POS|Receipt|Thermal|Bon|Kassen|TM-|TSP|SRP|RP-|80'
+
+function Get-UsbPrinterQueues {
+    return @(Get-Printer -ErrorAction SilentlyContinue | Where-Object { $_.PortName -match '^USB\d+' })
 }
 
-# Ağdaki bir adres boş mu: ping cevabı yok VE ARP tablosunda canlı bir kaydı yok.
-function Test-IpFree([string]$ip) {
-    if (Test-Connection -ComputerName $ip -Count 1 -Quiet -ErrorAction SilentlyContinue) { return $false }
-    $n = Get-NetNeighbor -IPAddress $ip -ErrorAction SilentlyContinue |
-        Where-Object { $_.State -in @('Reachable', 'Stale', 'Delay', 'Probe', 'Permanent') }
-    return -not $n
+# Windows'un oluşturduğu ama hiçbir yazıcı kuyruğunun kullanmadığı USB portları: sürücüsü kurulmamış bir USB yazıcı.
+function Get-FreeUsbPorts {
+    $used = @(Get-Printer -ErrorAction SilentlyContinue | ForEach-Object { $_.PortName })
+    return @(Get-PrinterPort -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^USB\d+' -and $used -notcontains $_.Name })
 }
 
-# Yazıcı için adres adayları: PC'nin /24'ünde .250'den aşağı (ev/işyeri modemlerinin DHCP
-# havuzu genelde bu aralığın altında biter; Fritz!Box varsayılanı .20–.200). Ağ /24'ten
-# darsa alt ağın içindeki en yüksek adresler.
-function Get-IpCandidates([string]$address, [int]$prefix, [string]$gateway) {
-    $effective = [Math]::Max($prefix, 24)
-    $self = [uint64](ConvertTo-IpInt $address)
-    $size = [uint64][Math]::Pow(2, 32 - $effective)
-    $network = $self - ($self % $size)
-    $broadcast = $network + $size - 1
-    $gw = if ($gateway) { [uint64](ConvertTo-IpInt $gateway) } else { [uint64]0 }
-    $top = [Math]::Min($network + 250, $broadcast - 1)
-    $out = New-Object System.Collections.ArrayList
-    for ($n = [uint64]$top; $n -gt $network -and $out.Count -lt 30; $n--) {
-        if ($n -eq $self -or $n -eq $gw) { continue }
-        [void]$out.Add((ConvertFrom-IpInt $n))
+# usb-kuyruk.ps1'i yönetici olarak çalıştırır (Windows izin penceresi).
+function Invoke-UsbQueueHelper([string]$islem, [string]$printerName, [string]$portName) {
+    $helper = Join-Path $PSScriptRoot 'usb-kuyruk.ps1'
+    $logFile = Join-Path $env:TEMP 'ramos-usb-kuyruk.log'
+    Remove-Item $logFile -ErrorAction SilentlyContinue
+    $argLine = "-NoProfile -ExecutionPolicy Bypass -File `"$helper`" -Islem $islem -PrinterName `"$printerName`" -LogFile `"$logFile`""
+    if ($portName) { $argLine += " -PortName $portName" }
+    try {
+        $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argLine -Verb RunAs -WindowStyle Hidden -Wait -PassThru
+    } catch {
+        Write-Warn 'Yönetici izni verilmedi.'
+        return $false
+    }
+    if (Test-Path $logFile) { Get-Content $logFile -Encoding UTF8 | Select-Object -Last 3 | ForEach-Object { Write-Info "  $_" } }
+    return ($proc.ExitCode -eq 0)
+}
+
+# ramos-usb.exe'yi kurulum klasörüne derler; yolunu ya da $null döner.
+function Build-UsbHelper {
+    $src = Join-Path $PackageRoot 'usb\ramos-usb.cs'
+    $out = Join-Path $InstallDir 'ramos-usb.exe'
+    if (-not (Test-Path $src)) { Write-Warn "USB yardımcısının kaynağı yok: $src (paketi eksiksiz açın)"; return $null }
+    $csc = @("$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe", "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe") |
+        Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $csc) { Write-Warn '.NET Framework C# derleyicisi (csc.exe) bulunamadı; USB yardımcısı derlenemedi.'; return $null }
+    New-Item -ItemType Directory -Force $InstallDir | Out-Null
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $outText = @(& $csc -nologo -optimize+ -target:exe "-out:$out" $src 2>&1 | ForEach-Object { "$_" })
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+    if ($code -ne 0 -or -not (Test-Path $out)) {
+        Write-Warn 'USB yardımcısı derlenemedi:'
+        $outText | Select-Object -Last 5 | ForEach-Object { Write-Info "  $_" }
+        return $null
     }
     return $out
 }
 
-function Add-RawPrinterType {
-    if ('RamosRawPrinter' -as [type]) { return }
-    Add-Type -TypeDefinition @"
-using System;
-using System.Runtime.InteropServices;
-public static class RamosRawPrinter {
-  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-  public class DOCINFO {
-    [MarshalAs(UnmanagedType.LPWStr)] public string pDocName;
-    [MarshalAs(UnmanagedType.LPWStr)] public string pOutputFile;
-    [MarshalAs(UnmanagedType.LPWStr)] public string pDataType;
-  }
-  [DllImport("winspool.drv", EntryPoint = "OpenPrinterW", SetLastError = true, CharSet = CharSet.Unicode)]
-  public static extern bool OpenPrinter(string src, out IntPtr h, IntPtr pd);
-  [DllImport("winspool.drv", SetLastError = true)] public static extern bool ClosePrinter(IntPtr h);
-  [DllImport("winspool.drv", EntryPoint = "StartDocPrinterW", SetLastError = true, CharSet = CharSet.Unicode)]
-  public static extern int StartDocPrinter(IntPtr h, int level, [In] DOCINFO di);
-  [DllImport("winspool.drv", SetLastError = true)] public static extern bool EndDocPrinter(IntPtr h);
-  [DllImport("winspool.drv", SetLastError = true)] public static extern bool StartPagePrinter(IntPtr h);
-  [DllImport("winspool.drv", SetLastError = true)] public static extern bool EndPagePrinter(IntPtr h);
-  [DllImport("winspool.drv", SetLastError = true)] public static extern bool WritePrinter(IntPtr h, byte[] buf, int count, out int written);
-  public static int Send(string printer, byte[] data) {
-    IntPtr h;
-    if (!OpenPrinter(printer, out h, IntPtr.Zero)) throw new Exception("OpenPrinter hata " + Marshal.GetLastWin32Error());
+function Get-UsbQueueStatus([string]$exe, [string]$printerName) {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     try {
-      DOCINFO di = new DOCINFO();
-      di.pDocName = "Ramos yazici IP"; di.pDataType = "RAW";
-      if (StartDocPrinter(h, 1, di) == 0) throw new Exception("StartDocPrinter hata " + Marshal.GetLastWin32Error());
-      StartPagePrinter(h);
-      int w; bool ok = WritePrinter(h, data, data.Length, out w);
-      EndPagePrinter(h); EndDocPrinter(h);
-      if (!ok) throw new Exception("WritePrinter hata " + Marshal.GetLastWin32Error());
-      return w;
-    } finally { ClosePrinter(h); }
-  }
-}
-"@
+        $out = @(& $exe status $printerName 2>&1 | ForEach-Object { "$_" })
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+    if ($code -ne 0) { Write-Warn "USB yazıcı okunamadı ($printerName): $($out -join ' ')"; return $null }
+    try { return (($out | Where-Object { $_ -match '^\s*\{' } | Select-Object -Last 1) | ConvertFrom-Json) } catch { return $null }
 }
 
-# Xprinter (XP-80 / XP-Q80A) IP ayarlama komutu: 1F 1B 1F 91 00 49 50 + 4 bayt adres.
-function Send-PrinterIp([string]$printerName, [string]$ip) {
-    Add-RawPrinterType
-    return [RamosRawPrinter]::Send($printerName, (Get-PrinterIpCommand $ip))
+# USB yazıcıyı hazırlar: kuyruğu seçer (yoksa Generic / Text Only ile oluşturur), yardımcıyı derler,
+# kuyruğun "çevrimdışı kullan" ve takılı iş durumunu kontrol eder. Windows yazıcı adını ya da $null döner.
+function Initialize-UsbPrinter($queues, $freePorts) {
+    $name = $null
+    $queues = @($queues)
+    $preferred = @($queues | Where-Object { $_.Name -match $ReceiptPrinterPattern -or $_.DriverName -match $ReceiptPrinterPattern })
+    # @(...): tek yazıcıda PowerShell 5.1 listeyi tek nesneye indirir ve .Count okunamaz.
+    $choices = @(if ($preferred.Count -gt 0) { $preferred } else { $queues })
+    if ($choices.Count -eq 1) {
+        $name = $choices[0].Name
+    } elseif ($choices.Count -gt 1) {
+        if ($Yes) {
+            $name = $choices[0].Name
+        } else {
+            Write-Info 'USB ile bağlı birden fazla yazıcı var:'
+            for ($i = 0; $i -lt $choices.Count; $i++) { Write-Host "    $($i + 1)) $($choices[$i].Name) ($($choices[$i].PortName))" }
+            $pick = Read-Host '  Fiş yazıcısının numarası'
+            if ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $choices.Count) { $name = $choices[[int]$pick - 1].Name }
+        }
+    }
+
+    if (-not $name -and @($freePorts).Count -gt 0) {
+        $port = @($freePorts)[0].Name
+        $name = "Ramo's Fis Yazicisi"
+        Write-Info "Bu USB yazıcının Windows sürücüsü kurulu değil. Windows'un kendi 'Generic / Text Only' sürücüsüyle '$name' adıyla eklenecek ($port)."
+        Write-Info 'Fişler sürücüden geçmeden gönderildiği için bu sürücü yeterlidir. Windows yönetici izni isteyecek: "Evet" / "Ja".'
+        if ($DryRun) { Write-Info 'Deneme modu: yazıcı eklenmedi.'; return $name }
+        if (-not (Confirm-Yes 'Eklensin mi?')) { return $null }
+        if (-not (Invoke-UsbQueueHelper 'ekle' $name $port)) { Write-Warn 'Yazıcı Windows''a eklenemedi.'; return $null }
+    }
+    if (-not $name) { return $null }
+
+    if ($DryRun) { Write-Info "Deneme modu: USB yardımcısı derlenmedi (yazıcı: $name)."; return $name }
+    $exe = Build-UsbHelper
+    if (-not $exe) { return $null }
+    $st = Get-UsbQueueStatus $exe $name
+    if (-not $st) { return $null }
+
+    if (($st.attributes -band 0x400) -ne 0) {
+        Write-Warn "Windows '$name' yazıcısını 'Yazıcıyı çevrimdışı kullan' modunda tutuyor; bu hâlde fiş basılmaz."
+        if (Confirm-Yes 'Çevrimiçi yapılsın mı? (yönetici izni)') {
+            if (Invoke-UsbQueueHelper 'cevrimici' $name '') { Write-Ok 'Yazıcı çevrimiçi yapıldı.' }
+            else { Write-Warn "Olmadı. Elle: Ayarlar > Bluetooth ve cihazlar > Yazıcılar > $name > Yazdırma kuyruğunu aç > Yazıcı menüsü > 'Yazıcıyı çevrimdışı kullan' işaretini kaldırın." }
+        }
+    }
+    if ($st.jobsInError -gt 0) {
+        Write-Warn "Yazıcı kuyruğunda takılı $($st.jobsInError) iş var; program takılı iş varken yeni fiş göndermez."
+        Write-Info "USB kablosu takılı ve yazıcı açık mı? Değilse: Ayarlar > Yazıcılar > $name > Yazdırma kuyruğunu aç > takılı işleri iptal edin."
+    } elseif ($st.jobs -gt 0) {
+        Write-Info "Kuyrukta bekleyen $($st.jobs) iş var; yazıcı hazır olunca basılır."
+    }
+    Write-Ok "USB yazıcı: $name ($($st.port))"
+    return $name
 }
 
 # ---- Güç ayarları (powercfg) ----
@@ -358,31 +407,6 @@ function Invoke-NetworkBridge([int]$ifIndex, [string[]]$Gecici = @(), [string[]]
     return ($proc.ExitCode -eq 0)
 }
 
-function Select-FreeIp($net) {
-    if ($UsbIp) { return $UsbIp }
-    Write-Info 'Ağda yazıcı için boş bir adres aranıyor...'
-    foreach ($candidate in (Get-IpCandidates $net.Address $net.Prefix $net.Gateway)) {
-        if (Test-IpFree $candidate) { return $candidate }
-        Write-Info "$candidate kullanımda, sonraki deneniyor"
-    }
-    return $null
-}
-
-# Xprinter ailesinin adres komutu (yalnız USB yolunda): 1F 1B 1F 91 00 49 50 + 4 bayt adres.
-function Get-PrinterIpCommand([string]$ip) {
-    $octets = ([Net.IPAddress]::Parse($ip)).GetAddressBytes()
-    return [byte[]](@(0x1F, 0x1B, 0x1F, 0x91, 0x00, 0x49, 0x50) + $octets)
-}
-
-function Wait-NewPrinterIp([string]$newIp) {
-    Write-Info "Yazıcının yeni adreste cevap vermesi bekleniyor ($newIp)..."
-    if (Wait-PrinterPort $newIp 25) { return $true }
-    Write-Host ''
-    Write-Host '  Yazıcıyı KAPATIP 5 saniye sonra tekrar AÇIN (yeni adres yeniden başlatınca geçerli olur).' -ForegroundColor White
-    if (-not $Yes) { try { [void](Read-Host '  Açtıktan sonra Enter tuşuna basın') } catch { } }
-    return [bool](Wait-PrinterPort $newIp 60)
-}
-
 # Adresi yoklar (`probe`, giriş gerektirmez): open = TCP 9100 açık, escpos = durum sorusuna
 # ESC/POS cevabı verdi. Bazı yazıcılar (Star'ın ESC/POS modu, bazı ucuz modeller) durum sorusuna
 # hiç cevap vermez ama fişi sorunsuz basar: onlar open=true, escpos=false döner.
@@ -487,6 +511,7 @@ $site = Invoke-Agent @('site-status')
 $siteInfo = ConvertFrom-AgentJson $site
 if ($site.Code -ne 0 -or -not $siteInfo) {
     Write-Host $site.Text -ForegroundColor Red
+    Write-Info 'Bilgisayar yazıcının KENDİ Wi-Fi ağına bağlıysa internete çıkamaz: internet için modeme kabloyla (ya da ikinci bir Wi-Fi ile) bağlı olmalı.'
     Stop-Wizard 'Siteye bağlanılamadı. İnternet bağlantısını kontrol edin; sorun sürerse paketteki ayar dosyası (.env) hatalı olabilir.'
 }
 Write-Ok 'Siteye yazıcı hesabıyla bağlanıldı.'
@@ -557,19 +582,39 @@ if (-not $chosenHost -and -not $ForceUsb) {
 }
 
 # ------------------------------------------------------------------------------------------
-Write-Step 4 'Yazıcı başka bir ağda mı'
+Write-Step 4 'Yazıcı USB ile mi bağlı, başka bir ağda mı'
 
-$bridge = $null   # köprü: bilgisayara yazıcının ağından eklenen kalıcı adres (@{ IfIndex; Ip })
+$bridge = $null          # köprü: bilgisayara yazıcının ağından eklenen kalıcı adres (@{ IfIndex; Ip })
+$usbPrinterName = $null  # USB modu: Windows yazıcı adı
 
-if ($chosenHost) {
+if ($chosenHost -and -not $ForceUsb) {
     Write-Ok "Gerek yok, yazıcı bu ağda: $chosenHost"
 } else {
+    if ($ForceUsb) { $chosenHost = $null }
     $net = Get-MainNetwork $networks
     $canBridge = [bool]$net.IfIndex
-    if (-not $canBridge) { Write-Warn 'Ağ bağdaştırıcısı belirlenemedi; başka ağlarda arama yapılamıyor.' }
+
+    # --- 4-USB) USB ile bu bilgisayara bağlı yazıcı -----------------------------------------
+    $usbQueues = @(Get-UsbPrinterQueues)
+    $freeUsbPorts = @(Get-FreeUsbPorts)
+    if ($ForceUsb -or $usbQueues.Count -gt 0 -or $freeUsbPorts.Count -gt 0) {
+        Write-Host ''
+        if ($usbQueues.Count -gt 0) {
+            Write-Info ('USB ile bağlı yazıcı(lar): ' + (($usbQueues | ForEach-Object { "$($_.Name) ($($_.PortName))" }) -join ', '))
+        }
+        if ($freeUsbPorts.Count -gt 0) {
+            Write-Info ('Sürücüsü kurulmamış USB yazıcı bağlantısı: ' + (($freeUsbPorts | ForEach-Object { $_.Name }) -join ', '))
+        }
+        if ($ForceUsb -or (Confirm-Yes 'Fiş yazıcısı bu bilgisayara USB kablosuyla mı bağlı?')) {
+            $usbPrinterName = Initialize-UsbPrinter $usbQueues $freeUsbPorts
+            if ($usbPrinterName) { $chosenHost = "usb:$usbPrinterName" }
+            elseif ($ForceUsb) { Stop-Wizard 'USB yazıcı hazırlanamadı.' }
+        }
+    }
+    if (-not $chosenHost -and -not $canBridge) { Write-Warn 'Ağ bağdaştırıcısı belirlenemedi; başka ağlarda arama yapılamıyor.' }
 
     # --- 4a) Fabrika ağlarında otomatik arama ---------------------------------------------
-    if ($canBridge -and -not $ForceUsb) {
+    if (-not $chosenHost -and $canBridge -and -not $ForceUsb) {
         $factory = @($FactoryNetworks | Where-Object { -not (Test-SameSubnet "$_.1" $net.Address 24) })
         $temps = @($factory | ForEach-Object { "$_.249" })
         Write-Host ''
@@ -659,69 +704,29 @@ if ($chosenHost) {
         }
     }
 
-    # --- 4c) Son çare: USB ile adres yazmak (Xprinter ve uyumlu modeller) ------------------
+    # --- Bulunamadı ------------------------------------------------------------------------
     if (-not $chosenHost) {
-        $usb = @(Get-Printer -ErrorAction SilentlyContinue | Where-Object { $_.PortName -match '^USB' })
-        $usbPreferred = @($usb | Where-Object { $_.Name -match 'XP|Xprinter|POS|Receipt|Thermal|80' -or $_.DriverName -match 'XP|Xprinter|POS|Receipt|Thermal|80' })
-        if ($usbPreferred.Count -gt 0) { $usb = $usbPreferred }
-
-        if ($usb.Count -eq 0) {
-            Write-Host ''
-            Write-Host '  Şunları kontrol edin:' -ForegroundColor White
-            Write-Host '   1) Yazıcı açık mı, ethernet kablosu bilgisayarın bağlı olduğu MODEME takılı mı (ışıkları yanıyor mu)?'
-            Write-Host '   2) Bilgisayar misafir Wi-Fi ağına değil, modemin ana ağına bağlı mı?'
-            Write-Host '   3) Ayar fişindeki "IP Address" değerini not alıp Kurulum.cmd dosyasını tekrar çalıştırın.'
-            Stop-Wizard 'Yazıcıya ulaşılamadı.'
-        }
-
-        $usbPrinter = $usb[0]
-        if ($usb.Count -gt 1 -and -not $Yes) {
-            Write-Info 'USB ile bağlı birden fazla yazıcı var:'
-            for ($i = 0; $i -lt $usb.Count; $i++) { Write-Host "    $($i + 1)) $($usb[$i].Name)" }
-            $pick = Read-Host '  Fiş yazıcısının numarası'
-            if ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $usb.Count) { $usbPrinter = $usb[[int]$pick - 1] }
-            else { Stop-Wizard 'Geçerli bir numara seçilmedi.' }
-        }
-        Write-Ok "USB yazıcı: $($usbPrinter.Name) ($($usbPrinter.PortName))"
-
-        $newIp = Select-FreeIp $net
-        if (-not $newIp) { Stop-Wizard 'Ağda yazıcı için boş adres bulunamadı.' }
-
-        $gwNote = if ($net.Gateway) { ", modem $($net.Gateway)" } else { '' }
         Write-Host ''
-        Write-Host "  Yazıcıya USB ile şu adres yazılacak: $newIp  (ağ: $($net.Address)/$($net.Prefix)$gwNote)" -ForegroundColor White
-        if ($DryRun) {
-            Write-Info 'Deneme modu: yazıcıya gönderilmedi.'
-            $chosenHost = $newIp
-        } else {
-            if (-not (Confirm-Yes 'Devam edilsin mi?')) { Stop-Wizard 'Kullanıcı iptal etti.' }
-            try {
-                $written = Send-PrinterIp $usbPrinter.Name $newIp
-                Write-Ok "Komut USB ile gönderildi ($written bayt). Yazıcı bip sesi verebilir."
-            } catch {
-                Stop-Wizard "USB ile gönderilemedi: $($_.Exception.Message)"
-            }
-            if (-not (Wait-NewPrinterIp $newIp)) {
-                Write-Warn 'Yazıcı yeni adreste cevap vermedi (bu model USB adres komutunu desteklemiyor olabilir).'
-                Write-Host '   - Ethernet kablosu modeme takılı mı?'
-                Write-Host '   - Yazıcının ayar fişini basıp "IP Address" değerini not alın ve Kurulum.cmd dosyasını tekrar çalıştırın.'
-                Stop-Wizard 'Yazıcı adresi doğrulanamadı.'
-            }
-            $chosenHost = $newIp
-            Write-Ok "Yazıcı artık bu ağda: $chosenHost"
-        }
+        Write-Host '  Yazıcı bulunamadı. Şunları kontrol edin:' -ForegroundColor White
+        Write-Host '   - Kablolu yazıcı: açık mı, ethernet kablosu bilgisayarın bağlı olduğu MODEME takılı mı (ışıkları yanıyor mu)?'
+        Write-Host '   - USB yazıcı: USB kablosu bu bilgisayara takılı ve yazıcı açık mı? Taktıktan sonra birkaç saniye bekleyin.'
+        Write-Host '   - Wi-Fi yazıcı: önce yazıcıyı modemin Wi-Fi ağına bağlayın (yazıcının kılavuzu, uygulaması ya da WPS düğmesi).'
+        Write-Host '     Yazıcının KENDİ Wi-Fi ağına bağlanıyorsanız bilgisayar internete ayrıca (kabloyla) bağlı olmalı.'
+        Write-Host '   - Bilgisayar misafir Wi-Fi ağına değil, modemin ana ağına bağlı mı?'
+        Write-Host '   - Ayar fişindeki "IP Address" değerini not alıp Kurulum.cmd dosyasını tekrar çalıştırın.'
+        if ($DryRun) { $chosenHost = '(bulunamadı)' } else { Stop-Wizard 'Yazıcıya ulaşılamadı.' }
     }
 }
 
 # ------------------------------------------------------------------------------------------
-Write-Step 5 'Adres bu bilgisayarın ajan ayarına yazılıyor'
+Write-Step 5 'Yazıcı bu bilgisayarın ajan ayarına yazılıyor'
 
 $envTarget = Join-Path $InstallDir '.env'
 if ($existingEnv.Count -gt 0) {
-    $lines = @($existingEnv | Where-Object { $_ -notmatch '^\s*(PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII|PRINTER_MAC)\s*=' })
+    $lines = @($existingEnv | Where-Object { $_ -notmatch '^\s*(PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII|PRINTER_MAC|PRINTER_USB|PRINTER_USB_EXE)\s*=' })
     if (-not (Get-EnvValue $lines 'AGENT_ID')) { $lines += "AGENT_ID=$agentId" }
 } else {
-    $lines = @(Read-EnvLines $PackageEnv | Where-Object { $_ -notmatch '^\s*(AGENT_ID|LOG_DIR|PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII|PRINTER_MAC)\s*=' })
+    $lines = @(Read-EnvLines $PackageEnv | Where-Object { $_ -notmatch '^\s*(AGENT_ID|LOG_DIR|PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII|PRINTER_MAC|PRINTER_USB|PRINTER_USB_EXE)\s*=' })
     $lines += "AGENT_ID=$agentId"
 }
 # Paketteki hesap bilgileri eski kurulumdakinin yerine geçer (ör. parola sonradan değiştiyse).
@@ -733,18 +738,25 @@ foreach ($key in @('SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AGENT_EMAIL', 'AGENT_PA
         $lines += "$key=$v"
     }
 }
-$lines += "PRINTER_HOST=$chosenHost"
+if ($usbPrinterName) {
+    $lines += "PRINTER_USB=$usbPrinterName"
+    $lines += "PRINTER_USB_EXE=$(Join-Path $InstallDir 'ramos-usb.exe')"
+    $printerSetting = "PRINTER_USB=$usbPrinterName"
+} else {
+    $lines += "PRINTER_HOST=$chosenHost"
+    $printerSetting = "PRINTER_HOST=$chosenHost"
+}
 # Sade harf modu 6. adımdaki test fişine göre belirlenir: test yapılmayacaksa eski karar korunur.
 $previousAscii = Get-EnvValue $existingEnv 'PRINTER_ASCII'
 $asciiValue = if (($SkipTestPrint -or $Yes) -and $previousAscii) { $previousAscii } else { '0' }
 $lines += "PRINTER_ASCII=$asciiValue"
 
 if ($DryRun) {
-    Write-Info "Deneme modu: $envTarget yazılmadı (PRINTER_HOST=$chosenHost, AGENT_ID=$(Get-EnvValue $lines 'AGENT_ID'))."
+    Write-Info "Deneme modu: $envTarget yazılmadı ($printerSetting, AGENT_ID=$(Get-EnvValue $lines 'AGENT_ID'))."
 } else {
     New-Item -ItemType Directory -Force $InstallDir | Out-Null
     Set-RamosTextFile -Path $envTarget -Lines $lines
-    Write-Ok "PRINTER_HOST=$chosenHost -> $envTarget"
+    Write-Ok "$printerSetting -> $envTarget"
 }
 
 # ------------------------------------------------------------------------------------------
@@ -875,7 +887,8 @@ Write-Host ''
 if ($connected -and $a.printer_reachable) {
     Write-Host '==========================================================' -ForegroundColor Green
     Write-Host ' KURULUM TAMAM' -ForegroundColor Green
-    Write-Host "  Yazıcı adresi : $chosenHost" -ForegroundColor Green
+    $printerText = if ($usbPrinterName) { "USB ($usbPrinterName)" } else { $chosenHost }
+    Write-Host "  Yazıcı        : $printerText" -ForegroundColor Green
     Write-Host "  Bu bilgisayar : $env:COMPUTERNAME (siteye bağlı, yazıcıya erişiyor)" -ForegroundColor Green
     if ($bridge) {
         Write-Host "  Köprü         : bu bilgisayara $($bridge.Ip) eklendi, yazıcıya bu yolla ulaşılıyor" -ForegroundColor Green
@@ -887,6 +900,14 @@ if ($connected -and $a.printer_reachable) {
     Write-Host '  Bilgisayar açıldığında ajan kendiliğinden başlar.' -ForegroundColor Green
     Write-Host '  Kaldırmak için: Kaldir.cmd' -ForegroundColor Green
     Write-Host '==========================================================' -ForegroundColor Green
+    if ($usbPrinterName) {
+        $usbNow = Get-UsbQueueStatus (Join-Path $InstallDir 'ramos-usb.exe') $usbPrinterName
+        if ($usbNow -and ((($usbNow.attributes -band 0x400) -ne 0) -or $usbNow.jobsInError -gt 0)) {
+            Write-Host ''
+            Write-Warn "USB yazıcı kuyruğu şu an çevrimdışı ya da takılı iş var: bu düzelene kadar fişler basılmaz, siparişler bekler."
+            Write-Info "Ayarlar > Yazıcılar > $usbPrinterName > Yazdırma kuyruğunu aç: 'Yazıcıyı çevrimdışı kullan' işaretini kaldırın, takılı işleri iptal edin."
+        }
+    }
 } elseif ($connected) {
     Write-Warn "Ajan siteye bağlandı ama yazıcıya erişemediğini bildiriyor ($chosenHost). Yazıcı açık ve kablosu takılı mı?"
     exit 1

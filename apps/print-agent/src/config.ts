@@ -28,6 +28,13 @@ export interface AgentEnv {
    * öğrenip yazar; yazıcının IP adresi değişirse (DHCP) ağda aynı cihazı bununla tanır.
    */
   PRINTER_MAC?: string;
+  /**
+   * USB ile bu bilgisayara bağlı yazıcının Windows'taki adı (Yazıcılar listesindeki ad). Doluysa
+   * fişler ağ yerine bu yazıcı kuyruğuna RAW olarak gönderilir; PRINTER_HOST kullanılmaz.
+   */
+  PRINTER_USB?: string;
+  /** USB yardımcısının (ramos-usb.exe) tam yolu; boşsa ajan dosyasının yanındaki ramos-usb.exe. */
+  PRINTER_USB_EXE?: string;
 }
 
 const REQUIRED = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AGENT_EMAIL', 'AGENT_PASSWORD', 'AGENT_ID'] as const;
@@ -93,6 +100,9 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
   if (macRaw !== '' && !printerMac) {
     throw new ConfigError(`PRINTER_MAC geçersiz: "${macRaw}". Örnek: PRINTER_MAC=02:b0:3e:f5:25:de`);
   }
+  const printerUsb = env.PRINTER_USB?.trim() ?? '';
+  if (printerUsb.length > 200) throw new ConfigError('PRINTER_USB çok uzun (en fazla 200 karakter).');
+  const printerUsbExe = env.PRINTER_USB_EXE?.trim() ?? '';
   return {
     SUPABASE_URL: env.SUPABASE_URL!,
     SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY!,
@@ -104,6 +114,8 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
     ...(printerPort !== undefined ? { PRINTER_PORT: printerPort } : {}),
     ...(printerAscii !== undefined ? { PRINTER_ASCII: printerAscii } : {}),
     ...(printerMac ? { PRINTER_MAC: printerMac } : {}),
+    ...(printerUsb !== '' ? { PRINTER_USB: printerUsb } : {}),
+    ...(printerUsbExe !== '' ? { PRINTER_USB_EXE: printerUsbExe } : {}),
   };
 }
 

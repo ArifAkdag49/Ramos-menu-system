@@ -95,14 +95,17 @@ if (Test-Path $pkg) {
 }
 New-Item -ItemType Directory -Force (Join-Path $pkg 'dist') | Out-Null
 New-Item -ItemType Directory -Force (Join-Path $pkg 'scripts') | Out-Null
+New-Item -ItemType Directory -Force (Join-Path $pkg 'usb') | Out-Null
 
 Copy-Item (Join-Path $agentRoot 'dist\ramos-agent.mjs') (Join-Path $pkg 'dist')
-foreach ($f in @('agent-common.ps1', 'install-agent.ps1', 'uninstall-agent.ps1', 'run-agent.cmd', 'kurulum.ps1', 'ag-kopru.ps1')) {
+foreach ($f in @('agent-common.ps1', 'install-agent.ps1', 'uninstall-agent.ps1', 'run-agent.cmd', 'kurulum.ps1', 'ag-kopru.ps1', 'usb-kuyruk.ps1')) {
     Copy-Item (Join-Path $PSScriptRoot $f) (Join-Path $pkg 'scripts')
 }
 foreach ($f in @('Kurulum.cmd', 'Kaldir.cmd', 'OKU-BENI.txt')) {
     Copy-Item (Join-Path $agentRoot "kurulum\$f") $pkg
 }
+# USB yardımcısı kaynak olarak gider; kurulum onu müşterinin bilgisayarında csc.exe ile derler.
+Copy-Item (Join-Path $agentRoot 'usb\ramos-usb.cs') (Join-Path $pkg 'usb')
 Set-RamosTextFile -Path (Join-Path $pkg '.env') -Lines $envLines
 
 # --- 4) Zip ----------------------------------------------------------------------------------

@@ -192,7 +192,8 @@ export async function createSupabaseApi(
       if (error) throw new Error(`settings: ${error.message}`);
       return {
         // Kurulum sihirbazının yazdığı yerel adres, sitedeki genel ayarın önüne geçer (config.ts).
-        host: env.PRINTER_HOST ?? data.printer_host,
+        // USB yazıcıda "adres" `usb:<Windows yazıcı adı>`dır (bkz. usb.ts); ağ ayarları kullanılmaz.
+        host: env.PRINTER_USB ? `usb:${env.PRINTER_USB}` : (env.PRINTER_HOST ?? data.printer_host),
         port: env.PRINTER_PORT ?? data.printer_port,
         codepage: data.printer_codepage,
         codepageNumber: data.printer_codepage_number,
