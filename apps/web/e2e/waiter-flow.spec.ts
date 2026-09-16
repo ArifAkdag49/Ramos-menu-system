@@ -51,7 +51,7 @@ test('garson uçtan uca: sepet → gönder → hesap → iptal → taşı → ka
     await expect(page).toHaveURL(/\/order$/);
 
     // 2 — T05: Kalb · ÇIKAR Soğan · Sarımsaklı + Otlu · +Ekstra peynir · adet 2 → 19,00 €
-    await page.getByLabel(/ara/i).fill('T05');
+    await page.getByLabel('Ara', { exact: true }).fill('T05');
     await page.getByRole('button', { name: /seç|auswählen/i }).first().click();
     const sheet = page.getByRole('dialog');
     await sheet.getByRole('button', { name: /kalb|dana/i }).click();
@@ -65,7 +65,7 @@ test('garson uçtan uca: sepet → gönder → hesap → iptal → taşı → ka
     await addToCart.click();
 
     // 3 — Test Cola tek dokunuşla: sepet toplamı 21,50 €
-    await page.getByLabel(/ara/i).fill('Test Cola');
+    await page.getByLabel('Ara', { exact: true }).fill('Test Cola');
     await page.getByRole('button', { name: /^ekle$/i }).first().click();
     const cartButton = page.getByRole('button', { name: /sepet/i });
     await expect(cartButton).toContainText('21,50');

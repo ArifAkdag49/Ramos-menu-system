@@ -85,7 +85,7 @@ export function OrderPage() {
         const catId = visible?.target.getAttribute('data-category-id');
         if (catId) setActiveCategoryId(catId);
       },
-      { rootMargin: '-160px 0px -70% 0px' },
+      { rootMargin: '-170px 0px -70% 0px' },
     );
     for (const el of sectionRefs.current.values()) observer.observe(el);
     return () => observer.disconnect();
@@ -139,7 +139,8 @@ export function OrderPage() {
     // kabı kurup üstteki `sticky` başlığı bozardı.
     <div className="flex min-h-dvh flex-col overflow-x-clip">
       <div className="sticky top-0 z-10 bg-surface">
-        <header className="flex h-[var(--header-h)] items-center gap-3 border-b border-border px-4">
+        {/* Sipariş girişinde üst blok kompakt: telefonda ürün listesine daha çok yer kalsın. */}
+        <header className="flex h-14 items-center gap-2 border-b border-border px-2">
           <IconButton
             label={t('common.back')}
             icon={<ArrowLeft aria-hidden size={22} />}
@@ -152,7 +153,7 @@ export function OrderPage() {
             type="button"
             onClick={() => setCartOpen(true)}
             className={clsx(
-              'relative inline-flex min-h-12 items-center gap-2 rounded-xl border border-border bg-surface-2 px-4 text-base font-semibold',
+              'relative mr-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 text-base font-semibold',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
             )}
           >
@@ -170,8 +171,9 @@ export function OrderPage() {
           </button>
         </header>
 
-        <div className="px-4 py-3">
-          <label htmlFor="order-search" className="mb-1 block text-sm font-medium text-muted">
+        {/* Etiket görünmez ama erişilebilir kalır; yer tutucu ve büyüteç alanın amacını zaten söylüyor. */}
+        <div className="px-4 py-2">
+          <label htmlFor="order-search" className="sr-only">
             {t('common.search')}
           </label>
           <div className="relative">
@@ -188,7 +190,7 @@ export function OrderPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('waiter.order.searchPlaceholder')}
-              className="w-full rounded-control border border-border bg-surface-2 py-3 pl-10 pr-3 text-base text-text placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime"
+              className="w-full rounded-control border border-border bg-surface-2 py-2.5 pl-10 pr-3 text-base text-text placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime"
             />
           </div>
         </div>
@@ -198,13 +200,13 @@ export function OrderPage() {
           <div
             role="group"
             aria-label={t('waiter.order.categoriesLabel')}
-            className="flex gap-2 overflow-x-auto overscroll-x-contain px-4 pb-3 [scrollbar-width:none]"
+            className="flex gap-2 overflow-x-auto overscroll-x-contain px-4 pb-2 [scrollbar-width:none]"
           >
             {categories.map((c) => (
               <Chip
                 key={c.id}
                 selected={activeCategoryId === c.id}
-                className="shrink-0 whitespace-nowrap"
+                className="min-h-10! shrink-0 whitespace-nowrap"
                 onClick={() => scrollToCategory(c.id)}
               >
                 {localName(c, locale)}

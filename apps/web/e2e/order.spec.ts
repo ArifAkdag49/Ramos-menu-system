@@ -29,7 +29,7 @@ test('sipariş girişi: menü/arama, ürün paneli, pizza mix (390×844)', async
   await expect(page.locator('[data-category-id]').first()).toBeVisible();
   await page.screenshot({ path: '../../docs/screenshots/m3-order-menu-390.png' });
 
-  await page.getByLabel(/ara/i).fill('08');
+  await page.getByLabel('Ara', { exact: true }).fill('08');
   await page.getByRole('button', { name: /seç|auswählen/i }).first().click();
   const sheet = page.getByRole('dialog');
   await sheet.getByRole('button', { name: /kalb|dana/i }).click();
@@ -39,7 +39,7 @@ test('sipariş girişi: menü/arama, ürün paneli, pizza mix (390×844)', async
   await page.screenshot({ path: '../../docs/screenshots/m3-product-sheet-390.png' });
   await sheet.getByRole('button', { name: /kapat|schließen/i }).click();
 
-  await page.getByLabel(/ara/i).fill('47');
+  await page.getByLabel('Ara', { exact: true }).fill('47');
   await page.getByRole('button', { name: /seç|auswählen/i }).first().click();
   const pizzaSheet = page.getByRole('dialog');
   const mixGroup = pizzaSheet.getByRole('group', { name: /beläge|malzemeler/i });

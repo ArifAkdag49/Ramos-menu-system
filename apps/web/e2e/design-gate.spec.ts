@@ -357,7 +357,7 @@ test('M3 kapısı: garson ekranları dolu sahnede — görüntüler + WCAG AA', 
     // 4 — sipariş girişi (gerçek menü, uzun Almanca adlar)
     await page.getByRole('button', { name: /sipariş ekle/i }).click();
     await expect(page).toHaveURL(/\/order$/);
-    await expect(page.getByLabel(/ara/i)).toBeVisible();
+    await expect(page.getByLabel('Ara', { exact: true })).toBeVisible();
     // 4a — menü verisi gelmeden ekranın hâli (iskelet/boş durum var mı?) — kapı için kanıt
     await page.screenshot({ path: SHOT('m3-order-loading-390.png') });
     // 4b — menü yüklendikten sonra
@@ -375,7 +375,7 @@ test('M3 kapısı: garson ekranları dolu sahnede — görüntüler + WCAG AA', 
     });
 
     // 5 — ürün paneli: 08 Drehspieß Teller (4 seçim grubu, 5 malzeme, 2 varyant)
-    await page.getByLabel(/ara/i).fill('08');
+    await page.getByLabel('Ara', { exact: true }).fill('08');
     await page.getByRole('button', { name: /^seç$/i }).first().click();
     const sheet = page.getByRole('dialog');
     await expect(sheet).toBeVisible();
@@ -401,7 +401,7 @@ test('M3 kapısı: garson ekranları dolu sahnede — görüntüler + WCAG AA', 
     await addToCart.click();
 
     // 6 — uzun Almanca adlı menü ürünü (M3 "Lahmacun Menü mit Drehspießfleisch")
-    await page.getByLabel(/ara/i).fill('M3');
+    await page.getByLabel('Ara', { exact: true }).fill('M3');
     await page.getByRole('button', { name: /^seç$/i }).first().click();
     const sheet2 = page.getByRole('dialog');
     await expect(sheet2).toBeVisible();

@@ -52,7 +52,7 @@ async function openProductSheet(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/waiter\/table\//);
   await page.getByRole('button', { name: /sipariş al|sipariş ekle/i }).click();
   await expect(page).toHaveURL(/\/order$/);
-  await page.getByLabel(/ara/i).fill('T05');
+  await page.getByLabel('Ara', { exact: true }).fill('T05');
   await page.getByRole('button', { name: /^seç$/i }).first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
 }
@@ -60,7 +60,7 @@ async function openProductSheet(page: Page): Promise<void> {
 /** Admin ürün editöründe T05'i açar. */
 async function openEditor(page: Page): Promise<void> {
   await page.goto(`${BASE}/admin/menu`);
-  await page.getByLabel(/ara/i).fill('T05');
+  await page.getByLabel('Ara', { exact: true }).fill('T05');
   await page.getByRole('button', { name: /Test Drehspieß Sandwich/ }).first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
 }
