@@ -8,7 +8,8 @@
       1) Node.js 22+ (yoksa winget ile kurulur)
       2) Bu PC'de çalışan eski ajan durdurulur, ajan hesabıyla siteye giriş denenir,
          başka bir bilgisayarda çalışan ajan varsa uyarılır
-      3) Ağ taranır (TCP 9100 + ESC/POS durum cevabı). Durum sorusuna cevap vermeyen cihazlara
+      3) Bağlantı türü sorulur (1 kablo, 2 Wi-Fi, 3 USB, 4 otomatik; Enter = 4). USB'de ağ
+         taraması atlanır; diğerlerinde ağ taranır (TCP 9100 + ESC/POS durum cevabı). Durum sorusuna cevap vermeyen cihazlara
          (bazı Star / ucuz modeller) kısa bir deneme fişi gönderilir, "fiş çıktı mı?" diye sorulur.
       4) Ağda bulunamazsa: USB ile bu bilgisayara bağlı yazıcı sorulur (sürücüsü yoksa Windows'un
          "Generic / Text Only" sürücüsüyle eklenir; fişler kuyruğa RAW gider). USB değilse tek
@@ -29,8 +30,11 @@
 .PARAMETER PrinterHost
     Taramayı atlar, bu adresi kullanır (ör. 192.168.1.250).
 
+.PARAMETER Baglanti
+    Bağlantı sorusunu atlar: otomatik, kablo, wifi ya da usb (gözetimsiz çalıştırma / test).
+
 .PARAMETER ForceUsb
-    Ağ taramasını beklemeden USB ile bağlı yazıcıyı kullanır (ileri düzey).
+    -Baglanti usb ile aynı.
 
 .PARAMETER KnownPrinterIp
     Otomatik arama bulamazsa "ayar fişindeki IP" sorusu yerine bu adres kullanılır.
@@ -46,6 +50,7 @@ param(
     [string]$InstallDir = "$env:LOCALAPPDATA\RamosPrintAgent",
     [string]$LogDir = "$env:LOCALAPPDATA\RamosPrintAgent\logs",
     [string]$PrinterHost,
+    [ValidateSet('', 'otomatik', 'kablo', 'wifi', 'usb')][string]$Baglanti = '',
     [switch]$ForceUsb,
     [string]$KnownPrinterIp,
     [switch]$SkipTestPrint,
@@ -156,6 +161,40 @@ function Get-EnvValue([string[]]$lines, [string]$key) {
 function ConvertTo-IpInt([string]$ip) {
     $b = ([Net.IPAddress]::Parse($ip)).GetAddressBytes()
     return [uint32](([uint64]$b[0] * 16777216) + ([uint64]$b[1] * 65536) + ([uint64]$b[2] * 256) + [uint64]$b[3])
+}
+
+# ---- Bağlantı türü (3. adım) ----
+
+# "Yazıcı nasıl bağlı?" sorusu. Aynı yazıcı hem ağa hem USB'ye bağlı olabilir (ör. ayar için USB
+# takılı kalmış): otomatik modda ağ önce bulunur, bu yüzden kullanıcı bağlantıyı kendisi de seçebilir.
+function Select-ConnectionType {
+    if ($ForceUsb) { return 'usb' }
+    if ($Baglanti) {
+        Write-Info "Bağlantı: $Baglanti (-Baglanti)"
+        return $Baglanti
+    }
+    Write-Host ''
+    Write-Host '  Yazıcı nasıl bağlı?' -ForegroundColor White
+    Write-Host '    1) Kabloyla modeme (ethernet)'
+    Write-Host '    2) Wi-Fi ile modeme'
+    Write-Host '    3) USB kablosuyla bu bilgisayara'
+    Write-Host '    4) Bilmiyorum / otomatik bul'
+    if ($Yes) {
+        Write-Info 'Seçim: 4 (-Yes)'
+        return 'otomatik'
+    }
+    for ($i = 0; $i -lt 3; $i++) {
+        try { $answer = Read-Host '  Seçiminiz (1-4, Enter = 4)' } catch { return 'otomatik' }
+        switch ("$answer".Trim()) {
+            '' { return 'otomatik' }
+            '4' { return 'otomatik' }
+            '1' { return 'kablo' }
+            '2' { return 'wifi' }
+            '3' { return 'usb' }
+        }
+        Write-Warn '1, 2, 3 ya da 4 yazın.'
+    }
+    return 'otomatik'
 }
 
 # ---- USB yardımcıları (4. adım) ----
@@ -525,7 +564,10 @@ if ($last -and $last.host -and ($last.host -ne $env:COMPUTERNAME) -and ($null -n
 }
 
 # ------------------------------------------------------------------------------------------
-Write-Step 3 'Yazıcı ağda aranıyor (birkaç saniye sürer)'
+Write-Step 3 'Yazıcı bağlantısı'
+
+$connection = Select-ConnectionType
+if ($connection -eq 'usb') { $ForceUsb = $true }
 
 $existingEnv = Read-EnvLines (Join-Path $InstallDir '.env')
 $previousHost = Get-EnvValue $existingEnv 'PRINTER_HOST'
@@ -538,46 +580,59 @@ if ($PrinterHost) {
     else { Stop-Wizard "$PrinterHost adresinde yazıcı bulunamadı." }
 }
 
-$scan = Invoke-Agent @('find-printer', '--json', '--extra', (@($extra) -join ','))
-$found = ConvertFrom-AgentJson $scan
-if ($scan.Code -ne 0 -or -not $found) {
-    Write-Host $scan.Text -ForegroundColor Red
-    Stop-Wizard 'Ağ taraması çalışmadı.'
-}
-$networks = @($found.networks)
-if ($networks.Count -eq 0) { Stop-Wizard 'Bilgisayar bir yerel ağa (modem) bağlı görünmüyor. Kablo ya da Wi-Fi bağlantısını kontrol edin.' }
-Write-Info ('Ağ: ' + (($networks | ForEach-Object { "$($_.name) $($_.address)/$($_.prefix)" }) -join ', '))
+$networks = @()
+$found = $null
+if ($connection -eq 'usb') {
+    Write-Ok 'USB seçildi: ağ taraması atlanıyor.'
+} else {
+    if ($connection -eq 'wifi') {
+        Write-Host ''
+        Write-Host '  Wi-Fi yazıcı önce modemin Wi-Fi ağına bağlanmış olmalı (yazıcının uygulaması, kılavuzu ya da WPS düğmesi).' -ForegroundColor White
+        Write-Info 'Yazıcının ayar fişinde Wi-Fi bağlantısı ve IP adresi görünür. Bağlı değilse şimdi bağlayın.'
+        if (-not $Yes -and -not $DryRun) { try { [void](Read-Host '  Yazıcı Wi-Fi ağına bağlıysa Enter tuşuna basın') } catch { } }
+    }
+    Write-Info 'Yazıcı ağda aranıyor (birkaç saniye sürer)...'
+    $scan = Invoke-Agent @('find-printer', '--json', '--extra', (@($extra) -join ','))
+    $found = ConvertFrom-AgentJson $scan
+    if ($scan.Code -ne 0 -or -not $found) {
+        Write-Host $scan.Text -ForegroundColor Red
+        Stop-Wizard 'Ağ taraması çalışmadı.'
+    }
+    $networks = @($found.networks)
+    if ($networks.Count -eq 0) { Stop-Wizard 'Bilgisayar bir yerel ağa (modem) bağlı görünmüyor. Kablo ya da Wi-Fi bağlantısını kontrol edin.' }
+    Write-Info ('Ağ: ' + (($networks | ForEach-Object { "$($_.name) $($_.address)/$($_.prefix)" }) -join ', '))
 
-if (-not $chosenHost -and -not $ForceUsb) {
-    $escpos = @($found.printers | Where-Object { $_.escpos })
-    $other = @($found.printers | Where-Object { -not $_.escpos })
-    if ($escpos.Count -eq 1) {
-        $chosenHost = $escpos[0].host
-        Write-Ok "Yazıcı bulundu: $chosenHost"
-    } elseif ($escpos.Count -gt 1) {
-        Write-Info 'Birden fazla fiş yazıcısı bulundu:'
-        for ($i = 0; $i -lt $escpos.Count; $i++) { Write-Host "    $($i + 1)) $($escpos[$i].host)" }
-        if ($Yes) {
+    if (-not $chosenHost -and -not $ForceUsb) {
+        $escpos = @($found.printers | Where-Object { $_.escpos })
+        $other = @($found.printers | Where-Object { -not $_.escpos })
+        if ($escpos.Count -eq 1) {
             $chosenHost = $escpos[0].host
-            Write-Info "İlki seçildi: $chosenHost (-Yes)"
-        } else {
-            $pick = Read-Host '  Mutfak yazıcısının numarası'
-            if ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $escpos.Count) { $chosenHost = $escpos[[int]$pick - 1].host }
-            else { Stop-Wizard 'Geçerli bir numara seçilmedi.' }
-        }
-        Write-Ok "Seçilen yazıcı: $chosenHost"
-    } elseif ($other.Count -gt 0) {
-        Write-Info ('Durum sorusuna cevap vermeyen, yazıcı olabilecek cihazlar: ' + (($other | ForEach-Object { $_.host }) -join ', '))
-        foreach ($o in @($other | Select-Object -First 5)) {
-            if (Confirm-PrinterByTicket $o.host) {
-                $chosenHost = $o.host
-                Write-Ok "Yazıcı bulundu (deneme fişiyle doğrulandı): $chosenHost"
-                break
+            Write-Ok "Yazıcı bulundu: $chosenHost"
+        } elseif ($escpos.Count -gt 1) {
+            Write-Info 'Birden fazla fiş yazıcısı bulundu:'
+            for ($i = 0; $i -lt $escpos.Count; $i++) { Write-Host "    $($i + 1)) $($escpos[$i].host)" }
+            if ($Yes) {
+                $chosenHost = $escpos[0].host
+                Write-Info "İlki seçildi: $chosenHost (-Yes)"
+            } else {
+                $pick = Read-Host '  Mutfak yazıcısının numarası'
+                if ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $escpos.Count) { $chosenHost = $escpos[[int]$pick - 1].host }
+                else { Stop-Wizard 'Geçerli bir numara seçilmedi.' }
             }
+            Write-Ok "Seçilen yazıcı: $chosenHost"
+        } elseif ($other.Count -gt 0) {
+            Write-Info ('Durum sorusuna cevap vermeyen, yazıcı olabilecek cihazlar: ' + (($other | ForEach-Object { $_.host }) -join ', '))
+            foreach ($o in @($other | Select-Object -First 5)) {
+                if (Confirm-PrinterByTicket $o.host) {
+                    $chosenHost = $o.host
+                    Write-Ok "Yazıcı bulundu (deneme fişiyle doğrulandı): $chosenHost"
+                    break
+                }
+            }
+            if (-not $chosenHost) { Write-Warn 'Ağda fiş yazıcısı bulunamadı.' }
+        } else {
+            Write-Warn 'Ağda fiş yazıcısı bulunamadı.'
         }
-        if (-not $chosenHost) { Write-Warn 'Ağda fiş yazıcısı bulunamadı.' }
-    } else {
-        Write-Warn 'Ağda fiş yazıcısı bulunamadı.'
     }
 }
 
@@ -591,13 +646,15 @@ if ($chosenHost -and -not $ForceUsb) {
     Write-Ok "Gerek yok, yazıcı bu ağda: $chosenHost"
 } else {
     if ($ForceUsb) { $chosenHost = $null }
-    $net = Get-MainNetwork $networks
+    # USB seçildiyse ağ taranmadı; köprü araması da yapılmaz.
+    $net = if ($networks.Count -gt 0) { Get-MainNetwork $networks } else { [pscustomobject]@{ Name = ''; Address = ''; Prefix = 24; Gateway = $null; IfIndex = $null } }
     $canBridge = [bool]$net.IfIndex
 
     # --- 4-USB) USB ile bu bilgisayara bağlı yazıcı -----------------------------------------
     $usbQueues = @(Get-UsbPrinterQueues)
     $freeUsbPorts = @(Get-FreeUsbPorts)
-    if ($ForceUsb -or $usbQueues.Count -gt 0 -or $freeUsbPorts.Count -gt 0) {
+    # Kablo / Wi-Fi seçildiyse USB sorulmaz.
+    if ($ForceUsb -or ($connection -eq 'otomatik' -and ($usbQueues.Count -gt 0 -or $freeUsbPorts.Count -gt 0))) {
         Write-Host ''
         if ($usbQueues.Count -gt 0) {
             Write-Info ('USB ile bağlı yazıcı(lar): ' + (($usbQueues | ForEach-Object { "$($_.Name) ($($_.PortName))" }) -join ', '))
@@ -608,7 +665,13 @@ if ($chosenHost -and -not $ForceUsb) {
         if ($ForceUsb -or (Confirm-Yes 'Fiş yazıcısı bu bilgisayara USB kablosuyla mı bağlı?')) {
             $usbPrinterName = Initialize-UsbPrinter $usbQueues $freeUsbPorts
             if ($usbPrinterName) { $chosenHost = "usb:$usbPrinterName" }
-            elseif ($ForceUsb) { Stop-Wizard 'USB yazıcı hazırlanamadı.' }
+            elseif ($ForceUsb) {
+                if ($usbQueues.Count -eq 0 -and $freeUsbPorts.Count -eq 0) {
+                    Write-Warn 'Bu bilgisayarda USB ile bağlı yazıcı görünmüyor.'
+                    Write-Info 'USB kablosu takılı ve yazıcı açık mı? Windows yazıcıyı tanıyınca (birkaç saniye) Kurulum.cmd dosyasını tekrar çalıştırın.'
+                }
+                Stop-Wizard 'USB yazıcı hazırlanamadı.'
+            }
         }
     }
     if (-not $chosenHost -and -not $canBridge) { Write-Warn 'Ağ bağdaştırıcısı belirlenemedi; başka ağlarda arama yapılamıyor.' }

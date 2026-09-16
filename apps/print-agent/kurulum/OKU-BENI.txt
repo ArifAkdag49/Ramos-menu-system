@@ -24,11 +24,13 @@ KURULUM
 -------
 1) Yazıcıyı açın ve yukarıdaki yollardan biriyle bağlayın.
 2) "Kurulum.cmd" dosyasına çift tıklayın ve ekrandaki soruları cevaplayın.
+   İlk soru yazıcının nasıl bağlı olduğudur: 1 kablo, 2 Wi-Fi, 3 USB, 4 bilmiyorum (Enter).
+   Yazıcı hem kabloyla hem USB ile bağlıysa hangisini kullanmak istediğinizi buradan seçin.
 
 Sihirbaz şunları kendisi yapar:
   - Node.js yoksa kurar (Windows izin isterse "Evet" deyin)
   - Yazıcıyı ağda bulur (marka fark etmez: Epson, Xprinter, SNRO, Rongta, HPRT ...)
-  - Ağda yoksa USB ile bu bilgisayara bağlı olup olmadığını sorar
+  - "Bilmiyorum" seçilirse önce ağda arar, bulamazsa USB ile bağlı olup olmadığını sorar
   - Bazı yazıcılar sorulara cevap vermez ama basar. Böyle bir cihaz bulursa ona kısa bir
     "RAMO'S KURULUM" deneme fişi gönderir ve "fiş çıktı mı?" diye sorar: fiş çıktıysa "e"
     yazıp Enter'a basın.
