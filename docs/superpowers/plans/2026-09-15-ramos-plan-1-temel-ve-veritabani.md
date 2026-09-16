@@ -2099,7 +2099,7 @@ git commit -m "feat(db): 0004 sipariş yaşam döngüsü — iptal/STORNO, hazı
 | `retry_print_job(p_job_id uuid) → void` | admin, waiter, kitchen | `failed` → `pending`, `attempts = 0` |
 | `enqueue_test_print() → void` | admin | `test` işi: ayar özeti + karakter satırı + örnek kalemler |
 | `claim_print_job(p_agent_id text) → setof print_jobs` | printer | 0 ya da 1 satır. `pending` ve vakti gelmiş **veya** 60 sn'den uzun süredir `printing` olan en eski iş; `FOR UPDATE SKIP LOCKED` |
-| `complete_print_job(p_job_id uuid, p_ok boolean, p_error text default null) → void` | printer | Başarılı → `printed`. Başarısız → `attempts + 1`, yeniden deneme 5/15/30/60/120 sn; 6. hatada `failed` |
+| `complete_print_job(p_job_id uuid, p_ok boolean, p_error text default null, p_agent_id text default null) → void` (R49/R52; iş `printing` değilse ya da `p_agent_id` verilip `claimed_by` ile eşleşmezse `job_not_printing`) | printer | Başarılı → `printed`. Başarısız → `attempts + 1`, yeniden deneme 5/15/30/60/120 sn; 6. hatada `failed` |
 | `agent_heartbeat(p_agent_id text, p_version text, p_host text, p_reachable boolean, p_state jsonb, p_error text) → void` | printer | `printer_status` kaydını günceller |
 
 - Broadcast konuları (private):
@@ -2538,7 +2538,7 @@ git commit -m "feat(db): 0005 fiş kuyruğu (claim/complete/retry/reprint/test),
   - `npm run db:types` → `packages/shared/src/database.types.ts`
   - Seed **`image_path` alanına dokunmaz**: tüm ürünler görselsiz başlar. Görseller sonradan admin panelden eklenir ve seed tekrar çalışınca silinmez (upsert'in `do update set` listesinde `image_path` yoktur).
 
-- [ ] **Adım 1: Seed testini yaz (kırmızı)**
+- [x] **Adım 1: Seed testini yaz (kırmızı)**
 
 `supabase/tests/seed.test.ts`:
 ```ts
@@ -2619,7 +2619,7 @@ describe('menü seed', () => {
 ```
 Run: `npm run db:test -- seed` → Expected: FAIL (sayılar 0)
 
-- [ ] **Adım 2: Upsert anahtarları için migration**
+- [x] **Adım 2: Upsert anahtarları için migration**
 
 `supabase/migrations/0006_seed_keys.sql`:
 ```sql
@@ -2629,7 +2629,7 @@ create unique index options_group_name on public.options (group_id, name_de);
 ```
 Run: `npm run db:apply`
 
-- [ ] **Adım 3: `menu-source.ts` dosyasını yaz**
+- [x] **Adım 3: `menu-source.ts` dosyasını yaz**
 
 Tipler, varyant yardımcıları, setler, gruplar, kategoriler ve malzemeler aşağıdaki gibi **tam** yazılır. Ürün listesi `docs/menu/ramos-menu-data.md` §4'teki 16 tablodan **birebir** aktarılır (107 satır). Aktarım kuralları:
 - **Fiyat:** "7,50" → `750`.
@@ -2809,7 +2809,7 @@ export const SETTINGS = {
 ```
 Dosyada "…" kalmamalı; bu yorumlar yalnızca plandaki kısaltmadır. Aktarım bitince `PRODUCTS.length === 107` ve `allergen_legend.length === 27` olmalıdır. Test bunu doğrular.
 
-- [ ] **Adım 4: `build-seed.ts` dosyasını yaz**
+- [x] **Adım 4: `build-seed.ts` dosyasını yaz**
 ```ts
 import { writeFileSync } from 'node:fs';
 import { CATEGORIES, GROUPS, INGREDIENTS, PRODUCTS, SETTINGS, TABLE_COUNT } from './menu-source';
@@ -2895,14 +2895,14 @@ Run: `npm i -D tsx`
 ```
 MCP varsa `generate_typescript_types` aynı işi yapar.
 
-- [ ] **Adım 5: Seed'i çalıştır, testi doğrula, tipleri üret**
+- [x] **Adım 5: Seed'i çalıştır, testi doğrula, tipleri üret**
 
 Run: `npm run db:seed` → Expected: `seed.sql yazıldı: 107 ürün`, ardından SQL `[]`
 Run: `npm run db:test -- seed` → Expected: PASS (5 test). Sağlama toplamları tutmazsa aktarımı §4 ile satır satır karşılaştır.
 Run: `npm run db:types` → `packages/shared/src/database.types.ts` oluşur.
 Run: `npm run typecheck` → Expected: hatasız
 
-- [ ] **Adım 6: Commit**
+- [x] **Adım 6: Commit**
 ```bash
 git add supabase/migrations/0006_seed_keys.sql supabase/seed supabase/tests/seed.test.ts scripts/db.mjs package.json package-lock.json packages/shared/src/database.types.ts
 git commit -m "feat(db): menü seed'i (107 ürün, 9 seçim grubu, 31 malzeme), 12 masa, ayar listeleri, TS tipleri"

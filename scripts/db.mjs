@@ -50,7 +50,15 @@ if (cmd === 'apply') {
 } else if (cmd === 'sql') {
   const query = args[0] === '--file' ? await readFile(args[1], 'utf8') : args.join(' ');
   console.log(JSON.stringify(await runSql(query), null, 2));
+} else if (cmd === 'types') {
+  const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/types/typescript?included_schemas=public`,
+    { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`types hatası ${res.status}: ${await res.text()}`);
+  const { types } = await res.json();
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile('packages/shared/src/database.types.ts', types, 'utf8');
+  console.log('packages/shared/src/database.types.ts yazıldı');
 } else {
-  console.error('Komut: apply | sql "<sorgu>" | sql --file <yol>');
+  console.error('Komut: apply | sql "<sorgu>" | sql --file <yol> | types');
   process.exit(1);
 }

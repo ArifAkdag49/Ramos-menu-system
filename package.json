@@ -17,7 +17,9 @@
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "db:apply": "node --env-file=.env scripts/db.mjs apply",
     "db:sql": "node --env-file=.env scripts/db.mjs sql",
-    "db:test": "vitest run --config supabase/vitest.config.ts"
+    "db:test": "vitest run --config supabase/vitest.config.ts",
+    "db:seed": "node --env-file=.env --import tsx supabase/seed/build-seed.ts && node --env-file=.env scripts/db.mjs sql --file supabase/seed/seed.sql",
+    "db:types": "node --env-file=.env scripts/db.mjs types"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -27,6 +29,7 @@
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.12.0",
     "prettier": "^3.9.6",
+    "tsx": "^4.23.13",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.0",
     "vite": "^8.3.0",
