@@ -25,13 +25,15 @@ export interface AgentOptions {
   pollMs?: number;
   heartbeatMs?: number;
   idleCheckMs?: number;
-  /** C1: bir bilet fiziksel olarak basıldıktan sonra `complete(true)` kaç kez yeniden denenir. */
-  completeRetries?: number;
-  /** C1: `complete(true)` yeniden deneme aralıklarının tabanı (üstel, 30 sn'de tavanlanır). */
+  /**
+   * R68 (review fix round 2 — NEW-1): bir bilet fiziksel olarak basıldıktan sonra
+   * `complete(true)` yeniden deneme aralıklarının tabanı (üstel, 30 sn'de tavanlanır).
+   * Deneme sayısı KASITLI OLARAK sınırsızdır — bkz. `completeSuccessWithRetry`.
+   */
   completeRetryBaseMs?: number;
   /** I4: art arda `claim` hatalarında geri çekilmenin tabanı (üstel, 60 sn'de tavanlanır). */
   claimRetryBaseMs?: number;
-  /** I2: `stop()` sürmekte olan bir `drain()` turunu en fazla bu kadar bekler. */
+  /** I2: `stop()` sürmekte olan bir `drain()` turunu (baskı henüz gitmemişse) en fazla bu kadar bekler. */
   stopGraceMs?: number;
 }
 
@@ -39,11 +41,15 @@ const DEFAULT_OPTS: Required<AgentOptions> = {
   pollMs: 5000,
   heartbeatMs: 30000,
   idleCheckMs: 15000,
-  completeRetries: 5,
   completeRetryBaseMs: 1000,
   claimRetryBaseMs: 5000,
   stopGraceMs: 10000,
 };
+
+// R68: bir bilet basıldıktan sonra onu kapatma denemesi bu süreden (60 sn — `claim_print_job`'ın
+// stale-`printing` reclaim eşiği) uzun sürerse tek seferlik bir `error` seviyesinde uyarı basılır
+// (görünürlük için); deneme SÜRMEYE DEVAM EDER — asla vazgeçilmez.
+const STALE_CONFIRMATION_WARN_MS = 60000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -60,6 +66,12 @@ export class Agent {
   private timers: NodeJS.Timeout[] = [];
   private claimFailures = 0;
   private claimBackoffUntil = 0;
+  /** R68/NEW-3: basılmış ama henüz `complete(true)` ile doğrulanmamış iş sayısı — `stop()` bu
+   *  sıfıra dönene kadar süresiz bekler (bkz. `completeSuccessWithRetry`, `stop`). */
+  private pendingConfirmations = 0;
+  /** R69: yazıcıya dokunan İKİ işlem (`checkPrinter`'ın durum sorgusu, `drain`'in gönderimi)
+   *  aynı anda ASLA çalışmasın diye tutulan gerçek bir mutex — bkz. `withPrinterLock`. */
+  private printerMutex: Promise<unknown> = Promise.resolve();
 
   constructor(
     private api: AgentApi,
@@ -80,6 +92,23 @@ export class Agent {
   // artık bir zincir çökse bile süreç ayakta kalır.
   private fireAndForget(p: Promise<unknown>, label: string): void {
     p.catch((e: unknown) => this.deps.log.error(`${label} beklenmeyen hata`, { e: String(e) }));
+  }
+
+  // R69 (review fix round 2 — NEW-2): `checkPrinterIfIdle`'ın `this.draining` bayrağı TEK
+  // YÖNLÜYDÜ — yalnız "baskı sürerken durum sorgusu başlamasın" durumunu kapatıyordu. Ters yönde
+  // bir pencere kalıyordu: `checkPrinter()` `printer.status()`'u beklerken hiçbir bayrak
+  // ayarlanmıyordu, `drain()`'in `printerReady()` kontrolü ESKİ (await'ten önceki) durumu
+  // okuyup `true` dönebiliyor ve `printWithChecks` İKİNCİ bir TCP bağlantısı açabiliyordu —
+  // tam olarak spec §10.3.3/§6'nın yasakladığı şey. Gerçek bir mutex (Promise zinciri) bunu
+  // her iki sırada da (durum→baskı, baskı→durum) imkânsız kılar: `fn`, yalnız bir öncekinin
+  // TAMAMLANMASINDAN (başarı ya da hata fark etmez) SONRA çalışır.
+  private withPrinterLock<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.printerMutex.then(fn, fn);
+    this.printerMutex = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
   }
 
   async start() {
@@ -104,15 +133,28 @@ export class Agent {
     this.timers.forEach(clearInterval);
     this.timers = [];
     // I2: Ctrl+C ya da Windows kapanışı gönderim ortasında `process.exit()`e giderse ESC/POS
-    // akışı yarıda kesilir, iş `printing`de kalır ve 60 sn sonra yeniden basılır. Sürmekte
-    // olan bir turu sınırlı bir süre bekleriz; süre dolarsa yine de kapatırız (spec'in kabul
-    // ettiği 60 sn'lik reclaim devreye girer).
+    // akışı yarıda kesilir, iş `printing`de kalır ve 60 sn sonra yeniden basılır. Henüz
+    // yazıcıya gitmemiş (bayt gönderilmemiş) sıradan bir baskı turunu sınırlı bir süre
+    // bekleriz; süre dolarsa yine de devam ederiz (spec'in kabul ettiği 60 sn'lik reclaim
+    // devreye girer — bu durumda bayt hiç gitmediğinden çift baskı riski yoktur).
     const deadline = this.now() + this.opts.stopGraceMs;
-    while (this.draining && this.now() < deadline) {
+    while (this.draining && this.pendingConfirmations === 0 && this.now() < deadline) {
       await sleep(25);
     }
-    if (this.draining) {
+    if (this.draining && this.pendingConfirmations === 0) {
       this.deps.log.warn('kapanışta sürmekte olan baskı turu zaman aşımına uğradı', { stopGraceMs: this.opts.stopGraceMs });
+    }
+    // NEW-3/R68 (review fix round 2): burası FARKLI — basılmış ama `complete(true)` ile henüz
+    // DOĞRULANMAMIŞ bir iş varsa (`pendingConfirmations > 0`) bunun SÜRE SINIRI YOKTUR. Bayt
+    // zaten gitti; kapanışın onu terk etmesi işi `printing`de bırakıp 60 sn'lik reclaim'in onu
+    // İKİNCİ KEZ bastırmasına yol açar — `stopGraceMs` bunun için kullanılmaz.
+    if (this.pendingConfirmations > 0) {
+      this.deps.log.warn('kapanış, basılmış ama henüz doğrulanmamış işlerin kapatılmasını bekliyor (süre sınırı yok)', {
+        pending: this.pendingConfirmations,
+      });
+      while (this.pendingConfirmations > 0) {
+        await sleep(200);
+      }
     }
     await this.api.close();
   }
@@ -136,7 +178,8 @@ export class Agent {
       return;
     }
     try {
-      this.state = await this.deps.printer.status(this.settings);
+      const settings = this.settings;
+      this.state = await this.withPrinterLock(() => this.deps.printer.status(settings));
       this.reachable = true;
       this.lastError = blockingProblem(this.state);
       // Sorun düzelince bekleyenler bir sonraki 5 sn'lik drain turunda basılır; burada drain tetiklenmez (yarış yok).
@@ -170,31 +213,44 @@ export class Agent {
     return !!this.settings?.host && this.reachable && !!this.state && !blockingProblem(this.state);
   }
 
-  // C1: bir bilet `printer.print()`den başarıyla döndüyse bayt zaten yazıcıya gitmiştir —
-  // spec §10.3.4 bu noktadan sonra işin HER ZAMAN `printed` sayılmasını ister (çift baskı
-  // riskine girilmez). Bu yüzden buradan sonra tek izinli çağrı `complete(id, true)`dur;
-  // ağ sorunuyla başarısız olursa `complete(id, false, ...)`e asla düşülmez, yalnız
-  // (üstel, 30 sn'de tavanlı) geri çekilmeyle yeniden denenir. `job_not_printing` zaten
-  // `api.ts`de yutulup normal dönüş sayıldığından burada da "başarı" olarak görünür.
-  // Tüm denemeler tükenirse iş `printing` durumunda kalır; spec'in kabul ettiği 60 sn'lik
-  // `claim_print_job` reclaim'i devralır.
+  // C1/R68 (review fix round 2 — NEW-1): bir bilet `printer.print()`den başarıyla döndüyse
+  // bayt zaten yazıcıya gitmiştir — spec §10.3.4 bu noktadan sonra işin HER ZAMAN `printed`
+  // sayılmasını ister (çift baskı riskine girilmez). Bu yüzden buradan sonra tek izinli çağrı
+  // `complete(id, true)`dur; ağ sorunuyla başarısız olursa `complete(id, false, ...)`e asla
+  // düşülmez. R68 ile bu deneme artık SINIRSIZDIR (süreç yaşadığı sürece): eski sınırlı deneme
+  // (varsayılan 5 deneme, ~31 sn) `claim_print_job`'ın 60 sn'lik stale-`printing` reclaim
+  // penceresinden KISA olduğundan, 31-60 sn arası bir kesinti tam olarak "vazgeçilip iş
+  // printing'de bırakılır → 60 sn'de reclaim edilir → İKİNCİ KEZ BASILIR" senaryosunu
+  // üretiyordu — bu güvenli, çünkü `job_not_printing` zaten `api.ts`de yutulup normal dönüş
+  // sayılıyor: iş gerçekten başka bir ajanca geri alınıp basılmışsa bu geç tamamlama yalnız
+  // bir uyarıya mal olur, hataya değil. `pendingConfirmations` sayacı, `stop()`'un bu iş
+  // doğrulanmadan asla çıkmamasını sağlar (bkz. `stop`).
   private async completeSuccessWithRetry(jobId: string): Promise<void> {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        await this.api.complete(jobId, true, undefined);
-        return;
-      } catch (e) {
-        if (attempt >= this.opts.completeRetries) {
-          this.deps.log.error('basılan işi kapatma tüm denemelerde başarısız oldu — iş printing kalacak, 60 sn sonra yeniden ele alınacak', {
-            job: jobId,
-            e: String(e),
-          });
+    this.pendingConfirmations++;
+    try {
+      const startedAt = this.now();
+      let warnedStale = false;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await this.api.complete(jobId, true, undefined);
           return;
+        } catch (e) {
+          const elapsedMs = this.now() - startedAt;
+          if (!warnedStale && elapsedMs >= STALE_CONFIRMATION_WARN_MS) {
+            warnedStale = true;
+            this.deps.log.error(
+              'basılan bir iş bir dakikadır kapatılamadı — reclaim penceresine girildi, yeniden denemeye devam ediliyor (asla vazgeçilmez)',
+              { job: jobId, elapsedMs, e: String(e) },
+            );
+          } else {
+            this.deps.log.warn('basılan işi kapatma başarısız, yeniden denenecek', { job: jobId, attempt, e: String(e) });
+          }
+          const backoff = Math.min(this.opts.completeRetryBaseMs * 2 ** attempt, 30000);
+          await sleep(backoff);
         }
-        const backoff = Math.min(this.opts.completeRetryBaseMs * 2 ** attempt, 30000);
-        this.deps.log.warn('basılan işi kapatma başarısız, yeniden denenecek', { job: jobId, attempt, backoff, e: String(e) });
-        await sleep(backoff);
       }
+    } finally {
+      this.pendingConfirmations--;
     }
   }
 
@@ -255,7 +311,7 @@ export class Agent {
 
           let sent: { after: PrinterState };
           try {
-            sent = await this.deps.printer.print(s, bytes);
+            sent = await this.withPrinterLock(() => this.deps.printer.print(s, bytes));
           } catch (e) {
             // Bayt gitmedi (ya da yazıcı bir sorun bildirdi) — bu iş gerçekten başarısızdır.
             const msg = e instanceof PrinterError ? `${e.code}: ${e.message}` : `print_error: ${String(e)}`;

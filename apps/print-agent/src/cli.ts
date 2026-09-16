@@ -110,7 +110,16 @@ function acquireLock(dir: string, log: Logger): () => void {
   } catch (e) {
     throw new Error(`Ajan kilidi alınamadı: ${lockPath} (${e instanceof Error ? e.message : String(e)})`, { cause: e });
   }
-  const info: LockInfo = { pid: process.pid, startTime: processStartTime(process.pid) };
+  const startTime = processStartTime(process.pid);
+  if (startTime === null) {
+    // NEW-5 (review fix round 2): sessizce geçmez — bir sonraki başlatmada PID yeniden
+    // kullanılırsa (reboot sonrası) bu ajan kilidi hep "hâlâ çalışıyor" sayıp kalıcı olarak
+    // başlamayı reddedebilir (fail-closed, doğru ama teşhis edilemez kalırdı).
+    log.warn('süreç başlangıç zamanı okunamadı — pid yeniden kullanımı algılanamayabilir (kilit yine de güvenli tarafta kalır)', {
+      pid: process.pid,
+    });
+  }
+  const info: LockInfo = { pid: process.pid, startTime };
   fs.writeSync(fd, JSON.stringify(info));
   fs.closeSync(fd);
   return () => {
@@ -131,12 +140,17 @@ const STARTUP_BACKOFF_MS = [1000, 2000, 5000, 10000, 30000, 60000];
 
 async function startAgentWithRetry(cfg: AgentEnv, log: Logger): Promise<{ api: AgentApi; agent: Agent }> {
   for (let attempt = 0; ; attempt++) {
+    let api: AgentApi | undefined;
     try {
-      const api = await createSupabaseApi(cfg, log);
+      api = await createSupabaseApi(cfg, log);
       const agent = new Agent(api, { printer: tcpPrinter, log });
       await agent.start();
       return { api, agent };
     } catch (e) {
+      // NEW-4 (review fix round 2): bu deneme kısmen ilerleyip (ör. girişi başarıyla yapıp)
+      // sonra başarısız olduysa, yeniden denemeden önce o oturum kapatılır — aksi hâlde her
+      // başarısız deneme açık bir Supabase oturumu bırakırdı.
+      if (api) await api.close().catch(() => {});
       const wait = STARTUP_BACKOFF_MS[Math.min(attempt, STARTUP_BACKOFF_MS.length - 1)]!;
       log.warn('ajan başlatılamadı, yeniden denenecek', { attempt, waitMs: wait, e: e instanceof Error ? e.message : String(e) });
       await sleep(wait);
@@ -155,31 +169,32 @@ async function cmdRun(): Promise<void> {
     log.error('başlatılamadı: kilit alınamadı', { e: e instanceof Error ? e.message : String(e) });
     throw e;
   }
-  try {
-    log.info('ajan başlıyor', { version: AGENT_VERSION, agentId: cfg.AGENT_ID });
-    const { api, agent } = await startAgentWithRetry(cfg, log);
-    const settings = await api.settings().catch(() => null);
-    log.info('ajan çalışıyor', { host: settings?.host ?? null, port: settings?.port ?? null });
 
-    let stopping = false;
-    const shutdown = (signal: string): void => {
-      if (stopping) return;
-      stopping = true;
-      log.info('kapatılıyor', { signal });
-      void agent
-        .stop()
-        .catch((e: unknown) => log.error('kapatma sırasında hata', { e: String(e) }))
-        .finally(() => {
-          releaseLock();
-          process.exit(0);
-        });
-    };
-    process.on('SIGINT', () => shutdown('SIGINT'));
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-  } catch (e) {
-    releaseLock();
-    throw e;
-  }
+  // NEW-4 (review fix round 2): `startAgentWithRetry` Supabase'e ulaşılana kadar İÇERİDE
+  // döner, hiçbir zaman reddetmez; ondan sonraki her satır da (settings okuma `.catch`'li,
+  // `process.on` fırlatmaz) artık fırlatamaz. Eski dış `try { … } catch { releaseLock();
+  // throw e; }` bu yüzden hiçbir zaman tetiklenmeyen, yanıltıcı ölü kod hâline gelmişti —
+  // kaldırıldı. Kilit yalnız `shutdown()`'da (SIGINT/SIGTERM) serbest bırakılır.
+  log.info('ajan başlıyor', { version: AGENT_VERSION, agentId: cfg.AGENT_ID });
+  const { api, agent } = await startAgentWithRetry(cfg, log);
+  const settings = await api.settings().catch(() => null);
+  log.info('ajan çalışıyor', { host: settings?.host ?? null, port: settings?.port ?? null });
+
+  let stopping = false;
+  const shutdown = (signal: string): void => {
+    if (stopping) return;
+    stopping = true;
+    log.info('kapatılıyor', { signal });
+    void agent
+      .stop()
+      .catch((e: unknown) => log.error('kapatma sırasında hata', { e: String(e) }))
+      .finally(() => {
+        releaseLock();
+        process.exit(0);
+      });
+  };
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 // ---------- status ----------
