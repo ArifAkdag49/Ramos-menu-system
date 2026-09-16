@@ -1,4 +1,4 @@
-import { Flame, LogIn } from 'lucide-react';
+import { Eye, EyeOff, Flame, LogIn } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -21,6 +21,7 @@ export function LoginPage() {
 
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -80,18 +81,34 @@ export function LoginPage() {
               girer (spec §12); sayısal tuş takımı dayatılırsa telefonda hiç giriş yapamaz.
               Garsonun bir tuş takımı dokunuşu, patronun hiç girememesinden ucuzdur.
             */}
-            <input
-              id="pin"
-              name="pin"
-              type="password"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              autoComplete="current-password"
-              required
-              minLength={6}
-              maxLength={72}
-              className={`${FIELD} tabular tracking-[0.3em]`}
-            />
+            <div className="relative">
+              <input
+                id="pin"
+                name="pin"
+                type={showPin ? 'text' : 'password'}
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                autoComplete="current-password"
+                required
+                minLength={6}
+                maxLength={72}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                className={`${FIELD} tabular pr-14 tracking-[0.3em]`}
+              />
+              {/* Önizleme: telefonda PIN/parola yanlış yazıldı mı görülebilsin. `aria-pressed` durumu duyurur. */}
+              <button
+                type="button"
+                onClick={() => setShowPin((v) => !v)}
+                aria-label={showPin ? t('login.hidePin') : t('login.showPin')}
+                aria-pressed={showPin}
+                aria-controls="pin"
+                className="absolute inset-y-0 right-0 flex w-12 cursor-pointer items-center justify-center rounded-r-xl text-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lime"
+              >
+                {showPin ? <EyeOff aria-hidden size={20} /> : <Eye aria-hidden size={20} />}
+              </button>
+            </div>
           </div>
 
           {failed ? (

@@ -36,7 +36,9 @@
     "subtitle": "Mit deinem Benutzernamen anmelden",
     "username": "Benutzername",
     "pin": "PIN oder Passwort",
-    "submit": "Anmelden"
+    "submit": "Anmelden",
+    "showPin": "Passwort anzeigen",
+    "hidePin": "Passwort verbergen"
   },
   "waiter": {
     "tables": {

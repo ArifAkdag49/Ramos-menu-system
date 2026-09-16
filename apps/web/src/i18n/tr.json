@@ -36,7 +36,9 @@
     "subtitle": "Kullanıcı adınla gir",
     "username": "Kullanıcı adı",
     "pin": "PIN veya parola",
-    "submit": "Giriş"
+    "submit": "Giriş",
+    "showPin": "Şifreyi göster",
+    "hidePin": "Şifreyi gizle"
   },
   "waiter": {
     "tables": {

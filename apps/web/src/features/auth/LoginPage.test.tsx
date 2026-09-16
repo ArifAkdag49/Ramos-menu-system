@@ -45,3 +45,20 @@ describe('LoginPage', () => {
     expect(secret).toHaveAttribute('maxlength', '72');
   });
 });
+
+describe('LoginPage — şifre önizleme', () => {
+  it('göz butonu alanı düz metne çevirir ve geri gizler', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+    const input = document.getElementById('pin') as HTMLInputElement;
+    expect(input.type).toBe('password');
+    await user.click(screen.getByRole('button', { name: 'Şifreyi göster' }));
+    expect(input.type).toBe('text');
+    await user.click(screen.getByRole('button', { name: 'Şifreyi gizle' }));
+    expect(input.type).toBe('password');
+  });
+});
