@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { sql } from '../../../supabase/tests/helpers/sql';
-import { cleanupFixtureOrders, clientFor, ensureFixtures, ensureTestUsers } from './helpers';
+import { cleanupFixtureOrders, clientFor, ensureFixtures, ensureTestUsers, hideFixtures } from './helpers';
 
 /**
  * M3/M4 TASARIM KAPISI (BUILD-PROMPT §7, §10) — ekran görüntüleri + WCAG AA taraması.
@@ -303,6 +303,7 @@ async function teardownScene(scene: Scene | null): Promise<void> {
     delete from public.dining_tables
       where name in ('Test-Tisch-3', 'Test-Tisch-4', 'Test-Tisch-5', 'Test-Tisch-Terrasse-Hinten-14');
     update public.profiles set locale = 'tr' where username like 'test-%' and locale <> 'tr';`);
+  await hideFixtures();
 }
 
 async function loginAs(page: Page, username: string, url: RegExp): Promise<void> {

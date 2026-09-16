@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { sql } from '../../../supabase/tests/helpers/sql';
-import { cleanupFixtureOrders, clientFor, ensureFixtures, ensureTestUsers } from './helpers';
+import { cleanupFixtureOrders, clientFor, ensureFixtures, ensureTestUsers, hideFixtures } from './helpers';
 
 /**
  * M6 TASARIM KAPISI — admin kabuğu + canlı durum (Görev 21, spec §8.4).
@@ -276,6 +276,7 @@ async function teardownScene(scene: Scene | null): Promise<void> {
   await sql(`
     delete from public.dining_tables where name in ('Test-Tisch-3', 'Test-Tisch-4');
     update public.profiles set locale = 'tr' where username like 'test-%' and locale <> 'tr';`);
+  await hideFixtures();
 }
 
 async function loginAs(page: Page, username: string, url: RegExp): Promise<void> {

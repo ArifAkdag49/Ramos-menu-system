@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { cleanupFixtureOrders, clientFor, ensureFixtures, ensureTestUsers, submitKitchenTestOrder } from './helpers';
+import { cleanupFixtureOrders, clientFor, ensureFixtures, ensureTestUsers, hideFixtures, submitKitchenTestOrder } from './helpers';
 
 const PASSWORD = process.env.TEST_USER_PASSWORD ?? '';
 const SHOT = (name: string) => `../../docs/screenshots/m3-flow-${name}-390.png`;
@@ -193,5 +193,6 @@ test('garson uçtan uca: sepet → gönder → hesap → iptal → taşı → ka
     await page.screenshot({ path: '../../docs/screenshots/m3-table-detail-390.png' });
   } finally {
     await cleanupFixtureOrders();
+    await hideFixtures();
   }
 });

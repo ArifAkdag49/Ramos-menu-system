@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Layers, Link2Off } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAdminMenu } from '../../../data/adminMenu';
+import { byAdminOrder, useAdminMenu } from '../../../data/adminMenu';
 import { qk } from '../../../data/keys';
 import { toast } from '../../../lib/toast';
 import { Button } from '../../../ui/Button';
@@ -36,7 +36,7 @@ export function BulkAssignPage() {
     () =>
       (categoryId === ALL ? products : products.filter((p) => p.category_id === categoryId))
         .slice()
-        .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, 'de')),
+        .sort(byAdminOrder),
     [products, categoryId],
   );
 

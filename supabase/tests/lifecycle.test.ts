@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { cleanupFixtureOrders, ensureFixtures, type Fixtures } from './helpers/fixtures';
+import { cleanupFixtureOrders, ensureFixtures, hideFixtures, type Fixtures } from './helpers/fixtures';
 import { sql } from './helpers/sql';
 import { clientFor, ensureTestUsers } from './helpers/users';
 
@@ -15,7 +15,11 @@ beforeAll(async () => {
     [clientFor('waiter'), clientFor('waiter2'), clientFor('kitchen'), clientFor('admin')]);
 });
 beforeEach(cleanupFixtureOrders);
-afterAll(cleanupFixtureOrders);
+// Fikstürler koşudan sonra yeniden gizlenir (Görev D): canlı menüde/masalarda görünmesinler.
+afterAll(async () => {
+  await cleanupFixtureOrders();
+  await hideFixtures();
+});
 
 type Payload = Record<string, unknown>;
 type OverviewRow = { name: string; session_id: string | null; total_cents: number;

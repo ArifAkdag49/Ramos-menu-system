@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { cleanupFixtureOrders, ensureFixtures, type Fixtures } from './helpers/fixtures';
+import { cleanupFixtureOrders, ensureFixtures, hideFixtures, type Fixtures } from './helpers/fixtures';
 import { sql } from './helpers/sql';
 import { clientFor, ensureTestUsers } from './helpers/users';
 
@@ -27,6 +27,7 @@ beforeEach(async () => {
 afterAll(async () => {
   await cleanupFixtureOrders();
   await sql(`delete from public.print_jobs where ${TEST_JOBS}`);
+  await hideFixtures();
 });
 
 async function orderWithJob() {

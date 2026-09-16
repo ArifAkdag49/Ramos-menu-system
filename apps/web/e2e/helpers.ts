@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { cleanupFixtureOrders, ensureFixtures, type Fixtures } from '../../../supabase/tests/helpers/fixtures';
 import { clientFor, ensureTestUsers } from '../../../supabase/tests/helpers/users';
 
-export { cleanupFixtureOrders, ensureFixtures, type Fixtures } from '../../../supabase/tests/helpers/fixtures';
+export { cleanupFixtureOrders, ensureFixtures, hideFixtures, type Fixtures } from '../../../supabase/tests/helpers/fixtures';
 export { clientFor, ensureTestUsers } from '../../../supabase/tests/helpers/users';
 
 /**

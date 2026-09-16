@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { sql } from '../../../supabase/tests/helpers/sql';
-import { cleanupFixtureOrders, clientFor, ensureFixtures, ensureTestUsers } from './helpers';
+import { cleanupFixtureOrders, clientFor, ensureFixtures, ensureTestUsers, hideFixtures } from './helpers';
 
 const PASSWORD = process.env.TEST_USER_PASSWORD ?? '';
 const BASE = 'http://localhost:5173';
@@ -202,6 +202,7 @@ test('admin menü yönetimi: fiyat, toplu atama ve ürün görseli', async ({ br
     if (leftovers.length > 0) await adminApi.storage.from('product-images').remove(leftovers);
 
     await cleanupFixtureOrders();
+    await hideFixtures();
     await adminCtx.close();
     await waiterCtx.close();
   }

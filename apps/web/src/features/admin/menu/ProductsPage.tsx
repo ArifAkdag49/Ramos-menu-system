@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ImageOff, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAdminMenu, type AdminProduct } from '../../../data/adminMenu';
+import { byAdminOrder, useAdminMenu, type AdminProduct } from '../../../data/adminMenu';
 import { qk } from '../../../data/keys';
 import { useSettings } from '../../../data/settings';
 import { Badge } from '../../../ui/Badge';
@@ -54,7 +54,7 @@ export function ProductsPage() {
     if (categoryId !== ALL) list = list.filter((p) => p.category_id === categoryId);
     if (onlyMissingImage) list = list.filter((p) => !p.image_path);
     list = searchProducts(list, query);
-    return query ? list : [...list].sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, 'de'));
+    return query ? list : [...list].sort(byAdminOrder);
   }, [products, categoryId, onlyMissingImage, query]);
 
   const categoryName = (id: string) => {

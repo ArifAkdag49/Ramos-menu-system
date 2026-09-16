@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { cleanupFixtureOrders, prepareKitchenFixtures, submitKitchenTestOrder } from './helpers';
+import { cleanupFixtureOrders, hideFixtures, prepareKitchenFixtures, submitKitchenTestOrder } from './helpers';
 
 const PASSWORD = process.env.TEST_USER_PASSWORD ?? '';
 
@@ -46,5 +46,6 @@ test('KDS: yeni sipariş ≤2 sn içinde görünür, HAZIR ve geri al akışı �
     await expect(page.getByRole('button', { name: /^HAZIR$|^FERTIG$/ })).toBeVisible();
   } finally {
     await cleanupFixtureOrders();
+    await hideFixtures();
   }
 });

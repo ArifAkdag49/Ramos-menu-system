@@ -66,6 +66,7 @@ export function useAdminMenu(): AdminMenuData {
           const { data, error } = await supabase
             .from('categories')
             .select('id, slug, name_de, name_tr, is_beverage, sort, is_active')
+            .order('is_active', { ascending: false })
             .order('sort');
           if (error) throw error;
           return data ?? [];
@@ -80,6 +81,7 @@ export function useAdminMenu(): AdminMenuData {
             .from('products')
             .select(ADMIN_PRODUCT_SELECT)
             .is('archived_at', null)
+            .order('is_active', { ascending: false })
             .order('sort');
           if (error) throw error;
           return (data ?? []) as unknown as AdminProduct[];
@@ -91,6 +93,7 @@ export function useAdminMenu(): AdminMenuData {
           const { data, error } = await supabase
             .from('ingredients')
             .select('id, slug, name_de, name_tr, is_active')
+            .order('is_active', { ascending: false })
             .order('name_de');
           if (error) throw error;
           return data ?? [];
@@ -105,6 +108,7 @@ export function useAdminMenu(): AdminMenuData {
               `id, slug, admin_label, name_de, name_tr, min_select, max_select, ticket_format, sort, is_active,
                options(id, name_de, name_tr, price_delta_cents, is_default, is_exclusive, sort, is_active)`,
             )
+            .order('is_active', { ascending: false })
             .order('sort');
           if (error) throw error;
           return (data ?? []) as unknown as AdminOptionGroup[];
@@ -121,6 +125,16 @@ export function useAdminMenu(): AdminMenuData {
     isPending:
       categories.isPending || products.isPending || ingredients.isPending || groups.isPending,
   };
+}
+
+/**
+ * Admin listelerinin ortak sıralaması: **pasif satırlar en sona**. Pasif kayıtlar (arşivlenmemiş,
+ * yani hâlâ yönetilebilir olanlar) listeden çıkarılmaz — admin onları açıp yeniden etkinleştirebilsin
+ * diye görünür kalır — ama gerçek menünün önüne geçmezler. Test fikstürleri (`test-%`) canlıda pasif
+ * tutulduğu için (Görev D) bu kural onları da sunumda göze batmayacak biçimde en alta indirir.
+ */
+export function byAdminOrder<T extends { is_active: boolean; sort: number; name: string }>(a: T, b: T): number {
+  return Number(b.is_active) - Number(a.is_active) || a.sort - b.sort || a.name.localeCompare(b.name, 'de');
 }
 
 /** Malzemenin/grubun kaç üründe kullanıldığı — ayrı sorgu yerine elimizdeki ürün ağacından sayılır. */
