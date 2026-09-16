@@ -1021,7 +1021,7 @@ Diğer mutasyonlar aynı kalıpla yazılır; parametre adları Plan 1'deki RPC i
 
 Run: `npm test -w apps/web` → Expected: PASS
 
-- [ ] **Adım 3: Commit**
+- [x] **Adım 3: Commit**
 ```bash
 git add apps/web/src/lib apps/web/src/data
 git commit -m "feat(web): veri katmanı (menü, masalar, siparişler, yazıcı durumu) ve Realtime tazeleme"
@@ -1047,7 +1047,7 @@ git commit -m "feat(web): veri katmanı (menü, masalar, siparişler, yazıcı d
   - `<ConnectionBanners topics={Topic[]} />`: realtime, internet ve yazıcı şeritleri (garson ve KDS birlikte kullanır)
   - `<ItemLines item locale />`: kalem ve alt satırları render eder; OHNE satırı `data-tone="danger"`
 
-- [ ] **Adım 1: Testleri yaz (kırmızı)**
+- [x] **Adım 1: Testleri yaz (kırmızı)**
 
 `common/itemLines.test.ts`:
 ```ts
@@ -1108,7 +1108,7 @@ describe('waiterLogic', () => {
 
 Run: `npm test -w apps/web` → Expected: FAIL
 
-- [ ] **Adım 2: Saf mantığı uygula**
+- [x] **Adım 2: Saf mantığı uygula**
 
 `common/itemLines.ts`:
 ```ts
@@ -1152,7 +1152,7 @@ export const printBadge = (p: OrderView['print']): 'printed' | 'queued' | 'faile
   !p ? null : p.status === 'printed' ? 'printed' : p.status === 'failed' ? 'failed' : 'queued';
 ```
 
-- [ ] **Adım 3: Ekranları uygula (`frontend-design` + `ui-styling`)**
+- [x] **Adım 3: Ekranları uygula (`frontend-design` + `ui-styling`)**
 
 - **`ConnectionBanners`:** Önceliğe göre tek şerit gösterir:
   1. İnternet yok (kırmızı, `waiter.banner.offline`)
@@ -1185,13 +1185,13 @@ Tüm metinler `t()` ile yazılır; tr/de eşitlik testi yeşil kalmalı.
 
 Run: `npm test -w apps/web` → Expected: PASS
 
-- [ ] **Adım 4: Ekran görüntüleri (telefon 390×844)**
+- [x] **Adım 4: Ekran görüntüleri (telefon 390×844)**
 
 Playwright ile şu durumların görüntüsünü al: `test-waiter` girişi → masalar (bir açık, bir hazır masa; Plan 1 fixture'larıyla API'den hazırlanır) → masa detayı → Hazır sekmesi → Profil. Dosya adları: `docs/screenshots/m3-tables-390.png`, `m3-table-detail-390.png`, `m3-ready-390.png`, `m3-profile-390.png`.
 
 Görüntüleri incele: başparmak erişimi, kontrast, 48 px hedefler, TR metin taşmaları.
 
-- [ ] **Adım 5: Commit**
+- [x] **Adım 5: Commit**
 ```bash
 git add apps/web/src/features/waiter apps/web/src/features/common apps/web/src/app/router.tsx apps/web/src/i18n docs/screenshots
 git commit -m "feat(waiter): masalar, masa detayı, hazır listesi, profil, mesai çipi ve bağlantı şeritleri"
@@ -1217,7 +1217,7 @@ git commit -m "feat(waiter): masalar, masa detayı, hazır listesi, profil, mesa
     - Eylemler: `add(tableId, line)`, `update(tableId, key, line)`, `remove(tableId, key)`, `duplicate(tableId, key)`, `setQty(tableId, key, q)`, `setNote(tableId, note)`, `ensurePendingId(tableId): string`, `clear(tableId)`
   - `<ProductSheet product open onClose onSubmit(line) initial? />`: yeni ekleme ve düzenleme modu
 
-- [ ] **Adım 1: Testleri yaz (kırmızı)**
+- [x] **Adım 1: Testleri yaz (kırmızı)**
 
 `menuSearch.test.ts`:
 ```ts
@@ -1261,7 +1261,7 @@ describe('menü arama', () => {
 
 Run: FAIL
 
-- [ ] **Adım 2: Uygula**
+- [x] **Adım 2: Uygula**
 
 `menuSearch.ts`:
 ```ts
@@ -1308,7 +1308,7 @@ export function searchProducts<T extends Pick<MenuProduct, 'code' | 'name'>>(pro
 
 Run: `npm test -w apps/web` → Expected: PASS
 
-- [ ] **Adım 2b: Ürün görselleri — şimdilik boş yer tutucu**
+- [x] **Adım 2b: Ürün görselleri — şimdilik boş yer tutucu**
 
 Her ürünün görsel alanı var; görseller sonradan admin panelinden eklenecek (Plan 4 · Görev 22). Bu adımda yalnızca gösterim ve yer tutucu yapılır. Menü eşleyicisi (`menuMapper`) `image_path: row.image_path ?? null` alanını taşır.
 
@@ -1359,7 +1359,7 @@ describe('productImageUrl', () => {
 
 Run: `npm test -w apps/web -- images ProductImage` → PASS
 
-- [ ] **Adım 3: Ekran görüntüleri ve commit**
+- [x] **Adım 3: Ekran görüntüleri ve commit**
 
 Görüntüler: `docs/screenshots/m3-order-menu-390.png`, `m3-product-sheet-390.png` (Kalb + OHNE + sos seçili), `m3-pizza-mix-390.png`.
 ```bash

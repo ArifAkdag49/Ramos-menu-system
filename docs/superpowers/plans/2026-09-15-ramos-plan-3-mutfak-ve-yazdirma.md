@@ -734,7 +734,7 @@ git commit -m "feat(agent): ESC/POS kodlama (Xprinter CP857=61, FS ., GS V 66 0)
     - `status [--host --port]`
     - `fake-printer [--port 9100]`
 
-- [ ] **Adım 1: Döngü testlerini yaz (kırmızı)**
+- [x] **Adım 1: Döngü testlerini yaz (kırmızı)**
 
 `src/agent.test.ts` — bellek içi sahte API ve Görev 18'deki sahte yazıcı kullanılır:
 ```ts
@@ -830,7 +830,7 @@ describe('Agent', () => {
 
 Run: `npm test -w @ramos/print-agent -- agent log` → Expected: FAIL
 
-- [ ] **Adım 2: `agent.ts` dosyasını yaz**
+- [x] **Adım 2: `agent.ts` dosyasını yaz**
 ```ts
 import { renderTicket, type TicketPayload } from '@ramos/shared';
 import { encodeLines } from './escpos';
@@ -938,7 +938,7 @@ export class Agent {
 ```
 Test 4'teki beklenti `'io: reset'` biçimindedir: `PrinterError('io', 'reset')` → `${code}: ${message}`. `checkPrinter` hatası testteki sahte `status` tarafından belirlenir.
 
-- [ ] **Adım 3: `api.ts`, `config.ts`, `log.ts`, `cli.ts`**
+- [x] **Adım 3: `api.ts`, `config.ts`, `log.ts`, `cli.ts`**
 
 `src/config.ts`:
 - `.env` dosyası `process.argv[1]` klasöründe ya da çalışma klasöründe aranır; bulununca `process.loadEnvFile(path)` ile yüklenir.
@@ -984,7 +984,7 @@ Komutlar:
 
 Run: `npm test -w @ramos/print-agent` → Expected: PASS
 
-- [ ] **Adım 4: Sahte yazıcıyla canlı döngü (DB'ye karşı)**
+- [x] **Adım 4: Sahte yazıcıyla canlı döngü (DB'ye karşı)**
 
 1. `npm run agent:fake-printer -w apps/print-agent -- --port 9100` (ayrı terminal).
 2. `npm run db:sql -- "update public.settings set printer_host = '127.0.0.1' where id = 1"`.
@@ -997,7 +997,7 @@ Run: `npm test -w @ramos/print-agent` → Expected: PASS
 
 Kanıt olarak konsol çıktısını ve ilgili SQL sorgularını rapora ekle.
 
-- [ ] **Adım 5: Commit**
+- [x] **Adım 5: Commit**
 ```bash
 git add apps/print-agent
 git commit -m "feat(agent): iş döngüsü — realtime+5sn yoklama, yazıcı kapısı, sıralı baskı, heartbeat, ayar yenileme, CLI"
