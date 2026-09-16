@@ -84,7 +84,8 @@ _Henüz yok._
 - [ ] Telefonda kilitli ekran push testi: Android (ve varsa iPhone, ana ekrana ekleyerek) (Görev 28)
 - [ ] Mutfak tableti: ana ekrana ekle, ekran zaman aşımı "hiçbir zaman", ses açık (KURULUM §4)
 - [ ] Restoran PC'si: ajan kurulumu + XP-Q80A'nın ağa bağlanıp IP ayarı (KURULUM §2–3)
-- [ ] Ürün görselleri: Admin → Menü → Toplu görsel yükleme (dosya adı = ürün numarası)
+- [ ] Ürün görselleri: Admin → Menü → Toplu görsel yükleme (dosya adı = ürün numarası; `05.jpg`, `71a.webp`, `M1.png`)
+- [ ] Görsel yükleme telefonda denenmeli — `createImageBitmap` + `canvas.toBlob('image/webp')` yalnız masaüstü tarayıcıda doğrulandı (admin masaüstü öncelikli, yine de kontrol edilsin)
 - [ ] Menüdeki açık noktalar (`docs/menu/ramos-menu-data.md` §6) ve gerçek masa sayısı
 - [ ] TSE / Steuerberater teyidi (spec §1.4)
 - [ ] Ertelenen görevler: … (sebep + ne yapılmalı)
