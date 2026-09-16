@@ -1,6 +1,9 @@
 // Management API'nin geçici hataları (HTTP 5xx/429 ya da "Failed to perform authorization check") kısa üstel
-// geri çekilmeyle en fazla 3 kez tekrar denenir. SQL hataları (4xx) asla tekrar denenmez: test hemen düşer.
-const RETRY_DELAYS_MS = [500, 1000, 2000];
+// geri çekilmeyle en fazla 5 kez tekrar denenir. SQL hataları (4xx) asla tekrar denenmez: test hemen düşer.
+// Not: tüm paketi arka arkaya çalıştırmak /database/query hız sınırına (429) takılabiliyor; üç deneme
+// (~3,5 sn) yetmediği için pencere 15,5 sn'ye çıkarıldı. Bu bir "tahmini sleep" değil, hatayla tetiklenen
+// sınırlı geri çekilmedir.
+const RETRY_DELAYS_MS = [500, 1000, 2000, 4000, 8000];
 const isTransient = (status: number, body: string) =>
   status === 429 || status >= 500 || body.includes('Failed to perform authorization check');
 

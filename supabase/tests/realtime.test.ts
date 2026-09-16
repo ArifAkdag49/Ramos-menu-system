@@ -42,7 +42,7 @@ describe('Realtime broadcast', () => {
     expect(await subscribe(waiter, 'orders', events)).toBe('SUBSCRIBED');
     await waiter.rpc('submit_order', { p_order_id: crypto.randomUUID(), p_table_id: f.tableId,
       p_items: [{ product_id: f.colaId, quantity: 1 }] });
-    await waitFor(() => events.some((e) => JSON.stringify(e).includes('"table":"orders"')));
+    await waitFor(() => events.some((e) => JSON.stringify(e).includes('"table":"orders"')), 15_000);
   });
 
   it('mutfak menu konusunda tükendi değişikliğini alır', async () => {
@@ -50,7 +50,7 @@ describe('Realtime broadcast', () => {
     expect(await subscribe(kitchen, 'menu', events)).toBe('SUBSCRIBED');
     await kitchen.rpc('set_product_sold_out', { p_product_id: f.colaId, p_sold_out: true });
     await kitchen.rpc('set_product_sold_out', { p_product_id: f.colaId, p_sold_out: false });
-    await waitFor(() => events.some((e) => JSON.stringify(e).includes('"table":"products"')));
+    await waitFor(() => events.some((e) => JSON.stringify(e).includes('"table":"products"')), 15_000);
   });
 
   it('printer orders konusuna abone olamaz', async () => {

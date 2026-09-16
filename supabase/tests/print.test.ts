@@ -7,6 +7,7 @@ import { clientFor, ensureTestUsers } from './helpers/users';
 let f: Fixtures;
 let waiter: SupabaseClient, kitchen: SupabaseClient, admin: SupabaseClient, printer: SupabaseClient;
 const TEST_JOBS = `created_by in (select id from public.profiles where username like 'test-%')`;
+const LADDER = [5, 15, 30, 60, 120];
 
 type Payload = Record<string, unknown>;
 
@@ -37,11 +38,12 @@ async function orderWithJob() {
   if (error) throw error;
   return id;
 }
-const claim = async () => {
-  const { data, error } = await printer.rpc('claim_print_job', { p_agent_id: 'test-agent' });
+const claimAs = async (agent: string) => {
+  const { data, error } = await printer.rpc('claim_print_job', { p_agent_id: agent });
   if (error) throw error;
   return data as { id: string; type: string; payload: Payload; attempts: number }[];
 };
+const claim = () => claimAs('test-agent');
 
 describe('fiş kuyruğu', () => {
   it('ajan işi sahiplenir, ikinci sahiplenme boş döner, başarıyla kapatır', async () => {
@@ -58,13 +60,18 @@ describe('fiş kuyruğu', () => {
     await orderWithJob();
     let [job] = await claim();
     for (let i = 1; i <= 6; i++) {
+      // Pencere, çağrıdan hemen önceki DB saatine göre ölçülür. "Kalan süre" (next_attempt_at - now())
+      // ölçmek API gecikmesine bağlıdır ve yavaş turlarda testi haksız yere kırar.
+      const [t] = await sql<{ t0: string }>(`select now()::text as t0`);
       await printer.rpc('complete_print_job', { p_job_id: job!.id, p_ok: false, p_error: `err ${i}` });
       const [r] = await sql<{ status: string; attempts: number; wait: number }>(`
-        select status, attempts, extract(epoch from next_attempt_at - now())::int as wait
+        select status, attempts,
+               extract(epoch from next_attempt_at - '${t!.t0}'::timestamptz)::int as wait
         from public.print_jobs where id = '${job!.id}'`);
       if (i < 6) {
         expect(r).toMatchObject({ status: 'pending', attempts: i });
-        expect(r!.wait).toBeGreaterThan([5, 15, 30, 60, 120][i - 1]! - 3);
+        expect(r!.wait).toBeGreaterThanOrEqual(LADDER[i - 1]!);
+        expect(r!.wait).toBeLessThan(LADDER[i - 1]! + 9);   // komşu basamak en az 10 sn uzakta
         await sql(`update public.print_jobs set next_attempt_at = now() where id = '${job!.id}'`);
         [job] = await claim();
       } else {
@@ -80,6 +87,31 @@ describe('fiş kuyruğu', () => {
     const [job] = await claim();
     await sql(`update public.print_jobs set claimed_at = now() - interval '61 seconds' where id = '${job!.id}'`);
     expect((await claim())[0]?.id).toBe(job!.id);
+  });
+
+  it('sahiplenilmemiş (pending) iş kapatılamaz (R49)', async () => {
+    await orderWithJob();
+    const [job] = await sql<{ id: string; status: string }>(
+      `select id, status from public.print_jobs where ${TEST_JOBS} order by created_at limit 1`);
+    expect(job!.status).toBe('pending');
+    expect((await printer.rpc('complete_print_job', { p_job_id: job!.id, p_ok: true })).error?.message)
+      .toBe('job_not_printing');
+    const [after] = await sql<{ status: string; printed_at: string | null }>(
+      `select status, printed_at from public.print_jobs where id = '${job!.id}'`);
+    expect(after).toMatchObject({ status: 'pending', printed_at: null });
+  });
+
+  it('takılı iş yeni ajana geçtikten sonra eski ajan işi kapatamaz (R49)', async () => {
+    await orderWithJob();
+    const [jobA] = await claimAs('test-agent-a');
+    await sql(`update public.print_jobs set claimed_at = now() - interval '61 seconds' where id = '${jobA!.id}'`);
+    expect((await claimAs('test-agent-b'))[0]?.id).toBe(jobA!.id);
+    expect((await printer.rpc('complete_print_job',
+      { p_job_id: jobA!.id, p_ok: false, p_error: 'gecikmiş çağrı', p_agent_id: 'test-agent-a' })).error?.message)
+      .toBe('job_not_printing');
+    const [row] = await sql<{ status: string; claimed_by: string; attempts: number }>(
+      `select status, claimed_by, attempts from public.print_jobs where id = '${jobA!.id}'`);
+    expect(row).toMatchObject({ status: 'printing', claimed_by: 'test-agent-b', attempts: 0 });
   });
 
   it('yalnız printer sahiplenir; tekrar baskı orijinal fişi birebir yineler; test fişi yalnız admin', async () => {
