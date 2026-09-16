@@ -176,7 +176,10 @@ async function seedScene(): Promise<Scene> {
 
   await sql(`
     insert into public.dining_tables (name, sort) values
-      ('Test-Tisch-3', 902), ('Test-Tisch-4', 903), ('Test-Tisch-5', 904)
+      ('Test-Tisch-3', 902), ('Test-Tisch-4', 903), ('Test-Tisch-5', 904),
+      -- 3. tur: KDS kart başlığının stres testi. R3 düzeltmesi süre kutusunu masa adının
+      -- KARŞISINA aldı; uzun bir ad süre kutusunu alt satıra itmeli, kırpmamalı.
+      ('Test-Tisch-Terrasse-Hinten-14', 905)
     on conflict (name) do update set is_active = true;`);
 
   const tableRows = await sql<{ name: string; id: string }>(
@@ -257,11 +260,15 @@ async function seedScene(): Promise<Scene> {
   ]);
   const warnId = await submit(tableIds['Test-Tisch-4']!, [buildItem(menu.get('89')!, { quantity: 1, removed: 4 })]);
   await submit(tableIds['Test-Tisch-5']!, [buildItem(menu.get('21')!, { quantity: 4 })], 'schnell bitte');
+  const longNameId = await submit(tableIds['Test-Tisch-Terrasse-Hinten-14']!, [
+    buildItem(menu.get('21')!, { quantity: 1 }),
+  ]);
 
   // Süre tonlarını görebilmek için zaman damgaları geriye alınır (service_role; yalnız test verisi).
   await sql(`
     update public.orders set created_at = now() - interval '38 minutes' where id = '${lateId}';
     update public.orders set created_at = now() - interval '14 minutes' where id = '${warnId}';
+    update public.orders set created_at = now() - interval '18 minutes' where id = '${longNameId}';
     update public.table_sessions ts set opened_at = now() - interval '52 minutes'
       from public.dining_tables t where t.id = ts.table_id and t.name = 'Test-Tisch';
     update public.table_sessions ts set opened_at = now() - interval '41 minutes'
@@ -293,7 +300,8 @@ async function teardownScene(scene: Scene | null): Promise<void> {
   }
   await cleanupFixtureOrders();
   await sql(`
-    delete from public.dining_tables where name in ('Test-Tisch-3', 'Test-Tisch-4', 'Test-Tisch-5');
+    delete from public.dining_tables
+      where name in ('Test-Tisch-3', 'Test-Tisch-4', 'Test-Tisch-5', 'Test-Tisch-Terrasse-Hinten-14');
     update public.profiles set locale = 'tr' where username like 'test-%' and locale <> 'tr';`);
 }
 
@@ -479,18 +487,48 @@ test('M4 kapısı: KDS dolu mutfak ekranı — görüntüler + WCAG AA', async (
     // 1 — dolu mutfak: birden çok kart, geç kalmış kart (kırmızı kart tonu), HAZIR sütunu
     await expect(page.getByRole('button', { name: /^HAZIR$|^FERTIG$/ }).first()).toBeVisible();
     await expect(page.locator('section > ul > li[data-tone="late"]')).toHaveCount(1);
-    await expect(page.locator('section > ul > li[data-tone="warn"]')).toHaveCount(1);
+    await expect(page.locator('section > ul > li[data-tone="warn"]')).toHaveCount(2);
     await page.screenshot({ path: SHOT('m4-kds-1280.png') });
     await scan(page, 'm4-kitchen');
-    // R2: renkli kart zeminleri kalabalık ekranda gürültü yapıyor mu — kaç kart renkli?
+
+    /*
+     * 3. tur — R3 iddiasının GERÇEK tarayıcı ölçümü (hesap değil):
+     *   "kart 651 → ~587 px, HAZIR düğmesi katlamanın ~58 px üstünde, ilk satırdaki 2 kart tam
+     *    görünüyor". Ayrıca renkli zemin dağılımı (gürültü sorusu) ve uzun masa adının kart
+     *   başlığında sarma/kırpma yapıp yapmadığı.
+     */
     const cardBoxes = await boxes(page, 'section > ul > li[data-tone]');
+    const lateCard = page.locator('section > ul > li[data-tone="late"]');
+    const lateReady = await lateCard.getByRole('button', { name: /^HAZIR$|^FERTIG$/ }).boundingBox();
+    const lateBox = (await boxes(page, 'section > ul > li[data-tone="late"]'))[0];
     logMetrics('KDS kartları', {
       aktifKart: cardBoxes.length,
       ok: await page.locator('section > ul > li[data-tone="ok"]').count(),
       warn: await page.locator('section > ul > li[data-tone="warn"]').count(),
       late: await page.locator('section > ul > li[data-tone="late"]').count(),
-      ilkKartYüksekliği: cardBoxes[0]?.height ?? null,
+      geçKartYüksekliği: lateBox?.height ?? null,
+      kartYükseklikleri: cardBoxes.map((b) => b.height),
       tamGörünenKart: fullyVisible(cardBoxes, 800),
+      hazırDüğmesiAltKenarı: lateReady ? Math.round(lateReady.y + lateReady.height) : null,
+      katlamayaUzaklık: lateReady ? 800 - Math.round(lateReady.y + lateReady.height) : null,
+    });
+
+    // Uzun masa adı: başlık kırpılıyor mu, süre kutusu alt satıra mı iniyor, kart büyüyor mu?
+    const longCard = page.locator('section > ul > li[data-tone]').filter({ hasText: 'TERRASSE' });
+    const longBox = (await longCard.boundingBox()) ?? null;
+    const longTitle = await longCard.locator('span[lang="de"]').first().boundingBox();
+    const longElapsed = await longCard.locator('[data-testid="kds-elapsed"]').boundingBox();
+    // Karşılaştırma kısa adlı kartla: `warn` tonlu ilk kart UZUN adlı kartın kendisi
+    // (18 dk, sırada 2.) — referans olarak geç kart (TEST-TISCH-3) alınır.
+    const shortTitle = await lateCard.locator('span[lang="de"]').first().boundingBox();
+    logMetrics('uzun masa adı', {
+      ad: await longCard.locator('span[lang="de"]').first().innerText(),
+      kartYüksekliği: longBox ? Math.round(longBox.height) : null,
+      başlıkYüksekliği: longTitle ? Math.round(longTitle.height) : null,
+      kısaBaşlıkYüksekliği: shortTitle ? Math.round(shortTitle.height) : null,
+      süreKutusuAltSatırda:
+        longTitle && longElapsed ? longElapsed.y > longTitle.y + longTitle.height - 4 : null,
+      başlıkTaşması: longTitle && longBox ? Math.round(longBox.x + longBox.width - (longTitle.x + longTitle.width)) : null,
     });
 
     // 2 — tükendi çekmecesi (dolu)
