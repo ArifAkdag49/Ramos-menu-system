@@ -11,7 +11,7 @@ const job = (id: string, table = 'Tisch 12'): Job => ({ id, type: 'order', attem
 function fakeApi(jobs: Job[]) {
   const api = {
     claim: vi.fn(async () => jobs.shift() ?? null),
-    complete: vi.fn(async () => {}), heartbeat: vi.fn(async () => {}),
+    complete: vi.fn<(id: string, ok: boolean, error?: string) => Promise<void>>(async () => {}), heartbeat: vi.fn(async () => {}),
     settings: vi.fn(async () => settings), onJobs: vi.fn(), onSettings: vi.fn(), close: vi.fn(async () => {}),
   } satisfies AgentApi;
   return api;
@@ -79,5 +79,160 @@ describe('Agent', () => {
     await agent.drain();
     await agent.stop();
     expect(seen).toEqual(['10.0.0.9']);
+  });
+});
+
+// ---------- Review fix round 1 ----------
+
+const freshLog = () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() });
+
+describe('Agent — C1: fiziksel olarak basılan bir bilet asla ikinci kez basılmaz', () => {
+  it('complete(true) geçici olarak başarısız olursa iş failed/pending olarak KAPATILMAZ; başarana kadar yeniden denenir', async () => {
+    const api = fakeApi([job('a')]);
+    let calls = 0;
+    api.complete = vi.fn(async (_id: string, ok: boolean) => {
+      calls += 1;
+      if (calls < 3) throw new Error('ağ kesintisi');
+      expect(ok).toBe(true);
+    });
+    const printer = { status: vi.fn(async () => okState), print: vi.fn(async () => ({ before: okState, after: okState })) };
+    const agent = new Agent(api, { printer, log: freshLog() }, { completeRetries: 5, completeRetryBaseMs: 0 });
+    await agent.checkPrinter();
+    expect(await agent.drain()).toBe(1); // bayt gitti — bu iş "basıldı" sayılır
+    expect(api.complete).toHaveBeenCalledTimes(3);
+    for (const call of api.complete.mock.calls) {
+      expect(call[1]).toBe(true); // ASLA complete(id, false, ...) ile kapatılmadı
+    }
+  });
+
+  it('complete(true) tüm denemelerde başarısız olsa bile iş false ile kapatılmaz — printing kalır, 60 sn reclaim devralır', async () => {
+    const api = fakeApi([job('a')]);
+    api.complete = vi.fn(async () => { throw new Error('kalıcı hata'); });
+    const testLog = freshLog();
+    const printer = { status: vi.fn(async () => okState), print: vi.fn(async () => ({ before: okState, after: okState })) };
+    const agent = new Agent(api, { printer, log: testLog }, { completeRetries: 2, completeRetryBaseMs: 0 });
+    await agent.checkPrinter();
+    expect(await agent.drain()).toBe(1);
+    expect(api.complete).toHaveBeenCalledTimes(3); // ilk deneme + 2 yeniden deneme
+    for (const call of api.complete.mock.calls) expect(call[1]).toBe(true);
+    expect(testLog.error).toHaveBeenCalled();
+  });
+});
+
+describe('Agent — C2: beklenmeyen hatalar süreci çökertmez', () => {
+  it('claim_print_job reddederse drain() reddetmez (unhandled rejection oluşmaz)', async () => {
+    const api = fakeApi([]);
+    api.claim = vi.fn(async () => { throw new Error('DB 500'); });
+    const testLog = freshLog();
+    const printer = { status: vi.fn(async () => okState), print: vi.fn() };
+    const agent = new Agent(api, { printer, log: testLog });
+    await agent.checkPrinter();
+    await expect(agent.drain()).resolves.toBe(0);
+    expect(testLog.error).toHaveBeenCalled();
+  });
+
+  it('drain() içindeki beklenmeyen (Error olmayan) bir fırlatma da dışarı sızmaz', async () => {
+    const api = fakeApi([job('a')]);
+    api.claim = vi.fn(async () => { throw new Error('beklenmeyen (dize gövdeli) hata'); });
+    const testLog = freshLog();
+    const printer = { status: vi.fn(async () => okState), print: vi.fn() };
+    const agent = new Agent(api, { printer, log: testLog });
+    await agent.checkPrinter();
+    await expect(agent.drain()).resolves.toBe(0);
+  });
+});
+
+describe('Agent — I1: boşta yazıcı kontrolü baskı sürerken atlanır (tek TCP oturumu)', () => {
+  it('draining sırasında checkPrinterIfIdle ikinci bir durum sorgusu açmaz, boşta kalınca açar', async () => {
+    const api = fakeApi([job('a')]);
+    let resolvePrint: (() => void) | undefined;
+    const printer = {
+      status: vi.fn(async () => okState),
+      print: vi.fn(
+        () =>
+          new Promise<{ before: typeof okState; after: typeof okState }>((resolve) => {
+            resolvePrint = () => resolve({ before: okState, after: okState });
+          }),
+      ),
+    };
+    const agent = new Agent(api, { printer, log: freshLog() });
+    await agent.checkPrinter();
+    const statusCallsAfterInitial = printer.status.mock.calls.length;
+
+    const drainPromise = agent.drain();
+    await new Promise((r) => setTimeout(r, 0)); // drain() print() içine girsin (draining=true)
+    await agent.checkPrinterIfIdle();
+    expect(printer.status.mock.calls.length).toBe(statusCallsAfterInitial); // atlandı
+
+    resolvePrint!();
+    await drainPromise;
+    await agent.checkPrinterIfIdle();
+    expect(printer.status.mock.calls.length).toBe(statusCallsAfterInitial + 1); // artık boşta, çalıştı
+  });
+});
+
+describe('Agent — I2: stop() sürmekte olan bir baskıyı bekler', () => {
+  it('drain() print() içindeyken stop() onu bekler, sonra api.close() çağrılır', async () => {
+    const api = fakeApi([job('a')]);
+    let resolvePrint: (() => void) | undefined;
+    const printer = {
+      status: vi.fn(async () => okState),
+      print: vi.fn(
+        () =>
+          new Promise<{ before: typeof okState; after: typeof okState }>((resolve) => {
+            resolvePrint = () => resolve({ before: okState, after: okState });
+          }),
+      ),
+    };
+    const agent = new Agent(api, { printer, log: freshLog() }, { stopGraceMs: 2000 });
+    await agent.checkPrinter();
+    const drainPromise = agent.drain();
+    await new Promise((r) => setTimeout(r, 0));
+
+    let stopped = false;
+    const stopPromise = agent.stop().then(() => { stopped = true; });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(stopped).toBe(false);
+    expect(api.close).not.toHaveBeenCalled();
+
+    resolvePrint!();
+    await drainPromise;
+    await stopPromise;
+    expect(stopped).toBe(true);
+    expect(api.close).toHaveBeenCalled();
+  });
+});
+
+describe('Agent — I4: art arda claim hatalarında geri çekilme', () => {
+  it('claim art arda başarısız olduğunda backoff süresi dolmadan hemen tekrar denenmez', async () => {
+    const api = fakeApi([]);
+    api.claim = vi.fn(async () => { throw new Error('DB 500'); });
+    const printer = { status: vi.fn(async () => okState), print: vi.fn() };
+    const agent = new Agent(api, { printer, log: freshLog() }, { claimRetryBaseMs: 10_000 });
+    await agent.checkPrinter();
+    await agent.drain(); // 1. deneme başarısız olur, geri çekilme kurulur
+    expect(api.claim).toHaveBeenCalledTimes(1);
+    await agent.drain(); // backoff (10 sn) dolmadan hemen tekrar tetiklenir
+    expect(api.claim).toHaveBeenCalledTimes(1); // tekrar denenmedi
+  });
+});
+
+describe('Agent — M4: host kaybolunca eski durum heartbeat üzerinden taşınmaz', () => {
+  it('ayarlar host\'u boşaltırsa state ve hata birlikte güncellenir', async () => {
+    const api = fakeApi([]);
+    const printer = { status: vi.fn(async () => okState), print: vi.fn() };
+    const agent = new Agent(api, { printer, log: freshLog() });
+    await agent.start();
+    await new Promise((r) => setTimeout(r, 0));
+    await agent.sendHeartbeat();
+    expect(api.heartbeat).toHaveBeenLastCalledWith(expect.objectContaining({ state: expect.objectContaining({ known: true }) }));
+
+    const cb = api.onSettings.mock.calls[0]![0] as (s: typeof settings) => void;
+    cb({ ...settings, host: '' });
+    await new Promise((r) => setTimeout(r, 0));
+    await agent.sendHeartbeat();
+    expect(api.heartbeat).toHaveBeenLastCalledWith(expect.objectContaining({ state: null, error: 'printer_host_missing' }));
+
+    await agent.stop();
   });
 });

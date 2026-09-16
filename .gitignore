@@ -24,6 +24,8 @@ supabase/.branches/
 # yazdırma ajanı
 apps/print-agent/logs/
 *.log
+# M2 (Görev 19 review): decoded bilet içeriği (masa adları, sipariş kalemleri) taşır — asla commit edilmez.
+fake-printer-out/
 
 # büyük kaynak dosyalar (yerelde durur, repoya girmez)
 docs/menu/source/*.pdf

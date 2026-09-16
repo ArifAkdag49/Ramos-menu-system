@@ -1,11 +1,12 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { linesToText, renderTicket, type TicketPayload, type Database } from '@ramos/shared';
 import { createClient } from '@supabase/supabase-js';
 import CodepageEncoder, { type Codepage } from '@point-of-sale/codepage-encoder';
-import { Agent, type PrinterPort } from './agent';
+import { Agent, type AgentApi, type PrinterPort } from './agent';
 import { AGENT_VERSION, createSupabaseApi } from './api';
-import { loadConfig } from './config';
+import { loadConfig, type AgentEnv } from './config';
 import { startFakePrinter } from './fake-printer';
 import { encodeLines } from './escpos';
 import { createLogger, type Logger } from './log';
@@ -17,12 +18,25 @@ const arg = (name: string): string | undefined => {
   return i >= 0 ? rest[i + 1] : undefined;
 };
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const tcpPrinter: PrinterPort = {
   status: (s) => queryStatus(s.host, s.port),
   print: (s, bytes) => printWithChecks(s.host, s.port, bytes),
 };
 
+// M8: `status`/`test-print`/`fake-printer` ajan sürecinden BAĞIMSIZ kendi TCP bağlantısını
+// açar (I1 ile aynı kısıt — spec §10.3.3/§6: yazıcı aynı anda tek oturum kabul eder). `run`
+// hâlde bir bilet basılırken bu komutlardan biri gerçek yazıcıya (XP-Q80A) bağlanmaya
+// çalışırsa ikinci bağlantı reddedilebilir. Yalnız kurulum/tanı içindirler — Görev 20'de
+// ajan çalışırken bunları elle çalıştırmamak gerektiği unutulmamalı (bkz. task-19-report.md).
+// Bu diagnostik komutlar tek-örnek kilidine girmez; ajanı durdurmadan bilinçli kullanılmalı.
+
 // ---------- tek örnek çalıştırma kilidi ----------
+
+interface LockInfo { pid: number; startTime: number | null }
 
 function isRunning(pid: number): boolean {
   try {
@@ -33,17 +47,72 @@ function isRunning(pid: number): boolean {
   }
 }
 
-/** Ajan aynı PC'de yalnız tek örnek çalışsın diye bir PID kilit dosyası tutar. */
-function acquireLock(dir: string): () => void {
+// I3(c): yalnız PID varlığı güvenilir değil — temiz olmayan bir kapanışın ardından (özellikle
+// reboot sonrası) Windows aynı PID'i tamamen başka bir sürece verebilir. Süreç başlangıç
+// zamanını da karşılaştırarak "aynı ajan mı, yoksa PID yeniden mi kullanılmış" ayrımını
+// yaparız; sorgu başarısız olursa (ör. Windows dışı platform, powershell yok) `null` döner ve
+// eski (yalnız PID) davranışına düşülür — asla başlatmayı riskli biçimde kolaylaştırmaz.
+function processStartTime(pid: number): number | null {
+  if (process.platform !== 'win32') return null;
+  try {
+    const out = execFileSync(
+      'powershell',
+      ['-NoProfile', '-NonInteractive', '-Command', `(Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToFileTimeUtc()`],
+      { encoding: 'utf8', timeout: 3000 },
+    ).trim();
+    return out ? Number(out) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readLockInfo(lockPath: string): LockInfo | null {
+  try {
+    const raw = JSON.parse(fs.readFileSync(lockPath, 'utf8')) as Partial<LockInfo>;
+    if (typeof raw.pid !== 'number') return null;
+    return { pid: raw.pid, startTime: typeof raw.startTime === 'number' ? raw.startTime : null };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ajan aynı PC'de yalnız tek örnek çalışsın diye bir PID kilit dosyası tutar.
+ * I3: (a) çağıran reddi loglayabilsin diye `log` parametre olarak alınır — Zamanlanmış
+ * Görev `-Hidden` çalıştığından yalnız stderr'e yazmak görünmez olurdu; (b) kilit
+ * `fs.openSync(path, 'wx')` ile atomik oluşturulur (`existsSync` + `writeFileSync` arasındaki
+ * yarışı önler); (c) PID'in yanına başlangıç zamanı da yazılır, reboot sonrası PID yeniden
+ * kullanımını ayırt eder — yoksa Zamanlanmış Görev sessizce 999 kez başarısız olur, hiçbir
+ * bilet basılmaz ve nedeni hiçbir yerde görünmez.
+ */
+function acquireLock(dir: string, log: Logger): () => void {
   fs.mkdirSync(dir, { recursive: true });
   const lockPath = path.join(dir, 'agent.lock');
-  if (fs.existsSync(lockPath)) {
-    const existing = Number(fs.readFileSync(lockPath, 'utf8').trim());
-    if (existing && isRunning(existing)) {
-      throw new Error(`Ajan zaten çalışıyor (pid ${existing}). Kilit dosyası: ${lockPath}`);
+  const existing = readLockInfo(lockPath);
+  if (existing && isRunning(existing.pid)) {
+    const currentStart = processStartTime(existing.pid);
+    const samePid = existing.startTime === null || currentStart === null || existing.startTime === currentStart;
+    if (samePid) {
+      throw new Error(`Ajan zaten çalışıyor (pid ${existing.pid}). Kilit dosyası: ${lockPath}`);
+    }
+    log.warn('kilit dosyasındaki pid yeniden kullanılmış görünüyor (reboot sonrası) — kilit devralınıyor', { pid: existing.pid });
+  }
+  if (existing) {
+    try {
+      fs.unlinkSync(lockPath);
+    } catch {
+      // Kilit dosyası bu sırada başka bir sebeple silinmiş olabilir.
     }
   }
-  fs.writeFileSync(lockPath, String(process.pid));
+  let fd: number;
+  try {
+    fd = fs.openSync(lockPath, 'wx'); // I3(b): atomik oluşturma — var olan dosyanın üstüne race'siz yazılmaz
+  } catch (e) {
+    throw new Error(`Ajan kilidi alınamadı: ${lockPath} (${e instanceof Error ? e.message : String(e)})`, { cause: e });
+  }
+  const info: LockInfo = { pid: process.pid, startTime: processStartTime(process.pid) };
+  fs.writeSync(fd, JSON.stringify(info));
+  fs.closeSync(fd);
   return () => {
     try {
       fs.unlinkSync(lockPath);
@@ -55,17 +124,42 @@ function acquireLock(dir: string): () => void {
 
 // ---------- run ----------
 
+// I4: restoran PC'si router'dan önce açılabilir — açılışta Supabase'e ulaşılamazsa hemen
+// exit(1) yerine üstel geri çekilmeyle (60 sn'de tavanlı) sınırsız yeniden dener; kurtarma
+// Zamanlanmış Görev'in kendi yeniden başlatma sayacına (999) bağımlı kalmaz.
+const STARTUP_BACKOFF_MS = [1000, 2000, 5000, 10000, 30000, 60000];
+
+async function startAgentWithRetry(cfg: AgentEnv, log: Logger): Promise<{ api: AgentApi; agent: Agent }> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const api = await createSupabaseApi(cfg, log);
+      const agent = new Agent(api, { printer: tcpPrinter, log });
+      await agent.start();
+      return { api, agent };
+    } catch (e) {
+      const wait = STARTUP_BACKOFF_MS[Math.min(attempt, STARTUP_BACKOFF_MS.length - 1)]!;
+      log.warn('ajan başlatılamadı, yeniden denenecek', { attempt, waitMs: wait, e: e instanceof Error ? e.message : String(e) });
+      await sleep(wait);
+    }
+  }
+}
+
 async function cmdRun(): Promise<void> {
   const cfg = loadConfig();
-  const releaseLock = acquireLock(cfg.LOG_DIR);
+  // I3(a): kilit denemesinden ÖNCE logger kurulur — kilit reddi dosya log'una da yazılsın.
   const log = createLogger(cfg.LOG_DIR);
+  let releaseLock: () => void;
+  try {
+    releaseLock = acquireLock(cfg.LOG_DIR, log);
+  } catch (e) {
+    log.error('başlatılamadı: kilit alınamadı', { e: e instanceof Error ? e.message : String(e) });
+    throw e;
+  }
   try {
     log.info('ajan başlıyor', { version: AGENT_VERSION, agentId: cfg.AGENT_ID });
-    const api = await createSupabaseApi(cfg, log);
-    const agent = new Agent(api, { printer: tcpPrinter, log });
-    await agent.start();
-    const settings = await api.settings();
-    log.info('ajan çalışıyor', { host: settings.host, port: settings.port });
+    const { api, agent } = await startAgentWithRetry(cfg, log);
+    const settings = await api.settings().catch(() => null);
+    log.info('ajan çalışıyor', { host: settings?.host ?? null, port: settings?.port ?? null });
 
     let stopping = false;
     const shutdown = (signal: string): void => {
@@ -90,15 +184,18 @@ async function cmdRun(): Promise<void> {
 
 // ---------- status ----------
 
+const DEFAULT_PRINTER_PORT = 9100; // spec: ajan yalnızca TCP 9100 kullanır
+
 async function resolveHostPort(log: Logger): Promise<{ host: string; port: number }> {
   const hostArg = arg('host');
   const portArg = arg('port');
-  if (hostArg && portArg) return { host: hostArg, port: Number(portArg) };
+  // M7: yalnız `--host` verilmişse bile DB'ye gitmeye gerek yok — port zaten standart 9100.
+  if (hostArg) return { host: hostArg, port: portArg ? Number(portArg) : DEFAULT_PRINTER_PORT };
   const cfg = loadConfig();
   const api = await createSupabaseApi(cfg, log);
   try {
     const s = await api.settings();
-    return { host: hostArg ?? s.host, port: portArg ? Number(portArg) : s.port };
+    return { host: s.host, port: portArg ? Number(portArg) : s.port };
   } finally {
     await api.close();
   }
@@ -199,16 +296,19 @@ async function cmdDryRun(): Promise<void> {
   const { error: signInError } = await sb.auth.signInWithPassword({ email: cfg.AGENT_EMAIL, password: cfg.AGENT_PASSWORD });
   if (signInError) throw new Error(`Ajan girişi başarısız: ${signInError.message}`);
   try {
-    const { data, error } = await sb
-      .from('print_jobs')
-      .select('id, type, status, payload, created_at')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    // M5: önizleme, gerçek baskıyla aynı `transliterate` ayarını kullanmazsa ekranda görünen
+    // ile basılan bilet farklılaşabilir (ör. Türkçe karakterler önizlemede görünür, fişte
+    // dönüştürülür) — bu yüzden `settings.printer_transliterate` de okunur.
+    const [{ data: settingsRow, error: settingsError }, { data, error }] = await Promise.all([
+      sb.from('settings').select('printer_transliterate').eq('id', 1).single(),
+      sb.from('print_jobs').select('id, type, status, payload, created_at').order('created_at', { ascending: false }).limit(limit),
+    ]);
+    if (settingsError) throw new Error(`settings: ${settingsError.message}`);
     if (error) throw new Error(`print_jobs: ${error.message}`);
 
     for (const row of data ?? []) {
       console.log(`--- ${row.id} · ${row.type} · ${row.status} · ${row.created_at} ---`);
-      console.log(linesToText(renderTicket(row.payload as unknown as TicketPayload)));
+      console.log(linesToText(renderTicket(row.payload as unknown as TicketPayload, { transliterate: settingsRow.printer_transliterate })));
       console.log('');
     }
     if (!data || data.length === 0) console.log('Kuyrukta iş yok.');
