@@ -106,3 +106,18 @@ describe('TablesPage sırası (O1)', () => {
     expect(tones).toEqual(['ready', 'open', 'free']);
   });
 });
+
+/**
+ * O6 (M3/M4 tasarım kapısı): "Hazır" rozeti `animate-pulse` ile öğenin OPAKLIĞINI gezdiriyordu;
+ * düşük noktada altın metin kendi tintiyle birlikte sönüp kontrastı 2,4:1'e indiriyordu (axe bu
+ * düğümde `color-contrast` raporladı). `pulse-ring` yalnız dış halkayı hareket ettirir.
+ */
+describe('TablesPage — "Hazır" nabzı (O6)', () => {
+  it('rozet opaklık yerine halka nabzı kullanır', () => {
+    renderPage();
+    const card = screen.getByText('Masa 3').closest('[data-tone]') as HTMLElement;
+    const badge = within(card).getByText('Hazır');
+    expect(badge.className).toContain('pulse-ring');
+    expect(badge.className).not.toContain('animate-pulse');
+  });
+});

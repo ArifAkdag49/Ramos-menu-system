@@ -98,7 +98,12 @@ export function TablesPage() {
                   </>
                 ) : null}
                 {tone === 'ready' ? (
-                  <Badge tone="ready" className="mt-1 animate-pulse">
+                  // O6 (tasarım kapısı): `animate-pulse` ÖĞENİN opaklığını 1 ↔ 0,5 arasında
+                  // gezdiriyordu; düşük noktada altın metin kendi tintiyle birlikte sönüp
+                  // kontrastı 2,4:1'e indiriyordu (axe `m3-tables`: `color-contrast`).
+                  // `tokens.css`'teki `pulse-ring` yalnız dış halkayı (`box-shadow`) oynatır —
+                  // metin, zemin ve kenarlık renkleri her karede aynı kalır (6,1:1).
+                  <Badge tone="ready" className="mt-1 pulse-ring">
                     {t('status.ready')}
                   </Badge>
                 ) : null}

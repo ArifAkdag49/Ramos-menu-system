@@ -1,7 +1,8 @@
 /// <reference types="node" />
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { contrastRatio, readTokens } from '../../test/contrast';
+import { contrastRatio, overlay, readTokens } from '../../test/contrast';
+import { TONE_CLASS } from '../../ui/tone';
 
 /**
  * M3 tasarım kapısının (`.superpowers/sdd/2026-09-15-ramos-plan-2-giris-ve-garson/design-gate-m3-m4.md`)
@@ -43,6 +44,7 @@ const orderPage = code('src/features/waiter/OrderPage.tsx');
 const tableDetail = code('src/features/waiter/TableDetailPage.tsx');
 const itemLines = code('src/features/common/ItemLinesView.tsx');
 const stepper = code('src/ui/Stepper.tsx');
+const tablesPage = code('src/features/waiter/TablesPage.tsx');
 
 /**
  * K1 (KRİTİK): DE arayüzde "Hinzufügen"/"Auswählen" düğmesi satırı yiyordu; ürün adı ~10 karaktere
@@ -134,5 +136,45 @@ describe('O7 — jenerik öğede aria-label kalmadı', () => {
 
   it('kategori şeridinin rolü var', () => {
     expect(orderPage).toMatch(/role="group"[\s\S]{0,120}categoriesLabel|categoriesLabel[\s\S]{0,120}role="group"/);
+  });
+});
+
+/**
+ * O6: "Hazır" rozeti `animate-pulse` ile nabız atıyordu. Tailwind'in bu animasyonu ÖĞENİN
+ * opaklığını 1 ↔ 0,5 arasında gezdirir; düşük noktada hem altın metin hem kendi tinti sayfa
+ * zeminine karışıp kontrastı AA'nın çok altına indiriyordu (axe `m3-tables` ekranında tam bu
+ * düğümde `color-contrast` raporladı). `tokens.css`'teki `.pulse-ring` yalnız DIŞ halkayı
+ * (`box-shadow`) hareket ettirir: metin, zemin ve kenarlık renkleri hiç değişmez.
+ *
+ * Aşağıdaki sayılar elle yazılmadı — rozetin gerçek sınıf dizisi (`TONE_CLASS.ready`) ve
+ * `tokens.css` okunup WCAG 2.1 formülüyle hesaplanıyor.
+ */
+describe('O6 — "Hazır" nabzı kontrastı düşürmüyor', () => {
+  const base = token('bg');
+  const tint = overlay(token('gold'), base, 0.15);
+
+  it('rozet `animate-pulse` yerine `pulse-ring` kullanıyor', () => {
+    // Kural METİN taşıyan öğe için: yükleme iskeletindeki `animate-pulse` yerinde kalır (boş
+    // kutu, okunacak bir şey yok). Kontrastı bozan tek düğüm rozetti.
+    const badge = /<Badge tone="ready"[\s\S]{0,120}?>/.exec(tablesPage)?.[0] ?? '';
+    expect(badge).not.toBe('');
+    expect(badge).not.toMatch(/animate-pulse/);
+    expect(badge).toMatch(/pulse-ring/);
+  });
+
+  it('rozetin tonu değişmedi: altın metin kendi tinti üzerinde', () => {
+    expect(TONE_CLASS.ready).toBe('border-gold/40 bg-gold/15 text-gold');
+  });
+
+  it('nabzın hiçbir anında oran değişmez ve AA eşiğinin üstünde kalır', () => {
+    // `pulse-ring` renkleri sabit bırakır: tek bir oran var ve o da eşiğin üstünde.
+    expect(contrastRatio(token('gold'), tint)).toBeGreaterThanOrEqual(AA);
+  });
+
+  it('eski `animate-pulse` en sönük anında AA altına düşüyordu — regresyon nöbetçisi', () => {
+    // Öğenin tamamı %50 opaklıkta: metin de zemin de sayfa zeminine karışır.
+    const fadedText = overlay(token('gold'), base, 0.5);
+    const fadedTint = overlay(tint, base, 0.5);
+    expect(contrastRatio(fadedText, fadedTint)).toBeLessThan(AA);
   });
 });
