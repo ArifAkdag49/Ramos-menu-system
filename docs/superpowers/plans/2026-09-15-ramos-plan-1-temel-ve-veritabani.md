@@ -2112,7 +2112,7 @@ git commit -m "feat(db): 0004 sipariş yaşam döngüsü — iptal/STORNO, hazı
 
 **Ajan için not (Plan 3):** Ajan, kuyrukta iş varken yazıcıya ulaşamıyorsa (ya da kağıt bitmiş/kapak açıksa) **işi sahiplenmez**. Böylece deneme hakları harcanmaz ve sorun giderilince fiş kendiliğinden basılır. `complete_print_job(false)` yalnızca sahiplenmeden sonra ortaya çıkan hatalar içindir.
 
-- [ ] **Adım 1: Canlı ortam korumasını ekle**
+- [x] **Adım 1: Canlı ortam korumasını ekle**
 
 Tek bir Supabase projesi var; yayından sonra DB testleri mutfakta gerçek test fişi bastırır. `supabase/vitest.config.ts` içinde `test` bloğuna ekle:
 ```ts
@@ -2128,7 +2128,7 @@ if (process.env.DB_TESTS_ALLOWED !== '1') {
 ```
 `.env` dosyasına `DB_TESTS_ALLOWED=1`, `.env.example` dosyasına `DB_TESTS_ALLOWED=` ekle.
 
-- [ ] **Adım 2: Fiş kuyruğu testlerini yaz (kırmızı)**
+- [x] **Adım 2: Fiş kuyruğu testlerini yaz (kırmızı)**
 
 `supabase/tests/print.test.ts`:
 ```ts
@@ -2237,7 +2237,7 @@ describe('fiş kuyruğu', () => {
 });
 ```
 
-- [ ] **Adım 3: Realtime testlerini yaz (kırmızı)**
+- [x] **Adım 3: Realtime testlerini yaz (kırmızı)**
 
 `supabase/tests/realtime.test.ts`:
 ```ts
@@ -2303,7 +2303,7 @@ describe('Realtime broadcast', () => {
 ```
 Run: `npm run db:test -- print realtime` → Expected: FAIL (fonksiyonlar ve trigger'lar yok)
 
-- [ ] **Adım 4: Migration'ı yaz**
+- [x] **Adım 4: Migration'ı yaz**
 
 `supabase/migrations/0005_print_queue_realtime.sql`:
 ```sql
@@ -2496,7 +2496,7 @@ grant execute on all functions in schema public to authenticated, service_role;
 revoke all on all functions in schema internal from public, anon, authenticated;
 ```
 
-- [ ] **Adım 5: Uygula ve tüm DB testlerini çalıştır**
+- [x] **Adım 5: Uygula ve tüm DB testlerini çalıştır**
 
 Run: `npm run db:apply` → Expected: `→ 0005_print_queue_realtime.sql … ok`
 Run: `npm run db:test` → Expected: schema, rls, orders, lifecycle, print, realtime PASS
@@ -2507,7 +2507,7 @@ Realtime testi `TIMEOUT` verirse:
 3. `setAuth()` çağrısının yapıldığını kontrol et.
 4. Hâlâ çözülmediyse `supabase` skill'indeki "Broadcast from Database" bölümünü uygula.
 
-- [ ] **Adım 6: Advisors + commit**
+- [x] **Adım 6: Advisors + commit**
 
 `get_advisors` (security + performance) temiz olmalı.
 ```bash
