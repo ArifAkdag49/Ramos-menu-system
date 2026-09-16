@@ -4,17 +4,12 @@ import { homeFor, useAuth } from '../lib/auth';
 
 /**
  * Henüz yazılmamış admin bölümleri için yer tutucu. Görev 21'de kabuk (`AdminLayout`) ve canlı
- * durum ekranı (`features/admin/DashboardPage`) gerçek hâllerini aldı; kalanlar Görev 22-26'da
- * doldurulacak. Başlık dışında bir şey göstermezler ve `AdminLayout`'un `<main>`'i içinde
+ * durum ekranı (`features/admin/DashboardPage`), Görev 22'de menü yönetimi
+ * (`features/admin/menu/*`) gerçek hâllerini aldı; kalanlar Görev 23-26'da doldurulacak. Başlık dışında bir şey göstermezler ve `AdminLayout`'un `<main>`'i içinde
  * çizildikleri için kendi sayfa kabuklarını kurmazlar.
  */
 function Screen({ title }: { title: string }) {
   return <h1 className="text-2xl font-semibold">{title}</h1>;
-}
-
-export function AdminMenuPage() {
-  const { t } = useTranslation();
-  return <Screen title={t('admin.menu.title')} />;
 }
 
 export function AdminStaffPage() {

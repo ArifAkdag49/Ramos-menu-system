@@ -2,6 +2,13 @@ import type { ReactNode } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { AdminLayout } from '../features/admin/AdminLayout';
 import { DashboardPage } from '../features/admin/DashboardPage';
+import { BulkAssignPage } from '../features/admin/menu/BulkAssignPage';
+import { BulkImagesPage } from '../features/admin/menu/BulkImagesPage';
+import { CategoriesPage } from '../features/admin/menu/CategoriesPage';
+import { IngredientsPage } from '../features/admin/menu/IngredientsPage';
+import { MenuLayout } from '../features/admin/menu/MenuLayout';
+import { OptionGroupsPage } from '../features/admin/menu/OptionGroupsPage';
+import { ProductsPage } from '../features/admin/menu/ProductsPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { KitchenPage } from '../features/kitchen/KitchenPage';
 import { OrderPage } from '../features/waiter/OrderPage';
@@ -12,7 +19,6 @@ import { TablesPage } from '../features/waiter/TablesPage';
 import { WaiterLayout } from '../features/waiter/WaiterLayout';
 import type { Role } from '../lib/auth';
 import {
-  AdminMenuPage,
   AdminOrdersPage,
   AdminReportsPage,
   AdminSettingsPage,
@@ -52,7 +58,18 @@ export const router = createBrowserRouter([
     element: gate(ADMIN, <AdminLayout />),
     children: [
       { index: true, element: <DashboardPage /> },
-      { path: 'menu/*', element: <AdminMenuPage /> },
+      {
+        path: 'menu',
+        element: <MenuLayout />,
+        children: [
+          { index: true, element: <ProductsPage /> },
+          { path: 'categories', element: <CategoriesPage /> },
+          { path: 'ingredients', element: <IngredientsPage /> },
+          { path: 'groups', element: <OptionGroupsPage /> },
+          { path: 'bulk', element: <BulkAssignPage /> },
+          { path: 'images', element: <BulkImagesPage /> },
+        ],
+      },
       { path: 'staff', element: <AdminStaffPage /> },
       { path: 'tables', element: <AdminTablesPage /> },
       { path: 'orders', element: <AdminOrdersPage /> },

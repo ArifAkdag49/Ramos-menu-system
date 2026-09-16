@@ -1,5 +1,11 @@
 export const qk = {
   menu: ['menu'] as const,
+  // Admin menü okumaları `menu` ön ekinin altındadır: Realtime `menu` olayı `qk.menu`'yu
+  // geçersiz kıldığında yönetim listeleri de aynı anda tazelenir, ikinci bir abonelik gerekmez.
+  adminCategories: ['menu', 'admin', 'categories'] as const,
+  adminProducts: ['menu', 'admin', 'products'] as const,
+  adminIngredients: ['menu', 'admin', 'ingredients'] as const,
+  adminGroups: ['menu', 'admin', 'groups'] as const,
   tables: ['tables'] as const,
   session: (tableId: string) => ['session', tableId] as const,
   sessionOrders: (sessionId: string) => ['orders', 'session', sessionId] as const,

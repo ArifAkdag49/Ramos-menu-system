@@ -194,7 +194,161 @@
     }
   },
   "admin": {
-    "menu": { "title": "Speisekarte" },
+    "menu": {
+      "title": "Menü",
+      "tabsLabel": "Menübereiche",
+      "tabs": {
+        "products": "Produkte",
+        "categories": "Kategorien",
+        "ingredients": "Zutaten",
+        "groups": "Auswahlgruppen",
+        "bulk": "Sammelzuordnung",
+        "images": "Sammel-Bilder"
+      },
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
+      "nameDe": "Name (Deutsch)",
+      "nameTr": "Name (Türkisch)",
+      "code": "Nummer",
+      "productName": "Produktname",
+      "description": "Beschreibung",
+      "category": "Kategorie",
+      "price": "Preis",
+      "basePrice": "Grundpreis",
+      "priceHint": "Beispiel: 7,50",
+      "isActive": "Im Verkauf",
+      "isActiveHint": "Aus: erscheint nicht im Kellner-Bildschirm",
+      "isSoldOut": "Ausverkauft",
+      "isSoldOutHint": "Heute nicht mehr da — bleibt in der Liste, ist aber nicht wählbar",
+      "inactive": "Nicht im Verkauf",
+      "saved": "Gespeichert",
+      "duplicated": "Kopie erstellt — Nummer vergeben und freischalten",
+      "archived": "Produkt archiviert",
+      "archive": "Archivieren",
+      "archiveConfirm": "Dieses Produkt aus dem Menü nehmen? Alte Bestellungen bleiben unverändert.",
+      "usedIn": "in {{count}} Produkten",
+      "sections": {
+        "basics": "Grunddaten",
+        "price": "Preis",
+        "image": "Bild",
+        "allergens": "Allergene",
+        "ingredients": "Zutaten",
+        "groups": "Auswahlgruppen",
+        "state": "Status",
+        "preview": "Bon-Vorschau",
+        "actions": "Weitere Aktionen"
+      },
+      "products": {
+        "new": "Neues Produkt",
+        "searchPlaceholder": "Nummer oder Name",
+        "allCategories": "Alle Kategorien",
+        "noImageFilter": "Ohne Bild ({{count}})",
+        "empty": "Kein Produkt passt zum Filter — Suche ändern"
+      },
+      "variants": {
+        "add": "Variante hinzufügen",
+        "default": "Standard",
+        "deactivate": "Diese Variante entfernen",
+        "reactivate": "Diese Variante zurückholen",
+        "inactiveNote": "Entfernt — wird nicht gelöscht, da sie in alten Bestellungen steht",
+        "basePriceHidden": "Der Preis kommt aus den Varianten; das einzelne Preisfeld ist aus."
+      },
+      "allergens": {
+        "none": "Keine Allergene gewählt"
+      },
+      "categories": {
+        "add": "Kategorie hinzufügen",
+        "isBeverage": "Getränk"
+      },
+      "ingredients": {
+        "add": "Zutat hinzufügen",
+        "noneChosen": "Noch keine Zutat gewählt",
+        "trMissing": "Türkischer Name fehlt — angezeigt wird dann der deutsche"
+      },
+      "groups": {
+        "add": "Gruppe hinzufügen",
+        "empty": "Noch keine Auswahlgruppe — Gruppe hinzufügen",
+        "adminLabel": "Interne Bezeichnung",
+        "adminLabelHint": "Nur hier sichtbar, nicht für den Kellner",
+        "min": "Mindestens",
+        "max": "Höchstens",
+        "format": "Schreibweise auf dem Bon",
+        "formats": {
+          "label_values": "Titel: Auswahl",
+          "values_only": "Nur Auswahl",
+          "plus_each": "Jede Zeile mit +"
+        },
+        "range": "min. {{min}}, max. {{max}}",
+        "options": "Optionen",
+        "noOptions": "Noch keine Option",
+        "priceDelta": "Aufpreis",
+        "isDefault": "Standard",
+        "isExclusive": "Allein stehend",
+        "deactivateOption": "Diese Option entfernen",
+        "reactivateOption": "Diese Option zurückholen",
+        "noneChosen": "Noch keine Gruppe gewählt"
+      },
+      "bulk": {
+        "step1": "1. Produkte wählen",
+        "step2": "2. Was wird zugeordnet",
+        "step3": "3. Anwenden",
+        "selectAll": "Alle wählen",
+        "clearAll": "Auswahl aufheben",
+        "selectedCount": "{{count}} Produkte gewählt",
+        "targetIngredients": "Zutat",
+        "targetGroup": "Auswahlgruppe",
+        "apply": "Anwenden",
+        "applyHint": "Bereits Verknüpftes wird übersprungen; erneutes Anwenden ist sicher.",
+        "unassign": "Verknüpfung lösen",
+        "done": "{{count}} Produkte aktualisiert"
+      },
+      "preview": {
+        "hint": "Der Bon wird immer auf Deutsch gedruckt.",
+        "variant": "Variante",
+        "without": "Weggelassene Zutat"
+      },
+      "image": {
+        "choose": "Bild wählen",
+        "replace": "Ersetzen",
+        "remove": "Entfernen",
+        "removeConfirm": "Bild entfernen? Es erscheint wieder der Platzhalter.",
+        "uploading": "Wird hochgeladen",
+        "dropHint": "Bild hierher ziehen",
+        "laterNote": "Das Bild kann auch später kommen",
+        "saveFirst": "Erst das Produkt speichern, dann das Bild hinzufügen.",
+        "error": {
+          "too_large": "Datei zu groß (höchstens 5 MB)",
+          "bad_type": "Dieser Dateityp geht nicht — JPG, PNG oder WebP nehmen",
+          "failed": "Nicht hochgeladen — Verbindung prüfen und erneut versuchen"
+        }
+      },
+      "images": {
+        "rule": "Benennen Sie die Datei nach der Produktnummer: 05.jpg, 71a.webp, M1.png",
+        "choose": "Dateien wählen",
+        "dropHint": "Bilder hierher ziehen",
+        "upload": "Hochladen",
+        "uploadingN": "{{done}} / {{total}} hochgeladen",
+        "progressLabel": "Fortschritt beim Hochladen",
+        "matched": "Zugeordnet ({{count}})",
+        "unmatched": "Ohne Zuordnung ({{count}})",
+        "unmatchedHint": "Diese Dateinamen passen zu keiner Produktnummer.",
+        "noMatch": "Keine Datei passt — Dateinamen zur Produktnummer machen",
+        "willReplace": "Wird überschrieben",
+        "summary": "{{done}} hochgeladen, {{failed}} fehlgeschlagen",
+        "rejected": "{{count}} Dateien übersprungen (Typ oder Größe passt nicht)"
+      },
+      "errors": {
+        "nameRequired": "Name darf nicht leer sein",
+        "categoryRequired": "Kategorie wählen",
+        "priceInvalid": "Preis falsch — Beispiel: 7,50",
+        "numberInvalid": "Zahl falsch",
+        "codeTaken": "Diese Nummer hat schon ein anderes Produkt",
+        "inUse": "Dieser Eintrag wird verwendet — statt löschen deaktivieren",
+        "min_gt_max": "„Mindestens“ darf nicht größer als „höchstens“ sein",
+        "min_gt_options": "„Mindestens“ darf nicht größer als die Anzahl der Optionen sein",
+        "max_gt_options": "„Höchstens“ darf nicht größer als die Anzahl der Optionen sein"
+      }
+    },
     "staff": { "title": "Personal" },
     "tables": { "title": "Tische" },
     "orders": { "title": "Bestellungen" },

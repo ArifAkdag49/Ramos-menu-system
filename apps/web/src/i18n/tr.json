@@ -194,7 +194,161 @@
     }
   },
   "admin": {
-    "menu": { "title": "Menü" },
+    "menu": {
+      "title": "Menü",
+      "tabsLabel": "Menü bölümleri",
+      "tabs": {
+        "products": "Ürünler",
+        "categories": "Kategoriler",
+        "ingredients": "Malzemeler",
+        "groups": "Seçim grupları",
+        "bulk": "Toplu atama",
+        "images": "Toplu görsel"
+      },
+      "moveUp": "Yukarı taşı",
+      "moveDown": "Aşağı taşı",
+      "nameDe": "Almanca ad",
+      "nameTr": "Türkçe ad",
+      "code": "Numara",
+      "productName": "Ürün adı",
+      "description": "Açıklama",
+      "category": "Kategori",
+      "price": "Fiyat",
+      "basePrice": "Taban fiyat",
+      "priceHint": "Örnek: 7,50",
+      "isActive": "Satışta",
+      "isActiveHint": "Kapalıyken garson ekranında görünmez",
+      "isSoldOut": "Tükendi",
+      "isSoldOutHint": "Bugünlük kalmadı — listede kalır ama seçilemez",
+      "inactive": "Satışta değil",
+      "saved": "Kaydedildi",
+      "duplicated": "Kopya oluşturuldu — numara ver ve satışa al",
+      "archived": "Ürün arşivlendi",
+      "archive": "Arşivle",
+      "archiveConfirm": "Bu ürün menüden kalksın mı? Geçmiş siparişler olduğu gibi kalır.",
+      "usedIn": "{{count}} üründe",
+      "sections": {
+        "basics": "Temel bilgiler",
+        "price": "Fiyat",
+        "image": "Görsel",
+        "allergens": "Alerjen",
+        "ingredients": "Malzemeler",
+        "groups": "Seçim grupları",
+        "state": "Durum",
+        "preview": "Fiş önizleme",
+        "actions": "Diğer işlemler"
+      },
+      "products": {
+        "new": "Yeni ürün",
+        "searchPlaceholder": "Numara ya da ad",
+        "allCategories": "Bütün kategoriler",
+        "noImageFilter": "Görseli yok ({{count}})",
+        "empty": "Bu süzgece uyan ürün yok — aramayı değiştir"
+      },
+      "variants": {
+        "add": "Seçenek ekle",
+        "default": "Varsayılan",
+        "deactivate": "Bu seçeneği kaldır",
+        "reactivate": "Bu seçeneği geri al",
+        "inactiveNote": "Kaldırıldı — eski siparişlerde göründüğü için silinmez",
+        "basePriceHidden": "Fiyat seçeneklerden gelir; tek fiyat alanı kapalı."
+      },
+      "allergens": {
+        "none": "Alerjen seçilmedi"
+      },
+      "categories": {
+        "add": "Kategori ekle",
+        "isBeverage": "İçecek"
+      },
+      "ingredients": {
+        "add": "Malzeme ekle",
+        "noneChosen": "Henüz malzeme seçilmedi",
+        "trMissing": "Türkçe adı boş — garson ekranında Almancası görünür"
+      },
+      "groups": {
+        "add": "Grup ekle",
+        "empty": "Henüz seçim grubu yok — Grup ekle",
+        "adminLabel": "Yönetim etiketi",
+        "adminLabelHint": "Yalnız bu ekranda görünür, garsona gitmez",
+        "min": "En az",
+        "max": "En çok",
+        "format": "Fişte yazılışı",
+        "formats": {
+          "label_values": "Başlık: seçimler",
+          "values_only": "Yalnız seçimler",
+          "plus_each": "Her satır + ile"
+        },
+        "range": "en az {{min}}, en çok {{max}}",
+        "options": "Seçenekler",
+        "noOptions": "Henüz seçenek yok",
+        "priceDelta": "Fiyat farkı",
+        "isDefault": "Varsayılan",
+        "isExclusive": "Tek başına",
+        "deactivateOption": "Bu seçeneği kaldır",
+        "reactivateOption": "Bu seçeneği geri al",
+        "noneChosen": "Henüz grup seçilmedi"
+      },
+      "bulk": {
+        "step1": "1. Ürünleri seç",
+        "step2": "2. Ne eklenecek",
+        "step3": "3. Uygula",
+        "selectAll": "Hepsini seç",
+        "clearAll": "Seçimi bırak",
+        "selectedCount": "{{count}} ürün seçili",
+        "targetIngredients": "Malzeme",
+        "targetGroup": "Seçim grubu",
+        "apply": "Uygula",
+        "applyHint": "Zaten bağlı olanlar atlanır; aynı işi tekrar yapmak güvenli.",
+        "unassign": "Bağlantıyı kaldır",
+        "done": "{{count}} ürün güncellendi"
+      },
+      "preview": {
+        "hint": "Fiş her zaman Almanca basılır.",
+        "variant": "Seçenek",
+        "without": "Çıkarılan malzeme"
+      },
+      "image": {
+        "choose": "Görsel seç",
+        "replace": "Değiştir",
+        "remove": "Kaldır",
+        "removeConfirm": "Görsel kaldırılsın mı? Yerine yer tutucu gelir.",
+        "uploading": "Yükleniyor",
+        "dropHint": "Görseli buraya bırak",
+        "laterNote": "Görsel sonra da eklenebilir",
+        "saveFirst": "Önce ürünü kaydet, sonra görsel ekle.",
+        "error": {
+          "too_large": "Dosya çok büyük (en fazla 5 MB)",
+          "bad_type": "Bu dosya türü desteklenmiyor — JPG, PNG ya da WebP kullan",
+          "failed": "Yüklenemedi — bağlantını kontrol et ve tekrar dene"
+        }
+      },
+      "images": {
+        "rule": "Dosya adını ürün numarası yapın: 05.jpg, 71a.webp, M1.png",
+        "choose": "Dosyaları seç",
+        "dropHint": "Görselleri buraya bırak",
+        "upload": "Yükle",
+        "uploadingN": "{{done}} / {{total}} yüklendi",
+        "progressLabel": "Yükleme ilerlemesi",
+        "matched": "Eşleşen ({{count}})",
+        "unmatched": "Eşleşmeyen ({{count}})",
+        "unmatchedHint": "Bu dosyaların adı hiçbir ürün numarasına uymuyor.",
+        "noMatch": "Hiçbir dosya eşleşmedi — adları ürün numarası yap",
+        "willReplace": "Üzerine yazılacak",
+        "summary": "{{done}} yüklendi, {{failed}} yüklenemedi",
+        "rejected": "{{count}} dosya atlandı (tür ya da boyut uygun değil)"
+      },
+      "errors": {
+        "nameRequired": "Ad boş olamaz",
+        "categoryRequired": "Kategori seç",
+        "priceInvalid": "Fiyat hatalı — örnek: 7,50",
+        "numberInvalid": "Sayı hatalı",
+        "codeTaken": "Bu numara başka üründe kullanılıyor",
+        "inUse": "Bu kayıt kullanımda — silmek yerine pasifleştir",
+        "min_gt_max": "“En az” değeri “en çok”tan büyük olamaz",
+        "min_gt_options": "“En az” değeri seçenek sayısından büyük olamaz",
+        "max_gt_options": "“En çok” değeri seçenek sayısından büyük olamaz"
+      }
+    },
     "staff": { "title": "Personel" },
     "tables": { "title": "Masalar" },
     "orders": { "title": "Siparişler" },

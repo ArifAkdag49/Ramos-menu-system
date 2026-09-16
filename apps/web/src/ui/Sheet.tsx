@@ -13,14 +13,20 @@ const FOCUSABLE =
  * iner — `adaptive-navigation`). Odak kapanı, `Esc`, scrim, `inert` ve kaydırma kilidi iki yönde
  * de aynıdır; değişen yalnız panelin yerleşimi.
  */
-const SIDE_CONTAINER: Record<'bottom' | 'left', string> = {
+export type SheetSide = 'bottom' | 'left' | 'right';
+
+const SIDE_CONTAINER: Record<SheetSide, string> = {
   bottom: 'items-end',
   left: 'items-stretch justify-start',
+  right: 'items-stretch justify-end',
 };
 
-const SIDE_PANEL: Record<'bottom' | 'left', string> = {
+const SIDE_PANEL: Record<SheetSide, string> = {
   bottom: 'max-h-[85dvh] w-full rounded-t-[var(--radius-sheet)] border-t pb-[env(safe-area-inset-bottom)]',
   left: 'h-dvh w-[min(20rem,85vw)] rounded-r-[var(--radius-sheet)] border-r pb-[env(safe-area-inset-bottom)]',
+  // Görev 22: ürün editörü masaüstünde sağdan girer (liste solda görünür kalır), telefonda ise
+  // ekranın tamamını kaplar — 390 px'te dar bir panelde form alanları okunmaz olurdu.
+  right: 'h-dvh w-full sm:w-[min(38rem,92vw)] rounded-l-[var(--radius-sheet)] border-l pb-[env(safe-area-inset-bottom)]',
 };
 
 /**
@@ -48,8 +54,8 @@ export function Sheet({
   closeLabel: string;
   children: ReactNode;
   footer?: ReactNode;
-  /** `bottom` alttan açılan panel (varsayılan), `left` soldan açılan çekmece. */
-  side?: 'bottom' | 'left';
+  /** `bottom` alttan açılan panel (varsayılan), `left`/`right` yandan açılan çekmece. */
+  side?: SheetSide;
   /**
    * R74: panel bir işi beklerken (ör. mutfağa gönderim, ağ yeniden denemesiyle saniyelere
    * çıkabilir) üç kapanma yolu da kilitlenir — Esc, scrim ve kapat düğmesi. Yarıda çıkılabilseydi
