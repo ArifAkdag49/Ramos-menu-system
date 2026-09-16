@@ -814,7 +814,7 @@ git commit -m "feat(web): uygulama iskeleti — marka tokenları, giriş, rol y�
     - `keysForTopic(topic): QueryKey[]`
     - `useOnline(): boolean`
 
-- [ ] **Adım 1: Saf eşleyici testlerini yaz (kırmızı)**
+- [x] **Adım 1: Saf eşleyici testlerini yaz (kırmızı)**
 
 `src/data/menuMapper.test.ts`:
 ```ts
@@ -895,7 +895,7 @@ describe('keysForTopic', () => {
 ```
 Run: `npm test -w apps/web` → Expected: FAIL
 
-- [ ] **Adım 2: Uygula**
+- [x] **Adım 2: Uygula**
 
 `src/data/keys.ts`:
 ```ts

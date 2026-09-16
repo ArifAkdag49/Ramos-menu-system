@@ -953,7 +953,8 @@ if (error) throw new Error(`Ajan girişi başarısız: ${error.message}`);
 await sb.realtime.setAuth();
 ```
 - `claim` → `rpc('claim_print_job', { p_agent_id })`, ilk satır ya da `null`.
-- `complete` → `rpc('complete_print_job', { p_job_id, p_ok, p_error })`.
+- `complete` → `rpc('complete_print_job', { p_job_id, p_ok, p_error, p_agent_id })` — **dört argümanlı imza zorunlu** (Görev 7 / R49, R52: üç argümanlı sürüm kaldırıldı). `p_agent_id`, `claim_print_job`'a verilen değerle **birebir aynı** olmalı; yoksa sahiplik kontrolü devreye girmez. İş başka bir ajan tarafından geri alınmışsa çağrı `job_not_printing` hatası verir: ajan bunu **loglar ve devam eder**, baskı hatası saymaz.
+- **Sahiplik kimliği (R55):** `claim`/`complete` çağrılarında kullanılan kimlik her ajan çalıştırmasına özgüdür (ör. `${AGENT_ID}#${başlangıç-zaman-damgası}`), `agent_heartbeat` ise sade `AGENT_ID` gönderir. Böylece aynı PC'de takılmış eski bir süreç ile yeniden başlayan süreç birbirinin işini kapatamaz. Ajan ayrıca tek örnek çalışmalıdır (kilit dosyası ya da mutex).
 - `heartbeat` → `rpc('agent_heartbeat', { p_agent_id, p_version, p_host: os.hostname(), p_reachable, p_state, p_error })`.
 - `settings()` → `settings` satırındaki `printer_*` alanları `AgentSettings`'e çevrilir.
 - `onJobs` / `onSettings` → `print-jobs` ve `settings` private kanalları (`config: { private: true }`). `settings` olayında `settings()` yeniden okunur.

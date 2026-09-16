@@ -44,7 +44,7 @@
 - [x] Görev 8 — Menü seed'i (107 ürün), masalar, ayarlar + TS tipleri — `ff4e3bb` — seed 5/5, `db:test` 59/59 ✓, `npm run check` ✓; fiyat sağlamaları birebir (93 ürün / 951,50 €, 28 varyant / 252,50 €); `image_path` hiçbir upsert'te yok (görseller seed'de korunur); menü §6'daki açık noktalar olduğu gibi girildi; inceleme temiz
 - [x] Görev 9 — Ortak alan mantığı: fiyat, seçim kuralları, sepet, hata anahtarları — `1b99bd0` — 28 paylaşılan test ✓, `npm run check` ✓; 33 hata anahtarı migration'larla birebir; kurallar canlı `submit_order` ile karşılaştırıldı; inceleme temiz (tek sapma: commit imza satırı, R51)
 ### M2 — Giriş ve altyapı (Plan 2)
-- [ ] Görev 10 — `admin-staff` Edge Function ve hesap betikleri
+- [x] Görev 10 — `admin-staff` Edge Function ve hesap betikleri — `09dc191`, `01f6d71` — `fn:test` 4/4 ✓, canlı `staff.test` 4/4 ✓, yayın 201 → ACTIVE `verify_jwt=true`; hesaplar `ramo` (admin) ve `drucker` (yazıcı) oluşturuldu, `ADMIN_PASSWORD` satırı `.env`'den silindi; inceleme: admin kontrolü bypass edilemiyor (pasifleştirilen adminin geçerli JWT'si de eleniyor), hata anahtarları birebir, sır sızıntısı yok. 1 düzeltme turu: yayın betiğine gerçek yanlış-proje koruması (rapor da düzeltildi)
 - [ ] Görev 11 — Web iskeleti: tokenlar, giriş, rol yönlendirme, i18n, RPC sarmalayıcı
 - [ ] Görev 12 — Veri katmanı ve Realtime tazeleme
 ### M3 — Garson (Plan 2)
@@ -55,7 +55,7 @@
 - [ ] Görev 16 — Mutfak ekranı (KDS) · tasarım kapısı
 ### M5 — Fiş ve yazdırma (Plan 3)
 - [x] Görev 17 — Fiş satır modeli (`renderTicket`) — `c54460d`, `fd603f4` — 19/19 paylaşılan test ✓, `npm run check` ✓; inceleme temiz (1 düzeltme turu: meta/kalem ayracı, uzun kelime bölme, çift genişlik bütçesi, TESTDRUCK tarihi, STORNO meta satırı)
-- [ ] Görev 18 — Ajan çekirdeği: ESC/POS, TCP, durum, sahte yazıcı
+- [x] Görev 18 — Ajan çekirdeği: ESC/POS, TCP, durum, sahte yazıcı — `e7c5f26`, `12fef1d`, `bb42271` — 22/22 test ✓, typecheck+lint temiz; inceleme 2 Critical (girinti kağıda ulaşmıyordu; `sendBytes` sonsuza kadar asılabiliyordu) + 3 Important buldu, 1 düzeltme turunda kapandı; yeniden inceleme gerçek bayt ve gerçek soketlerle doğruladı: 22/22 satır `linesToText` ile birebir, iş başına tek TCP bağlantısı, `ESC t 91` kurtarma yolu gerçekten doğru Türkçe basıyor, 15/15 karakter doğru kod noktasında
 - [ ] Görev 19 — Ajan döngüsü: kuyruk, yazıcı kapısı, heartbeat, ayar yenileme, CLI
 - [ ] Görev 20 — Paketleme, otomatik başlatma, gerçek Xprinter testi
 ### M6 — Admin (Plan 4)
