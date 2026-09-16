@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { IconButton } from './IconButton';
 
 const FOCUSABLE =
@@ -8,6 +9,11 @@ const FOCUSABLE =
 /**
  * Alttan açılan panel. Odak kapanı vardır, `Esc` ile ve scrim'e dokununca kapanır.
  * Ayrıntı yeni sayfa açmaz; en fazla 2 seviye derinlik (BUILD-PROMPT §10.4).
+ *
+ * M4: panel `document.body`'ye portal ile çizilir, açıkken uygulama kökü `inert` olur
+ * (`aria-modal` tek başına arka planı ekran okuyucudan gizlemez) ve gövde kaydırması kilitlenir.
+ * Scrim bir düğme değil, `aria-hidden` bir katmandır: erişilebilirlik ağacında "Kapat" adlı
+ * ikinci bir düğme oluşturmasın diye. Klavyeyle kapatma yolu `Esc` ve başlıktaki kapat düğmesidir.
  */
 export function Sheet({
   open,
@@ -29,6 +35,11 @@ export function Sheet({
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
+    const appRoot = document.getElementById('root');
+    const previousOverflow = document.body.style.overflow;
+
+    appRoot?.setAttribute('inert', '');
+    document.body.style.overflow = 'hidden';
     panel.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -53,17 +64,18 @@ export function Sheet({
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
+      appRoot?.removeAttribute('inert');
+      document.body.style.overflow = previousOverflow;
       previous?.focus();
     };
   }, [open, onClose]);
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end">
-      <button
-        type="button"
-        aria-label={closeLabel}
+      <div
+        aria-hidden="true"
         onClick={onClose}
         className="absolute inset-0 z-40 cursor-pointer bg-[var(--scrim)]"
       />
@@ -81,6 +93,7 @@ export function Sheet({
         <div className="px-4 py-4">{children}</div>
         {footer ? <div className="sticky bottom-0 bg-surface px-4 pb-4">{footer}</div> : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

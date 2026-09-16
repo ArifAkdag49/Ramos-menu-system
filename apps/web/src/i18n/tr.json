@@ -13,9 +13,9 @@
   },
   "login": {
     "title": "Giriş",
-    "subtitle": "Kullanıcı adın ve PIN'inle gir",
+    "subtitle": "Kullanıcı adınla gir",
     "username": "Kullanıcı adı",
-    "pin": "PIN",
+    "pin": "PIN veya parola",
     "submit": "Giriş"
   },
   "waiter": {
@@ -51,6 +51,8 @@
     "login_failed": "Kullanıcı adı veya PIN hatalı",
     "network": "İnternet yok — bağlantı gelince tekrar dene",
     "unknown": "Bir şeyler ters gitti — tekrar dene",
+    "profile_unreadable": "Bilgilerin şu an alınamıyor — bağlantını kontrol et ve tekrar dene",
+    "init_failed": "Uygulama açılamadı — tekrar dene",
     "not_authorized": "Bu işlem için yetkin yok",
     "order_id_conflict": "Bu sipariş zaten kaydedilmiş — masayı tazele",
     "table_inactive": "Bu masa kullanımda değil — başka masa seç",

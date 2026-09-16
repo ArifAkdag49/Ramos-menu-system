@@ -51,10 +51,37 @@ hex yazılmaz; her zaman token okunur.
 | `--color-danger` | `#E5484D` | Çıkar / iptal / hata |
 | `--color-warning` | `#F5A524` | Uyarı (yazıcı, mesai) |
 | `--color-info` | `#3E9BFF` | Yazdırılıyor / kuyrukta |
+| `--color-danger-ink` | `#FF7B7F` | Koyu yüzeyde kırmızı **metin** — türetilmiş, marka rengi değil |
 
-Kontrast (`#0A0A0A` zeminde): lime 8,2:1 · gold 7,4:1 · text 17,9:1 · muted 7,2:1 · danger 4,8:1 ·
-warning 10,6:1 · info 7,1:1 — hepsi **WCAG AA** gövde metni eşiğinin (4,5:1) üzerinde.
-Lime ve gold zemin olarak kullanıldığında **üzerine `#0A0A0A` metin** gelir (8,2:1 / 7,4:1).
+#### Kontrast — ölçülen değerler
+
+Aşağıdaki sayılar elle yazılmadı: `src/ui/tone.test.ts` bunları `tokens.css`'ten okuyup WCAG 2.1
+formülüyle hesaplıyor ve eşiğin altına düşen her çift testi kırıyor. **Kabul eşiği 4,5 değil 5,0** —
+eşiğe yüzdelik farkla dayanan renk kabul edilmez.
+
+Düz `#0A0A0A` zeminde: text 18,1:1 · warning 9,7:1 · lime 8,2:1 · muted 7,9:1 · gold 7,4:1 ·
+info 6,9:1 · danger 5,1:1.
+
+**Asıl çalışan çiftler bunlar değil.** Hiçbir bileşen düz zemin üzerinde durmuyor: `TONE_CLASS`
+metni kendi renginin `/15` tinti üzerine koyuyor ve her sonraki ekran bunu miras alıyor.
+
+| Durum | Metin | Zemin | Oran |
+|---|---|---|---|
+| open (lime) | `--color-lime` | lime/15 → `#1D2409` | 6,7:1 |
+| ready (gold) | `--color-gold` | gold/15 → `#261F11` | 6,1:1 |
+| warning | `--color-warning` | warning/15 → `#2D210E` | 7,7:1 |
+| info | `--color-info` | info/15 → `#12202F` | 5,8:1 |
+| danger | **`--color-danger-ink`** | danger/15 → `#2B1314` | 7,0:1 |
+| empty | `--color-muted` | `--color-surface-2` | 6,8:1 |
+
+`--color-danger` **metin olarak** kendi tinti üzerinde 4,45:1 kalıyordu: AA eşiğinin altında, üstelik
+uygulamanın en kritik yazısında (giriş hatası). Marka tokenı değiştirilemeyeceği için kırmızı metne
+ayrı bir token verildi — `--color-danger-ink #FF7B7F`: bg 7,9 · surface 7,4 · surface-2 6,8 ·
+danger tinti 7,0.
+
+**Kural:** koyu yüzeydeki kırmızı yazı her zaman `text-danger-ink`'tir. `--color-danger` yalnız zemin,
+kenarlık ve ikon olarak kullanılır; `bg-danger` üzerindeki yazı `text-bg`'dir (5,1:1).
+Lime ve gold zemin olduğunda da **üzerine `#0A0A0A` metin** gelir (8,2:1 / 7,4:1).
 
 ### 2.2 Anlamsal (renk = anlam, her yüzeyde aynı)
 
@@ -167,12 +194,12 @@ Yükseklik: `md` 48 px, `lg` 56 px. Tam genişlik ana eylemde varsayılan.
 |---|---|
 | `IconButton` | 48 px kare, `aria-label` zorunlu (geri / kapat) |
 | `Chip` | Pill, 48 px yükseklik, `aria-pressed` ile seçili durum |
-| `Sheet` | Alttan açılır, scrim, **odak kapanı**, `Esc` ile kapanır, `role="dialog" aria-modal` |
+| `Sheet` | Alttan açılır; `document.body`'ye portal, açıkken uygulama kökü `inert` + gövde kaydırması kilitli, **odak kapanı**, `Esc` ile kapanır, `role="dialog" aria-modal`. Scrim `aria-hidden` bir katmandır (düğme değil): erişilebilirlik ağacında ikinci bir "Kapat" oluşturmaz |
 | `Stepper` | − / sayı / + ; her buton 48 px, sayı `.tabular`, `aria-live="polite"` |
 | `Badge` | Durum rozeti: renk + ikon + yazı |
 | `Banner` | Ekran üstü şerit (uyarı/hata), `role="status"` ya da `role="alert"` |
-| `Toast` | Kısa onay, 3–5 sn, `aria-live="polite"`, odağı çalmaz |
-| `Spinner` | `role="status"`, reduced-motion'da döner animasyon yerine sabit gösterge |
+| `Toast` | Kısa onay, 3–5 sn, odağı çalmaz. Canlı bölge (`role="status" aria-live="polite"`) **sürekli monte kalır**, mesaj içine yazılır — bölge duyuru anında doğarsa çoğu ekran okuyucu hiçbir şey seslendirmez |
+| `Spinner` | Etiketliyse `role="status"`, etiketsizse tamamen süs (`aria-hidden`, rol yok — ikisi birden çelişir); reduced-motion'da dönmez |
 | `EmptyState` | İkon + tek cümle + tek eylem ("Bu masada sipariş yok — Sipariş al") |
 
 ---

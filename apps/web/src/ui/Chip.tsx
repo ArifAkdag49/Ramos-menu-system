@@ -26,7 +26,7 @@ export function Chip({
         'transition-colors duration-150 ease-out',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
         removed
-          ? 'border-danger text-danger line-through'
+          ? 'border-danger text-danger-ink line-through'
           : selected
             ? 'border-lime bg-lime/15 text-lime'
             : 'border-border bg-surface-2 text-text',

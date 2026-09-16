@@ -9,8 +9,9 @@ const FIELD =
   'min-h-12 w-full rounded-xl border border-border bg-surface-2 px-4 text-base text-text placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg';
 
 /**
- * Giriş ekranı: kullanıcı adı + PIN. Kayıt ekranı yoktur; `signUp` ve
- * `resetPasswordForEmail` hiç çağrılmaz (spec §12). Her hata için tek genel mesaj.
+ * Giriş ekranı: kullanıcı adı + PIN (admin için parola). Kayıt ekranı yoktur; `signUp` ve
+ * `resetPasswordForEmail` hiç çağrılmaz (spec §12). Her hata için tek genel mesaj:
+ * hangi alanın yanlış olduğu söylenmez, kullanıcı adı sızdırılmaz.
  */
 export function LoginPage() {
   const { t } = useTranslation();
@@ -74,15 +75,21 @@ export function LoginPage() {
             <label htmlFor="pin" className="text-sm font-medium text-muted">
               {t('login.pin')}
             </label>
+            {/*
+              R62: `inputMode="numeric"` yok. Admin bu ekrandan ≥10 karakterli harfli parolayla
+              girer (spec §12); sayısal tuş takımı dayatılırsa telefonda hiç giriş yapamaz.
+              Garsonun bir tuş takımı dokunuşu, patronun hiç girememesinden ucuzdur.
+            */}
             <input
               id="pin"
               name="pin"
               type="password"
-              inputMode="numeric"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               autoComplete="current-password"
               required
+              minLength={6}
+              maxLength={72}
               className={`${FIELD} tabular tracking-[0.3em]`}
             />
           </div>
@@ -90,7 +97,7 @@ export function LoginPage() {
           {failed ? (
             <p
               role="alert"
-              className="rounded-card border border-danger/40 bg-danger/15 px-4 py-3 text-base text-danger"
+              className="rounded-card border border-danger/40 bg-danger/15 px-4 py-3 text-base text-danger-ink"
             >
               {t('errors.login_failed')}
             </p>

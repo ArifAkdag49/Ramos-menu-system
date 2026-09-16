@@ -4,12 +4,12 @@ vi.mock('./supabase', () => ({ supabase: { rpc: vi.fn() } }));
 import { supabase } from './supabase';
 import { callRpc, RpcError } from './rpc';
 
+const failsWith = (error: Record<string, unknown>) =>
+  vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error } as never);
+
 describe('callRpc', () => {
   it('bilinen anahtarı RpcError.key olarak taşır', async () => {
-    vi.mocked(supabase.rpc).mockResolvedValueOnce({
-      data: null,
-      error: { message: 'product_sold_out', details: 'p1' },
-    } as never);
+    failsWith({ message: 'product_sold_out', details: 'p1' });
     await expect(callRpc('submit_order', {})).rejects.toMatchObject({
       key: 'product_sold_out',
       detail: 'p1',
@@ -17,16 +17,36 @@ describe('callRpc', () => {
   });
 
   it('ağ hatasını network, bilinmeyeni unknown yapar', async () => {
-    vi.mocked(supabase.rpc).mockResolvedValueOnce({
-      data: null,
-      error: { message: 'TypeError: Failed to fetch' },
-    } as never);
+    failsWith({ message: 'TypeError: Failed to fetch' });
     await expect(callRpc('x')).rejects.toBeInstanceOf(RpcError);
-    vi.mocked(supabase.rpc).mockResolvedValueOnce({
-      data: null,
-      error: { message: 'weird' },
-    } as never);
+    // I2: sınıfı değil, anahtarın kendisi doğrulanır — yoksa eşleme bozulunca test yakalamaz.
+    failsWith({ message: 'TypeError: Failed to fetch' });
+    await expect(callRpc('x')).rejects.toMatchObject({ key: 'network' });
+    failsWith({ message: 'weird' });
     await expect(callRpc('x')).rejects.toMatchObject({ key: 'unknown' });
+  });
+
+  it('M2: yetki reddini (42501) not_authorized yapar', async () => {
+    failsWith({ code: '42501', message: 'new row violates row-level security policy' });
+    await expect(callRpc('submit_order', {})).rejects.toMatchObject({ key: 'not_authorized' });
+  });
+
+  it('M2: sunucu zaman aşımını (57014) "internet yok" diye sunmaz', async () => {
+    failsWith({ code: '57014', message: 'canceling statement due to statement timeout' });
+    await expect(callRpc('x')).rejects.toMatchObject({ key: 'unknown' });
+  });
+
+  it('M2: eşlenemeyen hata kod ve mesajıyla teşhis edilebilir kalır', async () => {
+    failsWith({ code: 'PGRST202', message: 'Could not find the function' });
+    await expect(callRpc('x')).rejects.toMatchObject({
+      key: 'unknown',
+      detail: 'PGRST202: Could not find the function',
+    });
+  });
+
+  it('RPC anahtarı koddan önce gelir', async () => {
+    failsWith({ code: '42501', message: 'not_authorized', details: 'rls' });
+    await expect(callRpc('x')).rejects.toMatchObject({ key: 'not_authorized', detail: 'rls' });
   });
 
   it('başarıda veriyi döndürür', async () => {

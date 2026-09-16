@@ -8,7 +8,7 @@ export const TONE_CLASS: Record<Tone, string> = {
   empty: 'border-border bg-surface-2 text-muted',
   open: 'border-lime/40 bg-lime/15 text-lime',
   ready: 'border-gold/40 bg-gold/15 text-gold',
-  danger: 'border-danger/40 bg-danger/15 text-danger',
+  danger: 'border-danger/40 bg-danger/15 text-danger-ink',
   warning: 'border-warning/40 bg-warning/15 text-warning',
   info: 'border-info/40 bg-info/15 text-info',
 };

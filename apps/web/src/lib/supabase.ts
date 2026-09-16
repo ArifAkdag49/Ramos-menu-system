@@ -16,6 +16,8 @@ export const supabase = createClient<Database>(
   },
 );
 
+// M8: bu dinleyici uygulama ömrü boyunca açık kalır ve sökülmez — istemci tekil, sayfa tek.
+// Yaptığı tek iş Realtime'ın jetonunu tazelemek; yetki kararı vermez (o RLS'in işi, spec §12).
 supabase.auth.onAuthStateChange((_event, session) => {
   void supabase.realtime.setAuth(session?.access_token ?? null);
 });

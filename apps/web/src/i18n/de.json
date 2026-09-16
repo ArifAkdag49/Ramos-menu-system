@@ -13,9 +13,9 @@
   },
   "login": {
     "title": "Anmelden",
-    "subtitle": "Mit Benutzername und PIN anmelden",
+    "subtitle": "Mit deinem Benutzernamen anmelden",
     "username": "Benutzername",
-    "pin": "PIN",
+    "pin": "PIN oder Passwort",
     "submit": "Anmelden"
   },
   "waiter": {
@@ -51,6 +51,8 @@
     "login_failed": "Benutzername oder PIN falsch",
     "network": "Kein Internet — bei Verbindung nochmal versuchen",
     "unknown": "Etwas ist schiefgelaufen — nochmal versuchen",
+    "profile_unreadable": "Deine Daten sind gerade nicht abrufbar — Verbindung prüfen und nochmal versuchen",
+    "init_failed": "Die App konnte nicht starten — nochmal versuchen",
     "not_authorized": "Dafür fehlt die Berechtigung",
     "order_id_conflict": "Diese Bestellung ist schon gespeichert — Tisch aktualisieren",
     "table_inactive": "Dieser Tisch ist nicht in Betrieb — anderen Tisch wählen",

@@ -18,6 +18,10 @@
   --color-warning: #f5a524;
   --color-info: #3e9bff;
 
+  /* Koyu yüzeylerde okunan kırmızı METİN rengi. `--color-danger` zemin/kenarlık için kalır;
+     kendi /15 tinti üzerinde 4,45:1'de kalıyordu (AA sınırının altı) — DESIGN.md §2.1. */
+  --color-danger-ink: #ff7b7f;
+
   --font-sans: 'Montserrat Variable', ui-sans-serif, system-ui, sans-serif;
 
   --radius-card: 14px;
