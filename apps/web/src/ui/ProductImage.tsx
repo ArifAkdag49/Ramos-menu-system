@@ -17,18 +17,22 @@ const DIMENSIONS: Record<ImageSize, { width: number; height: number }> = {
  * Ürün görseli — bulunmaması **normal** durumdur (BUILD-PROMPT §11: seed hiçbir ürüne görsel
  * yazmaz, admin sonradan yükler). Görselli/görselsiz aynı sabit en-boy oranlı kutuyu kullanır ki
  * görsel gelince düzen kaymasın (DESIGN.md §9).
+ *
+ * Görsel **dekoratiftir**: her kullanıldığı yerde ürün adı hemen yanında görünür metin olarak
+ * durur, bu yüzden `alt` varsayılan olarak boştur ve ekran okuyucu adı iki kez okumaz. `alt`
+ * yalnız görselin tek başına bilgi taşıdığı bir yerde (henüz yok) doldurulur.
  */
 export function ProductImage({
   path,
   size,
   code,
-  alt,
+  alt = '',
   className,
 }: {
   path: string | null;
   size: ImageSize;
   code: string | null;
-  alt: string;
+  alt?: string;
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);

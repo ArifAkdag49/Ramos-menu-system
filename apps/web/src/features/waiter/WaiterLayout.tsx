@@ -7,6 +7,7 @@ import { useReadyOrders, useSetOnDuty } from '../../data/orders';
 import { useAuth } from '../../lib/auth';
 import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
+import { ToastHost } from '../../ui/ToastHost';
 import { ConnectionBanners } from '../common/ConnectionBanners';
 
 /**
@@ -71,6 +72,8 @@ export function WaiterLayout() {
         />
         <TabLink to="/waiter/profile" icon={<User aria-hidden size={22} />} label={t('waiter.profile.title')} />
       </nav>
+
+      <ToastHost className="mb-[calc(3.5rem+env(safe-area-inset-bottom))]" />
     </div>
   );
 }

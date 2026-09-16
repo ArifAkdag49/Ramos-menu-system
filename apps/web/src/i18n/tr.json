@@ -51,6 +51,51 @@
       "empty": "Bu masada sipariş yok",
       "cancelReason": "İptal: {{reason}}"
     },
+    "cart": {
+      "noteLabel": "Siparişe not",
+      "notePlaceholder": "Mutfağa genel not (opsiyonel)",
+      "total": "Toplam",
+      "send": "Mutfağa gönder",
+      "offline": "İnternet yok — sepet saklandı, bağlantı gelince gönder"
+    },
+    "send": {
+      "title": "Gönderilecek sipariş",
+      "summary": "{{n}} kalem",
+      "confirm": "Onayla ve gönder",
+      "sending": "Gönderiliyor",
+      "sent": "Mutfağa gönderildi · {{orderNo}}",
+      "duplicate": "Zaten gönderilmişti · {{orderNo}}",
+      "retry": "Tekrar gönder",
+      "checkTable": "Cevap gelmedi — masa detayından siparişi kontrol et"
+    },
+    "cancelItem": {
+      "title": "Kalemi iptal et",
+      "reasonLabel": "Sebep",
+      "otherLabel": "Sebebi yaz",
+      "otherPlaceholder": "Kısaca yaz",
+      "confirm": "İptal et",
+      "done": "İptal edildi — mutfağa STORNO basılıyor"
+    },
+    "bill": {
+      "title": "Hesap özeti",
+      "total": "Toplam",
+      "note": "Ödeme kasada alınır — fiş basılmaz",
+      "empty": "Bu masada hesaplanacak kalem yok"
+    },
+    "move": {
+      "title": "Masayı taşı",
+      "hint": "Boş bir masa seç — mutfağa masa değişikliği fişi basılır",
+      "empty": "Boş masa yok — önce bir masa kapat",
+      "confirm": "{{table}} masasına taşı",
+      "done": "Masa taşındı · {{table}}"
+    },
+    "close": {
+      "title": "Masayı kapat",
+      "question": "{{table}} kapatılsın mı? Ödeme kasada alınır.",
+      "confirm": "Masayı kapat",
+      "done": "Masa kapatıldı",
+      "blocked": "Mutfakta hazırlanan sipariş var: önce hazır/teslim edilmeli ya da iptal edilmeli"
+    },
     "order": {
       "title": "Sipariş al",
       "searchPlaceholder": "Ürün no veya adı",
@@ -87,7 +132,13 @@
       "markServed": "Teslim edildi",
       "markServedDrink": "Teslim edildi (içecek)",
       "reprint": "Tekrar bas",
-      "more": "Diğer işlemler"
+      "more": "Diğer işlemler",
+      "addOrder": "Sipariş ekle",
+      "bill": "Hesap",
+      "move": "Taşı",
+      "close": "Kapat",
+      "cancelItem": "İptal",
+      "tableActions": "Masa işlemleri"
     },
     "duty": {
       "on": "Mesai açık",

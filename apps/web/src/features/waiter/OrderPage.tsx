@@ -5,26 +5,25 @@ import {
   localName,
   localTableName,
   needsSheet,
-  unitPriceCents,
   type CartLine,
   type Locale,
   type MenuProduct,
 } from '@ramos/shared';
 import { clsx } from 'clsx';
-import { ArrowLeft, Copy, Pencil, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import type { TFunction } from 'i18next';
+import { ArrowLeft, Plus, Search, ShoppingCart } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { useMenu, type MenuCategory } from '../../data/menu';
 import { useTableOverview } from '../../data/tables';
+import { toast } from '../../lib/toast';
 import { Button } from '../../ui/Button';
 import { Chip } from '../../ui/Chip';
-import { EmptyState } from '../../ui/EmptyState';
 import { IconButton } from '../../ui/IconButton';
 import { ProductImage } from '../../ui/ProductImage';
-import { Sheet } from '../../ui/Sheet';
-import { Stepper } from '../../ui/Stepper';
-import { Toast } from '../../ui/Toast';
+import { ToastHost } from '../../ui/ToastHost';
+import { CartDrawer } from './CartDrawer';
 import { useCart } from './cartStore';
 import { searchProducts } from './menuSearch';
 import { ProductSheet } from './ProductSheet';
@@ -36,27 +35,12 @@ interface SheetState {
   initial?: LineInput;
 }
 
-/** Bir sepet satırının kısa özeti: varyant + seçenekler + ÇIKAR/OHNE + not (fiş biçimine bakmaz;
- * bu yalnız garsonun sepette gördüğü kısa özet — fiş satırları `itemLines.ts`'te). */
-function cartLineSummary(product: MenuProduct, line: Pick<CartLine, 'variantId' | 'optionIds' | 'removedIngredientIds' | 'note'>, locale: Locale, removedPrefix: string): string {
-  const parts: string[] = [];
-  const variant = product.variants.find((v) => v.id === line.variantId);
-  if (variant) parts.push(localName(variant, locale));
-  for (const g of product.groups) {
-    for (const o of g.options) if (line.optionIds.includes(o.id)) parts.push(localName(o, locale));
-  }
-  const removed = product.ingredients.filter((i) => line.removedIngredientIds.includes(i.id)).map((i) => localName(i, locale));
-  if (removed.length) parts.push(`${removedPrefix} ${removed.join(', ')}`);
-  if (line.note) parts.push(line.note);
-  return parts.join(' · ');
-}
-
 /**
  * Sipariş girişi: arama + kategori çipleri + ürün listesi + ürün paneli + sepet önizlemesi.
  * `/waiter` iskeletinin (WaiterLayout) DIŞINDadır — kendi üst çubuğu ve gezinmesi vardır
  * (BUILD-PROMPT §10.4: en fazla 2 seviye derinlik, ayrıntı bottom sheet ile açılır).
- * Mutfağa gönderme, genel not ve masa işlemleri Görev 15'in `CartDrawer`'ındadır; burada yalnız
- * sepeti görüntüleme/düzenleme/silme/çoğaltma var (spec §8.2 "Sepet" bölümünün gönderim dışı kısmı).
+ * Sepet, genel not ve mutfağa gönderme `CartDrawer`/`SendConfirm`'dedir (Görev 15); bu ekran
+ * yalnız ürün seçimini yönetir ve sepeti açar.
  */
 export function OrderPage() {
   const { tableId } = useParams();
@@ -69,18 +53,13 @@ export function OrderPage() {
   const rows = useTableOverview();
   const table = rows.find((r) => r.table_id === id);
 
-  const carts = useCart((s) => s.carts);
   const add = useCart((s) => s.add);
   const update = useCart((s) => s.update);
-  const remove = useCart((s) => s.remove);
-  const duplicate = useCart((s) => s.duplicate);
-  const setQty = useCart((s) => s.setQty);
-  const lines = carts[id] ?? [];
+  const lines = useCart((s) => s.carts[id]) ?? [];
 
   const [query, setQuery] = useState('');
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
   const filtered = useMemo(() => searchProducts(products, query), [products, query]);
@@ -115,15 +94,10 @@ export function OrderPage() {
     sectionRefs.current.get(categoryId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const showToast = (message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast(null), 2500);
-  };
-
   const quickAdd = (p: MenuProduct) => {
     add(id, { productId: p.id, ...defaultSelection(p), quantity: 1, note: '' });
     navigator.vibrate?.(15);
-    showToast(t('waiter.order.added', { name: p.name }));
+    toast(t('waiter.order.added', { name: p.name }));
   };
 
   const openSheetForAdd = (p: MenuProduct) => setSheet({ product: p });
@@ -142,7 +116,7 @@ export function OrderPage() {
     if (!sheet) return;
     if (sheet.key) update(id, sheet.key, { productId: sheet.product.id, ...line });
     else add(id, { productId: sheet.product.id, ...line });
-    showToast(t('waiter.order.added', { name: sheet.product.name }));
+    toast(t('waiter.order.added', { name: sheet.product.name }));
     setSheet(null);
   };
 
@@ -232,57 +206,22 @@ export function OrderPage() {
         <ProductSheet product={sheet.product} open onClose={() => setSheet(null)} onSubmit={handleSheetSubmit} initial={sheet.initial} />
       ) : null}
 
-      {cartOpen ? (
-        <Sheet open onClose={() => setCartOpen(false)} title={t('waiter.order.cartTitle')} closeLabel={t('common.close')}>
-          {lines.length === 0 ? (
-            <EmptyState icon={<ShoppingCart aria-hidden size={40} />} title={t('waiter.order.cartEmpty')} />
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {lines.map((line) => {
-                const product = byId.get(line.productId);
-                if (!product) return null;
-                const summary = cartLineSummary(product, line, locale, t('waiter.order.removedPrefix'));
-                return (
-                  <li key={line.key} className="flex flex-col gap-3 rounded-card border border-border bg-surface p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-base font-semibold">
-                          {line.quantity}× {product.name}
-                        </p>
-                        {summary ? <p className="text-sm text-muted">{summary}</p> : null}
-                      </div>
-                      <span className="tabular shrink-0 text-base font-semibold">{formatEuro(unitPriceCents(product, line) * line.quantity)}</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Stepper
-                        value={line.quantity}
-                        onChange={(q) => setQty(id, line.key, q)}
-                        decreaseLabel={t('waiter.order.quantity.decrease')}
-                        increaseLabel={t('waiter.order.quantity.increase')}
-                        valueLabel={t('waiter.order.quantity.value', { count: line.quantity })}
-                      />
-                      <Button variant="ghost" icon={<Pencil aria-hidden size={18} />} onClick={() => openSheetForEdit(line)}>
-                        {t('common.edit')}
-                      </Button>
-                      <Button variant="ghost" icon={<Copy aria-hidden size={18} />} onClick={() => duplicate(id, line.key)}>
-                        {t('common.duplicate')}
-                      </Button>
-                      <IconButton label={t('common.remove')} icon={<Trash2 aria-hidden size={18} />} onClick={() => remove(id, line.key)} />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Sheet>
-      ) : null}
+      <CartDrawer
+        tableId={id}
+        tableName={table ? localTableName(table.name, locale) : t('waiter.table.title')}
+        locale={locale}
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        onEditLine={(line) => {
+          setCartOpen(false);
+          openSheetForEdit(line);
+        }}
+      />
 
-      <Toast>{toast}</Toast>
+      <ToastHost />
     </div>
   );
 }
-
-type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 function CategorySection({
   category,
@@ -296,7 +235,7 @@ function CategorySection({
   category: MenuCategory;
   products: MenuProduct[];
   locale: Locale;
-  t: Translate;
+  t: TFunction<'translation'>;
   onAdd: (p: MenuProduct) => void;
   onOpenSheet: (p: MenuProduct) => void;
   registerRef: (el: HTMLElement | null) => void;
@@ -321,7 +260,7 @@ function ProductRow({
   onOpenSheet,
 }: {
   product: MenuProduct;
-  t: Translate;
+  t: TFunction<'translation'>;
   onAdd: (p: MenuProduct) => void;
   onOpenSheet: (p: MenuProduct) => void;
 }) {
@@ -335,7 +274,7 @@ function ProductRow({
 
   return (
     <li className={clsx('flex items-center gap-3 border-b border-border py-3', soldOut && 'opacity-50')}>
-      <ProductImage path={product.image_path} size="thumb" code={product.code} alt={product.name} />
+      <ProductImage path={product.image_path} size="thumb" code={product.code} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           {product.code ? <span className="tabular text-sm text-muted">{product.code}</span> : null}

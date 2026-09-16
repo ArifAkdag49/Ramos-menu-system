@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Json, Locale } from '@ramos/shared';
+import { toSubmitItems, type Json, type Locale } from '@ramos/shared';
+import { useCart } from '../features/waiter/cartStore';
+import { submitWithRetry, type SubmitResult } from '../features/waiter/submitOrder';
 import { setLanguage } from '../i18n';
 import { useAuth } from '../lib/auth';
 import { callRpc } from '../lib/rpc';
@@ -80,6 +82,45 @@ export function useReadyOrders(): OrderView[] {
     },
   });
   return mapOrders(data ?? [], staffNames);
+}
+
+/**
+ * Sepeti mutfağa gönderir. Sipariş kimliği `ensurePendingId(tableId)`'den gelir: sepet
+ * değişmediği sürece **aynı** kimlik kullanılır, böylece yeniden gönderim sunucuda idempotent
+ * olur (R36, spec §13) ve çift sipariş oluşmaz. Sepet değişince kimlik geçersizleşir
+ * (`cartStore`), yani "iki farklı sepet aynı numaraya yazılır" durumu da oluşmaz.
+ *
+ * Başarıda sepet yalnız **burada** temizlenir; ekran kendi başına silmez.
+ */
+export function useSubmitOrder(tableId: string) {
+  const qc = useQueryClient();
+  const m = useMutation({
+    mutationFn: async (): Promise<SubmitResult> => {
+      const cart = useCart.getState();
+      const id = cart.ensurePendingId(tableId);
+      const items = toSubmitItems(cart.carts[tableId] ?? []);
+      const note = cart.notes[tableId]?.trim() || null;
+      return submitWithRetry(
+        (orderId) =>
+          callRpc<SubmitResult>('submit_order', {
+            p_order_id: orderId,
+            p_table_id: tableId,
+            p_items: items,
+            p_note: note,
+          }),
+        id,
+      );
+    },
+    onSuccess: () => {
+      useCart.getState().clear(tableId);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['orders'] });
+      void qc.invalidateQueries({ queryKey: ['tables'] });
+      void qc.invalidateQueries({ queryKey: ['session'] });
+    },
+  });
+  return { send: () => m.mutateAsync(), isPending: m.isPending };
 }
 
 export function useCancelItem() {

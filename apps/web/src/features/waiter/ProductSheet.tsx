@@ -12,6 +12,7 @@ import {
   type Selection,
 } from '@ramos/shared';
 import { clsx } from 'clsx';
+import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../../data/settings';
@@ -22,10 +23,9 @@ import { Sheet } from '../../ui/Sheet';
 import { Stepper } from '../../ui/Stepper';
 
 type LineInput = Omit<CartLine, 'key' | 'productId'>;
-type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 /** Grubun seçim kuralını tek satırlık bir ipucuna çevirir ("1 seçin", "en fazla 3", "tam 5 — 3/5"). */
-function groupHint(g: Pick<MenuGroup, 'min_select' | 'max_select'>, chosen: number, t: Translate): string {
+function groupHint(g: Pick<MenuGroup, 'min_select' | 'max_select'>, chosen: number, t: TFunction<'translation'>): string {
   const { min_select: min, max_select: max } = g;
   if (min === 0 && max === 1) return t('waiter.order.hint.optional');
   if (min === max) return min === 1 ? t('waiter.order.hint.exactlyOne') : t('waiter.order.hint.exactlyN', { n: max, chosen });
@@ -116,7 +116,7 @@ export function ProductSheet({
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <ProductImage path={product.image_path} size="full" code={product.code} alt={product.name} className="max-h-60" />
+          <ProductImage path={product.image_path} size="full" code={product.code} className="max-h-60" />
           <div className="flex items-baseline gap-2">
             {product.code ? <span className="tabular text-sm text-muted">{product.code}</span> : null}
             <span className="text-lg font-semibold">{product.name}</span>

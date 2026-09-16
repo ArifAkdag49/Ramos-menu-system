@@ -51,6 +51,51 @@
       "empty": "Dieser Tisch hat noch keine Bestellung",
       "cancelReason": "Storniert: {{reason}}"
     },
+    "cart": {
+      "noteLabel": "Notiz zur Bestellung",
+      "notePlaceholder": "Allgemeine Notiz an die Küche (optional)",
+      "total": "Summe",
+      "send": "An die Küche senden",
+      "offline": "Kein Internet — Warenkorb ist gespeichert, senden sobald die Verbindung da ist"
+    },
+    "send": {
+      "title": "Bestellung senden",
+      "summary": "{{n}} Positionen",
+      "confirm": "Bestätigen und senden",
+      "sending": "Wird gesendet",
+      "sent": "An die Küche gesendet · {{orderNo}}",
+      "duplicate": "War schon gesendet · {{orderNo}}",
+      "retry": "Erneut senden",
+      "checkTable": "Keine Antwort — Bestellung in der Tischansicht prüfen"
+    },
+    "cancelItem": {
+      "title": "Position stornieren",
+      "reasonLabel": "Grund",
+      "otherLabel": "Grund eingeben",
+      "otherPlaceholder": "Kurz beschreiben",
+      "confirm": "Stornieren",
+      "done": "Storniert — STORNO wird in der Küche gedruckt"
+    },
+    "bill": {
+      "title": "Rechnungsübersicht",
+      "total": "Summe",
+      "note": "Bezahlt wird an der Kasse — kein Bon",
+      "empty": "Für diesen Tisch gibt es nichts abzurechnen"
+    },
+    "move": {
+      "title": "Tisch wechseln",
+      "hint": "Freien Tisch wählen — die Küche bekommt einen TISCHWECHSEL-Bon",
+      "empty": "Kein freier Tisch — zuerst einen Tisch schließen",
+      "confirm": "Auf {{table}} umbuchen",
+      "done": "Tisch gewechselt · {{table}}"
+    },
+    "close": {
+      "title": "Tisch schließen",
+      "question": "{{table}} schließen? Bezahlt wird an der Kasse.",
+      "confirm": "Tisch schließen",
+      "done": "Tisch geschlossen",
+      "blocked": "In der Küche wird noch eine Bestellung zubereitet: erst fertig/serviert oder storniert"
+    },
     "order": {
       "title": "Bestellung aufnehmen",
       "searchPlaceholder": "Nummer oder Name",
@@ -87,7 +132,13 @@
       "markServed": "Serviert",
       "markServedDrink": "Getränk serviert",
       "reprint": "Nochmal drucken",
-      "more": "Weitere Aktionen"
+      "more": "Weitere Aktionen",
+      "addOrder": "Bestellung hinzufügen",
+      "bill": "Rechnung",
+      "move": "Tisch wechseln",
+      "close": "Schließen",
+      "cancelItem": "Storno",
+      "tableActions": "Tischaktionen"
     },
     "duty": {
       "on": "Im Dienst",
