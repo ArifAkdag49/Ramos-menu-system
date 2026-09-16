@@ -42,7 +42,7 @@
 - [x] Görev 6 — Migration 0004: sipariş yaşam döngüsü, masa, mesai, push, rapor RPC'leri — `3f94a5f` — `db:test` 41/41 ✓, advisors 0 ERROR; inceleme temiz (0004 brief ile birebir). İki düzeltme Görev 7'deki ek migration'da: masa kilidi (R41) ve teslim edilmiş siparişte otomatik iptal koruması (R42); rapor saatlik dağılımı (R39)
 - [ ] Görev 7 — Migration 0005: fiş kuyruğu, Realtime broadcast, denetim trigger'ları
 - [ ] Görev 8 — Menü seed'i (107 ürün), masalar, ayarlar + TS tipleri
-- [ ] Görev 9 — Ortak alan mantığı: fiyat, seçim kuralları, sepet, hata anahtarları
+- [x] Görev 9 — Ortak alan mantığı: fiyat, seçim kuralları, sepet, hata anahtarları — `1b99bd0` — 28 paylaşılan test ✓, `npm run check` ✓; 33 hata anahtarı migration'larla birebir; kurallar canlı `submit_order` ile karşılaştırıldı; inceleme temiz (tek sapma: commit imza satırı, R51)
 ### M2 — Giriş ve altyapı (Plan 2)
 - [ ] Görev 10 — `admin-staff` Edge Function ve hesap betikleri
 - [ ] Görev 11 — Web iskeleti: tokenlar, giriş, rol yönlendirme, i18n, RPC sarmalayıcı
@@ -54,7 +54,7 @@
 ### M4 — Mutfak (Plan 3)
 - [ ] Görev 16 — Mutfak ekranı (KDS) · tasarım kapısı
 ### M5 — Fiş ve yazdırma (Plan 3)
-- [ ] Görev 17 — Fiş satır modeli (`renderTicket`)
+- [x] Görev 17 — Fiş satır modeli (`renderTicket`) — `c54460d`, `fd603f4` — 19/19 paylaşılan test ✓, `npm run check` ✓; inceleme temiz (1 düzeltme turu: meta/kalem ayracı, uzun kelime bölme, çift genişlik bütçesi, TESTDRUCK tarihi, STORNO meta satırı)
 - [ ] Görev 18 — Ajan çekirdeği: ESC/POS, TCP, durum, sahte yazıcı
 - [ ] Görev 19 — Ajan döngüsü: kuyruk, yazıcı kapısı, heartbeat, ayar yenileme, CLI
 - [ ] Görev 20 — Paketleme, otomatik başlatma, gerçek Xprinter testi
