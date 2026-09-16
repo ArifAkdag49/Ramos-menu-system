@@ -114,6 +114,8 @@
       "ingredientsTitle": "Malzemeler — çıkarmak için dokun",
       "noteLabel": "Not",
       "notePlaceholder": "Mutfağa not (opsiyonel)",
+      "submitHint": "Önce {{group}} seçin",
+      "requiredMark": "Gerekli",
       "quantity": {
         "increase": "Adeti artır",
         "decrease": "Adeti azalt",

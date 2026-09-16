@@ -18,6 +18,7 @@ import { useNavigate, useParams } from 'react-router';
 import { useMenu, type MenuCategory } from '../../data/menu';
 import { useTableOverview } from '../../data/tables';
 import { toast } from '../../lib/toast';
+import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { Chip } from '../../ui/Chip';
 import { IconButton } from '../../ui/IconButton';
@@ -27,6 +28,7 @@ import { CartDrawer } from './CartDrawer';
 import { useCart } from './cartStore';
 import { searchProducts } from './menuSearch';
 import { ProductSheet } from './ProductSheet';
+import { menuBody } from './waiterLogic';
 
 type LineInput = Omit<CartLine, 'key' | 'productId'>;
 interface SheetState {
@@ -49,7 +51,7 @@ export function OrderPage() {
   const navigate = useNavigate();
   const locale: Locale = i18n.language === 'de' ? 'de' : 'tr';
 
-  const { categories, products, byId } = useMenu();
+  const { categories, products, byId, isLoading } = useMenu();
   const rows = useTableOverview();
   const table = rows.find((r) => r.table_id === id);
 
@@ -120,6 +122,9 @@ export function OrderPage() {
     setSheet(null);
   };
 
+  // R76 ile aynı kural: iskelet yalnız ilk yüklemede, arka plan tazelemesinde menü ekranda kalır.
+  const body = menuBody(products.length > 0, isLoading);
+
   const cartCount = lines.reduce((n, l) => n + l.quantity, 0);
   const cartTotal = cartTotalCents(lines, byId);
 
@@ -170,8 +175,13 @@ export function OrderPage() {
           </div>
         </div>
 
+        {/* O7: rolsüz bir `div`'de `aria-label` duyurulmaz — ARIA 1.2 jenerik öğede yasaklar. */}
         {!searching ? (
-          <div className="flex gap-2 overflow-x-auto px-4 pb-3" aria-label={t('waiter.order.categoriesLabel')}>
+          <div
+            role="group"
+            aria-label={t('waiter.order.categoriesLabel')}
+            className="flex gap-2 overflow-x-auto px-4 pb-3"
+          >
             {categories.map((c) => (
               <Chip key={c.id} selected={activeCategoryId === c.id} onClick={() => scrollToCategory(c.id)}>
                 {localName(c, locale)}
@@ -182,24 +192,28 @@ export function OrderPage() {
       </div>
 
       <div className="flex-1 px-4 pb-6">
-        {searching
-          ? filtered.map((p) => (
-              <ProductRow key={p.id} product={p} t={t} onAdd={quickAdd} onOpenSheet={openSheetForAdd} />
-            ))
-          : categories.map((c) => (
-              <CategorySection
-                key={c.id}
-                category={c}
-                products={byCategory.get(c.id) ?? []}
-                locale={locale}
-                t={t}
-                onAdd={quickAdd}
-                onOpenSheet={openSheetForAdd}
-                registerRef={(el) => {
-                  if (el) sectionRefs.current.set(c.id, el);
-                }}
-              />
-            ))}
+        {body === 'loading' ? (
+          <MenuSkeleton />
+        ) : searching ? (
+          filtered.map((p) => (
+            <ProductRow key={p.id} product={p} t={t} onAdd={quickAdd} onOpenSheet={openSheetForAdd} />
+          ))
+        ) : (
+          categories.map((c) => (
+            <CategorySection
+              key={c.id}
+              category={c}
+              products={byCategory.get(c.id) ?? []}
+              locale={locale}
+              t={t}
+              onAdd={quickAdd}
+              onOpenSheet={openSheetForAdd}
+              registerRef={(el) => {
+                if (el) sectionRefs.current.set(c.id, el);
+              }}
+            />
+          ))
+        )}
       </div>
 
       {sheet ? (
@@ -266,32 +280,78 @@ function ProductRow({
 }) {
   const soldOut = product.is_sold_out;
   const cheapestVariant = product.variants.length ? Math.min(...product.variants.map((v) => v.price_cents)) : null;
-  const priceLabel = soldOut
-    ? t('waiter.order.soldOut')
-    : cheapestVariant !== null
+  // Y3: tükendi bilgisi artık rozette; fiyat gizlenmez — garson "bu ürün kaç para" sorusunu
+  // tükenmiş üründe de cevaplayabilmeli (müşteri sorar, ürün akşam geri gelir).
+  const priceLabel =
+    cheapestVariant !== null
       ? t('waiter.order.priceFrom', { price: formatEuro(cheapestVariant) })
       : formatEuro(product.base_price_cents ?? 0);
 
   return (
-    <li className={clsx('flex items-center gap-3 border-b border-border py-3', soldOut && 'opacity-50')}>
+    <li className="flex items-start gap-3 border-b border-border py-3">
       <ProductImage path={product.image_path} size="thumb" code={product.code} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          {product.code ? <span className="tabular text-sm text-muted">{product.code}</span> : null}
-          <span className="truncate text-product font-semibold">{product.name}</span>
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        {/*
+          K1: ad satırın TAMAMINI alır ve kesilmek yerine iki satıra sarar. Eskiden ad ile
+          "Ekle"/"Seç" düğmesi aynı satırdaydı; Almanca'da "Hinzufügen"/"Auswählen" düğmesi
+          "Ekle"/"Seç"ten ~2,5 kat geniş olduğu için ada ~10 karakter kalıyordu
+          (`05 Drehspie…`, `89 Gemüse …`). Menüde altı ayrı `Drehspieß …` ürünü var — hepsi aynı
+          görünüyordu ve yanlış ürün ancak mutfak fişi bastıktan sonra fark ediliyordu (fiş +
+          STORNO + yeniden basım). DESIGN.md §3: kısaltma yerine sarma.
+        */}
+        <p className="flex items-baseline gap-2">
+          {product.code ? <span className="tabular shrink-0 text-base text-muted">{product.code}</span> : null}
+          <span
+            className={clsx(
+              // `min-w-0`: tek parçalı uzun Almanca bileşik adlar (Drehspießfleisch) esnek
+              // kutunun varsayılan `min-width: auto`'su yüzünden satırı taşırmasın.
+              'line-clamp-2 min-w-0 text-product font-semibold',
+              soldOut && 'text-muted',
+            )}
+          >
+            {product.name}
+          </span>
+        </p>
+        <div data-testid="product-row-actions" className="flex items-center justify-between gap-3">
+          <span className="tabular text-base text-muted">{priceLabel}</span>
+          {soldOut ? (
+            // Y3: eskiden satır `opacity-50` ile 2,74:1'e düşüyordu ve sağ taraf bomboş kalıp
+            // "eksik render" gibi duruyordu. Opaklık yerine net bir durum: tam opak rozet.
+            <Badge tone="empty">{t('waiter.order.soldOut')}</Badge>
+          ) : (
+            <Button
+              size="md"
+              variant="secondary"
+              className="shrink-0"
+              icon={<Plus aria-hidden size={18} />}
+              onClick={() => (needsSheet(product) ? onOpenSheet(product) : onAdd(product))}
+            >
+              {needsSheet(product) ? t('common.select') : t('common.add')}
+            </Button>
+          )}
         </div>
-        <span className="tabular text-sm text-muted">{priceLabel}</span>
       </div>
-      {soldOut ? null : (
-        <Button
-          size="md"
-          variant="secondary"
-          icon={<Plus aria-hidden size={18} />}
-          onClick={() => (needsSheet(product) ? onOpenSheet(product) : onAdd(product))}
-        >
-          {needsSheet(product) ? t('common.select') : t('common.add')}
-        </Button>
-      )}
     </li>
+  );
+}
+
+/**
+ * Y1: menü gelene kadar ekran bomboştu (`m3-order-loading-390.png`). İskelet, masa ızgarasındaki
+ * kalıbın aynısıdır (`TablesPage`): aynı kenarlık, aynı nabız — yükleme iki ekranda aynı şeye
+ * benzer. Ürün satırının gerçek ölçülerini taşır ki menü gelince düzen kaymasın.
+ */
+function MenuSkeleton() {
+  return (
+    <div data-testid="menu-skeleton" aria-hidden className="flex flex-col gap-3 py-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-start gap-3">
+          <div className="size-14 shrink-0 animate-pulse rounded-card border border-border bg-surface-2" />
+          <div className="flex flex-1 flex-col gap-2">
+            <div className="h-6 w-3/4 animate-pulse rounded-control bg-surface-2" />
+            <div className="h-12 animate-pulse rounded-control bg-surface-2" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

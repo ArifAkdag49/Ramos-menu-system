@@ -8,7 +8,7 @@ import { Badge } from '../../ui/Badge';
 import { Chip } from '../../ui/Chip';
 import { EmptyState } from '../../ui/EmptyState';
 import { Elapsed } from '../common/Elapsed';
-import { tableTone } from './waiterLogic';
+import { sortTables, tableTone } from './waiterLogic';
 
 type Filter = 'all' | 'open' | 'ready';
 
@@ -33,7 +33,12 @@ export function TablesPage() {
   // boş dizi pratikte yalnız "henüz gelmedi" anlamına gelir (Karar: task-13-report.md).
   const loading = rows.length === 0;
 
-  const visible = useMemo(() => rows.filter((r) => filter === 'all' || tableTone(r) === filter), [rows, filter]);
+  // O1 (M3 tasarım kapısı): ızgara sunucu sırasında geliyordu; 12 boş masa önde, açık ve hazır
+  // masalar katlamanın altında kalıyordu. Sıra artık durumdan geliyor: hazır → açık → boş.
+  const visible = useMemo(
+    () => sortTables(rows.filter((r) => filter === 'all' || tableTone(r) === filter)),
+    [rows, filter],
+  );
 
   return (
     <div className="flex flex-col gap-4 px-4 py-4">

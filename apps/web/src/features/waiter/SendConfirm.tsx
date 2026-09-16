@@ -18,7 +18,8 @@ import { toast } from '../../lib/toast';
 import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
-import { cartLineSummary } from './cartLineSummary';
+import { ItemLinesView } from '../common/ItemLinesView';
+import { cartLineParts } from './cartLineParts';
 import { useCart } from './cartStore';
 import { MissingProductLine } from './MissingProductLine';
 import { submitErrorView, type SubmitErrorView } from './submitError';
@@ -145,9 +146,8 @@ export function SendConfirm({
                     <p className="text-base font-semibold">
                       {line.quantity}× <span lang="de">{product.name}</span>
                     </p>
-                    <p className="text-sm text-muted">
-                      {cartLineSummary(product, line, locale, t('waiter.order.removedPrefix'))}
-                    </p>
+                    {/* Y4: sepetle aynı bileşen — ÇIKAR kendi satırında ve danger tonunda. */}
+                    <ItemLinesView lines={cartLineParts(product, line, locale, t('waiter.order.removedPrefix'))} />
                   </div>
                   <span className="tabular shrink-0 text-base font-semibold">
                     {formatEuro(unitPriceCents(product, line) * line.quantity)}

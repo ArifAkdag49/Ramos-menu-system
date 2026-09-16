@@ -7,10 +7,10 @@ import { useOnline } from '../../lib/online';
 import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
-import { IconButton } from '../../ui/IconButton';
 import { Sheet } from '../../ui/Sheet';
 import { Stepper } from '../../ui/Stepper';
-import { cartLineSummary } from './cartLineSummary';
+import { ItemLinesView } from '../common/ItemLinesView';
+import { cartLineParts } from './cartLineParts';
 import { useCart } from './cartStore';
 import { MissingProductLine } from './MissingProductLine';
 import { SendConfirm } from './SendConfirm';
@@ -123,7 +123,10 @@ export function CartDrawer({
                     onRemove={() => remove(tableId, line.key)}
                   />
                 );
-              const summary = cartLineSummary(product, line, locale, t('waiter.order.removedPrefix'));
+              // Y4: ÇIKAR artık orta-nokta zincirinin ortasında gri 14 px değil; masa detayıyla
+              // aynı bileşen, aynı görsel dil — kendi satırında ve danger tonunda. Gönderimden
+              // önceki son kontrol noktası bu ekran.
+              const parts = cartLineParts(product, line, locale, t('waiter.order.removedPrefix'));
               return (
                 <li key={line.key} className="flex flex-col gap-3 rounded-card border border-border bg-surface p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -131,7 +134,7 @@ export function CartDrawer({
                       <p className="text-base font-semibold">
                         {line.quantity}× <span lang="de">{product.name}</span>
                       </p>
-                      {summary ? <p className="text-sm text-muted">{summary}</p> : null}
+                      <ItemLinesView lines={parts} />
                     </div>
                     <span className="tabular shrink-0 text-base font-semibold">
                       {formatEuro(unitPriceCents(product, line) * line.quantity)}
@@ -155,11 +158,19 @@ export function CartDrawer({
                     >
                       {t('common.duplicate')}
                     </Button>
-                    <IconButton
-                      label={t('common.remove')}
+                    {/*
+                      O4: yıkıcı olan tek eylem etiketsizdi, yanındaki "Çoğalt" yazılıydı
+                      (BUILD-PROMPT §10.3). Yazı eklendi ve danger tonuna alındı
+                      (`destructive-emphasis`). Geri alma eklenmedi — spec istemiyor (YAGNI).
+                    */}
+                    <Button
+                      variant="ghost"
+                      className="text-danger-ink"
                       icon={<Trash2 aria-hidden size={18} />}
                       onClick={() => remove(tableId, line.key)}
-                    />
+                    >
+                      {t('common.remove')}
+                    </Button>
                   </div>
                 </li>
               );

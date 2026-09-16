@@ -84,3 +84,25 @@ describe('TablesPage', () => {
     expect(await screen.findByText('masa detayı')).toBeInTheDocument();
   });
 });
+
+/**
+ * O1 (M3 tasarım kapısı): ızgara sunucu sırasında geliyordu — 12 boş masa önde, açık ve hazır
+ * masalar katlamanın altında (`m3-tables-390.png`). Varsayılan görünüm garsonun kendi masalarını
+ * göstermiyordu. Sıra: hazır → açık → boş.
+ */
+describe('TablesPage sırası (O1)', () => {
+  it('hazır masa önce, boş masa en sonda çizilir', () => {
+    renderPage();
+    const names = [...document.querySelectorAll('[data-tone]')].map((el) => el.textContent ?? '');
+    expect(names[0]).toContain('Masa 3');
+    expect(names[1]).toContain('Masa 2');
+    expect(names[2]).toContain('Masa 1');
+  });
+
+  it('süzgeç açıkken de aynı sıra geçerlidir', async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: 'Tümü' }));
+    const tones = [...document.querySelectorAll('[data-tone]')].map((el) => el.getAttribute('data-tone'));
+    expect(tones).toEqual(['ready', 'open', 'free']);
+  });
+});

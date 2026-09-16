@@ -1,5 +1,5 @@
 import type { MenuGroup, MenuProduct } from '@ramos/shared';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import i18n from '../../i18n';
@@ -151,5 +151,57 @@ describe('ProductSheet', () => {
     expect(screen.getByRole('button', { name: /Kalb/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /Aktualisieren/ })).toBeInTheDocument();
     expect(screen.getByDisplayValue('az pişmiş')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Y5 (M3 tasarım kapısı): zorunlu "Soße" grubu panel açılınca katlamanın altında kalıyordu; tek
+ * işaret 1 px'lik bir çerçeveydi. Garson gri "Sepete ekle"ye basıyor, hiçbir şey olmuyor ve
+ * **neden** yazmıyordu — BUILD-PROMPT §10.9 ("hata mesajı ne oldu + ne yapılmalı der") ihlali.
+ */
+describe('ProductSheet — pasif ana eylemin sebebi yazılır (Y5)', () => {
+  it('eksik grubu adıyla söyler', () => {
+    render(<ProductSheet product={teller} open onClose={vi.fn()} onSubmit={vi.fn()} />);
+    expect(screen.getByTestId('submit-hint')).toHaveTextContent('Zuerst Soße auswählen');
+  });
+
+  it('pasif düğme bu açıklamayla ilişkilendirilir', () => {
+    render(<ProductSheet product={teller} open onClose={vi.fn()} onSubmit={vi.fn()} />);
+    expect(addToCart()).toHaveAttribute('aria-describedby', screen.getByTestId('submit-hint').id);
+  });
+
+  it('eksik grup görünür bir "Erforderlich" işareti taşır', () => {
+    render(<ProductSheet product={teller} open onClose={vi.fn()} onSubmit={vi.fn()} />);
+    const group = screen.getByRole('group', { name: 'Soße' });
+    expect(within(group).getByText('Erforderlich')).toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Extras' })).queryByText('Erforderlich')).not.toBeInTheDocument();
+  });
+
+  it('seçim tamamlanınca açıklama ve işaret kaybolur', async () => {
+    const user = userEvent.setup();
+    render(<ProductSheet product={teller} open onClose={vi.fn()} onSubmit={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: /^Knoblauch$/ }));
+    expect(screen.queryByTestId('submit-hint')).not.toBeInTheDocument();
+    expect(screen.queryByText('Erforderlich')).not.toBeInTheDocument();
+    expect(addToCart()).not.toHaveAttribute('aria-describedby');
+  });
+
+  /**
+   * `defaultSelection` açılışta her zaman bir varyant seçer; varyant boş kalabilen tek yol,
+   * varyantı menüden kalkmış eski bir sepet satırını düzenlemektir (R75 komşusu). Uyarı orada da
+   * alan adını söyler ve varyant kümesi görünür bir "Erforderlich" işareti taşır.
+   */
+  it('varyant seçilmemişse varyant alanını adıyla söyler', () => {
+    render(
+      <ProductSheet
+        product={teller}
+        open
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        initial={{ variantId: null, optionIds: ['po', 'kn'], removedIngredientIds: [], quantity: 1, note: '' }}
+      />,
+    );
+    expect(screen.getByTestId('submit-hint')).toHaveTextContent('Zuerst Variante auswählen');
+    expect(within(screen.getByRole('group', { name: 'Variante' })).getByText('Erforderlich')).toBeInTheDocument();
   });
 });

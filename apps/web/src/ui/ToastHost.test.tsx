@@ -101,10 +101,21 @@ describe('ToastHost üst konumu sayfa başlığını örtmez (R81)', () => {
     expect(source('src/features/kitchen/KitchenHeader.tsx')).toContain('h-[var(--header-h)]');
   });
 
-  it('üst konum başlık yüksekliği kadar ofsetlidir', () => {
+  /**
+   * M3 tasarım kapısı, devredilen bulgu (a): R81'in başlık ofseti (72 px + 8 px) toast'ın ALT
+   * kenarını panelin yuvarlak üst köşesine değdiriyordu — 390×844'te panel en fazla 85dvh, yani
+   * üst kenarı 126,6 px; toast 80 px'te başlayıp ~50 px yükseklikle 130 px'te bitiyordu. Toast
+   * panele ait bir öğe gibi görünüyordu. Başlık ofseti artık gerekmiyor: `top` konumu YALNIZ bir
+   * panel açıkken kullanılıyor, panelin scrim'i sayfa başlığını zaten karartıyor ve başlık
+   * `inert`. Toast ekranın en üstüne çekildi — panelin üst kenarı en erken 15dvh'de başladığı
+   * için her ekran boyunda arada boşluk kalır (844 px'te ~69 px, 568 px'lik en küçük telefonda
+   * ~27 px). R81'in asıl kazanımı (opak yüzey) aşağıdaki testte korunuyor.
+   */
+  it('üst konum panele değmez: başlık ofseti yerine ekranın en üstünden başlar', () => {
     useToast.getState().show('Mutfağa gönderildi · #047');
     render(<Screen sheetOpen />);
-    expect(host().className).toContain('var(--header-h)');
+    expect(host().className).not.toContain('var(--header-h)');
+    expect(host().className).toContain('safe-area-inset-top');
   });
 
   it('baloncuk opak bir yüzeye oturur — arkasındaki başlık metni karışmaz', () => {

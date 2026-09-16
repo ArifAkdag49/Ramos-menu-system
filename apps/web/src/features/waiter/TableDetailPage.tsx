@@ -31,7 +31,6 @@ import { Badge } from '../../ui/Badge';
 import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
-import { IconButton } from '../../ui/IconButton';
 import { Sheet } from '../../ui/Sheet';
 import { Spinner } from '../../ui/Spinner';
 import { ItemLines } from '../common/ItemLinesView';
@@ -40,7 +39,7 @@ import { CancelItemSheet } from './CancelItemSheet';
 import { MoveTableSheet } from './MoveTableSheet';
 import { localCancelReason, parseCancelReasons, type CancelReason } from './cancelReasons';
 import { errorKey } from './submitError';
-import { formatTime, printBadge, tableBody } from './waiterLogic';
+import { formatTime, printBadge, sortOrderItems, tableBody } from './waiterLogic';
 
 const STATUS_TONE: Record<OrderView['status'], 'open' | 'ready' | 'empty' | 'danger'> = {
   in_kitchen: 'open',
@@ -158,7 +157,13 @@ export function TableDetailPage() {
             >
               {t('waiter.actions.addOrder')}
             </Button>
-            <div className="flex gap-2">
+            {/*
+              M3 tasarım kapısı, devredilen bulgu (c): üç eşit sütunda TR'de yalnız "Masayı kapat",
+              DE'de ayrıca "Tisch wechseln" iki satıra sarılıyordu — üç sütunun ikisi çift satır
+              olunca çubuk sayfanın dörtte birini yiyordu. 2+1 düzen: kısa iki eylem yan yana,
+              en uzun ad (ve en yıkıcı eylem) kendi tam genişlikli satırında.
+            */}
+            <div data-testid="table-actions-pair" className="flex gap-2">
               <Button
                 variant="secondary"
                 className="min-w-0 flex-1"
@@ -175,21 +180,20 @@ export function TableDetailPage() {
               >
                 {t('waiter.actions.move')}
               </Button>
-              <Button
-                variant="secondary"
-                // M10: adı "Kapat" değil — paneldeki kapat düğmesiyle aynı erişilebilir adı
-                // taşıyordu. Uzun olduğu için satırda daha fazla pay alır; sığmazsa (Almanca
-                // "Tisch schließen" daha da uzun) taşmak yerine iki satıra sarılır.
-                className="min-w-0 flex-[1.7]"
-                icon={<DoorClosed aria-hidden size={18} />}
-                onClick={() => {
-                  setCloseProblem(null);
-                  setPanel('close');
-                }}
-              >
-                {t('waiter.actions.close')}
-              </Button>
             </div>
+            <Button
+              variant="secondary"
+              fullWidth
+              // M10: adı "Kapat" değil — paneldeki kapat düğmesiyle aynı erişilebilir adı
+              // taşıyordu.
+              icon={<DoorClosed aria-hidden size={18} />}
+              onClick={() => {
+                setCloseProblem(null);
+                setPanel('close');
+              }}
+            >
+              {t('waiter.actions.close')}
+            </Button>
           </div>
 
           <BillSheet sessionId={session.id} locale={locale} open={panel === 'bill'} onClose={() => setPanel(null)} />
@@ -278,16 +282,25 @@ function OrderCard({
         ) : null}
       </div>
 
-      <ul className="flex flex-col gap-3">
-        {order.items.map((item) => {
+      <ul data-testid="order-items" className="flex flex-col gap-3">
+        {/*
+          Y8: iptal edilmiş kalemler görünümde sona iner; veri (fiş) sırası değişmez.
+          Y2: kapsayıcıdaki blok `opacity-60` kaldırıldı — altındaki `--color-danger-ink`'i de
+          söndürüp iptal sebebini 3,38:1'e düşürüyordu (axe: serious). "Yapma" sinyali mutfakta
+          1–2 m'den en zor okunan şey oluyordu. Soluk görünüm artık üstü çizili ad + `text-muted`
+          ile geliyor; sebep satırı tam opaklıkta danger-ink (7,4:1).
+          Y7: ürün adı `product` rolüne (17 px), sebep satırı gövde ölçüsüne (16 px) çıktı — §10.6.
+        */}
+        {sortOrderItems(order.items).map((item) => {
           // M3: sebep sunucuda Almanca durur (STORNO fişi Almanca); arayüzde yerel etikete eşlenir,
           // eşleşmeyen serbest metin Almanca kalır ve `lang="de"` ile sarılır.
           const reason = item.cancel_reason ? localCancelReason(item.cancel_reason, cancelReasons, locale) : null;
+          const cancelled = item.status === 'cancelled';
           return (
-          <li key={item.id} className={item.status === 'cancelled' ? 'opacity-60' : undefined}>
+          <li key={item.id}>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className={clsx('text-base font-medium', item.status === 'cancelled' && 'line-through')}>
+                <p className={clsx('text-product font-medium', cancelled && 'line-through text-muted')}>
                   {item.quantity}× <span lang="de">{item.product_name}</span>
                 </p>
                 <ItemLines item={item} locale={locale} />
@@ -304,8 +317,8 @@ function OrderCard({
                 </Button>
               ) : null}
             </div>
-            {item.status === 'cancelled' && reason ? (
-              <p className="text-sm text-danger-ink">
+            {cancelled && reason ? (
+              <p className="text-base font-medium text-danger-ink">
                 {t('waiter.table.cancelReasonLabel')}{' '}
                 <span lang={reason.isGerman ? 'de' : undefined}>{reason.text}</span>
               </p>
@@ -322,7 +335,15 @@ function OrderCard({
           </Button>
         ) : null}
         {order.status === 'in_kitchen' ? (
-          <IconButton label={t('waiter.actions.more')} icon={<MoreHorizontal aria-hidden size={22} />} onClick={() => setMoreOpen(true)} />
+          // O3: yalnız ikonlu düğme BUILD-PROMPT §10.3'te yalnız geri ve kapat için serbest.
+          // "Teslim edildi (içecek)" üç noktanın arkasındaydı; yeni bir garson 5 dakikada bulamaz.
+          <Button
+            variant="ghost"
+            icon={<MoreHorizontal aria-hidden size={20} />}
+            onClick={() => setMoreOpen(true)}
+          >
+            {t('waiter.actions.more')}
+          </Button>
         ) : null}
         <Button variant="ghost" icon={<RotateCw aria-hidden size={18} />} onClick={onReprint}>
           {t('waiter.actions.reprint')}

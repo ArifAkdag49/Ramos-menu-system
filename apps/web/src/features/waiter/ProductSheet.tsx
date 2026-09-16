@@ -16,6 +16,7 @@ import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../../data/settings';
+import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { Chip } from '../../ui/Chip';
 import { ProductImage } from '../../ui/ProductImage';
@@ -76,6 +77,22 @@ export function ProductSheet({
 
   const unitPrice = unitPriceCents(product, selection);
   const sortedGroups = [...product.groups].sort((a, b) => a.sort - b.sort);
+
+  /**
+   * Y5 (M3 tasarım kapısı): zorunlu "Sos" grubu panel açılınca katlamanın altında kalıyordu ve
+   * tek işareti 1 px'lik bir çerçeveydi. Garson gri "Sepete ekle"ye basıyor, hiçbir şey olmuyor,
+   * **neden** yazmıyordu — BUILD-PROMPT §10.9 "hata mesajı ne oldu + ne yapılmalı der" ihlali.
+   * Eksik olan ilk alan görünme sırasına göre (önce varyant, sonra grup sırası) adıyla söylenir.
+   */
+  const missingLabel = canSubmit
+    ? null
+    : variantInvalid
+      ? t('waiter.order.variantLabel')
+      : (() => {
+          const group = sortedGroups.find((g) => errorGroupIds.has(g.id));
+          return group ? localName(group, locale) : null;
+        })();
+  const hintId = 'product-submit-hint';
   const quickNotes = (settings?.quick_notes as { de: string; tr: string }[] | null | undefined) ?? [];
 
   const toggleIngredient = (id: string) =>
@@ -98,19 +115,32 @@ export function ProductSheet({
       title={product.name}
       closeLabel={t('common.close')}
       footer={
-        <div className="flex items-center gap-3">
-          <Stepper
-            value={quantity}
-            onChange={setQuantity}
-            min={1}
-            max={99}
-            decreaseLabel={t('waiter.order.quantity.decrease')}
-            increaseLabel={t('waiter.order.quantity.increase')}
-            valueLabel={t('waiter.order.quantity.value', { count: quantity })}
-          />
-          <Button fullWidth size="lg" disabled={!canSubmit} onClick={submit}>
-            {t(initial ? 'waiter.order.update' : 'waiter.order.addToCart', { price: formatEuro(unitPrice * quantity) })}
-          </Button>
+        <div className="flex flex-col gap-2">
+          {missingLabel ? (
+            <p id={hintId} data-testid="submit-hint" className="text-base font-medium text-danger-ink">
+              {t('waiter.order.submitHint', { group: missingLabel })}
+            </p>
+          ) : null}
+          <div className="flex items-center gap-3">
+            <Stepper
+              value={quantity}
+              onChange={setQuantity}
+              min={1}
+              max={99}
+              decreaseLabel={t('waiter.order.quantity.decrease')}
+              increaseLabel={t('waiter.order.quantity.increase')}
+              valueLabel={t('waiter.order.quantity.value', { count: quantity })}
+            />
+            <Button
+              fullWidth
+              size="lg"
+              disabled={!canSubmit}
+              aria-describedby={missingLabel ? hintId : undefined}
+              onClick={submit}
+            >
+              {t(initial ? 'waiter.order.update' : 'waiter.order.addToCart', { price: formatEuro(unitPrice * quantity) })}
+            </Button>
+          </div>
         </div>
       }
     >
@@ -133,20 +163,31 @@ export function ProductSheet({
           <fieldset
             aria-invalid={variantInvalid}
             aria-label={t('waiter.order.variantLabel')}
-            className={clsx('m-0 flex gap-2 rounded-card border-0 p-0', variantInvalid && 'border border-danger/60 p-3')}
+            className={clsx(
+              'm-0 flex flex-col gap-2 rounded-card border-0 p-0',
+              variantInvalid && 'border border-danger/60 p-3',
+            )}
           >
-            {[...product.variants]
-              .sort((a, b) => a.sort - b.sort)
-              .map((v) => (
-                <Chip
-                  key={v.id}
-                  selected={selection.variantId === v.id}
-                  className="flex-1 justify-center"
-                  onClick={() => setSelection((s) => ({ ...s, variantId: v.id }))}
-                >
-                  {localName(v, locale)} {formatEuro(v.price_cents)}
-                </Chip>
-              ))}
+            {variantInvalid ? (
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-base font-semibold">{t('waiter.order.variantLabel')}</span>
+                <Badge tone="danger">{t('waiter.order.requiredMark')}</Badge>
+              </div>
+            ) : null}
+            <div className="flex gap-2">
+              {[...product.variants]
+                .sort((a, b) => a.sort - b.sort)
+                .map((v) => (
+                  <Chip
+                    key={v.id}
+                    selected={selection.variantId === v.id}
+                    className="flex-1 justify-center"
+                    onClick={() => setSelection((s) => ({ ...s, variantId: v.id }))}
+                  >
+                    {localName(v, locale)} {formatEuro(v.price_cents)}
+                  </Chip>
+                ))}
+            </div>
           </fieldset>
         ) : null}
 
@@ -162,7 +203,11 @@ export function ProductSheet({
             >
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-base font-semibold">{localName(g, locale)}</span>
-                <span className="text-sm text-muted">{groupHint(g, chosen.length, t)}</span>
+                <span className="flex items-baseline gap-2">
+                  {/* Y5: eksik grubun tek işareti 1 px kenarlıktı — katlamanın altında görünmüyordu. */}
+                  {hasError ? <Badge tone="danger">{t('waiter.order.requiredMark')}</Badge> : null}
+                  <span className="text-sm text-muted">{groupHint(g, chosen.length, t)}</span>
+                </span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {[...g.options]

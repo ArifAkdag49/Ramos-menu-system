@@ -12,12 +12,19 @@ import { toastMotion } from './toastMotion';
  * monte kalır, mesaj içine yazılır. Birçok ekran okuyucu, bölge duyuru anında yeni oluşursa
  * hiçbir şey seslendirmez. Bu yüzden `<Toast>` ekranda sürekli dururken `children` gelip gider.
  */
-// R81: üst konum sayfa başlığının ALTINDAN başlar. Yükseklik `tokens.css`'teki `--header-h`
-// değişkeninden gelir — aynı değişkeni `WaiterLayout` ve `OrderPage` başlıkları da kullanır,
-// yani ölçü üç yerde ayrı ayrı yazılı değil.
+// M3 tasarım kapısı, devredilen bulgu (a): R81'de üst konum sayfa başlığının ALTINDAN başlıyordu
+// (`--header-h` + 8 px = 80 px). O ofset toast'ın ALT kenarını panelin yuvarlak üst köşesine
+// değdiriyordu: 390×844'te panel en fazla 85dvh, yani üst kenarı 126,6 px; toast 80 px'te başlayıp
+// ~50 px yükseklikle 130 px'te bitiyordu. Toast panele ait bir öğe gibi görünüyordu.
+//
+// Başlık ofseti artık gerekmiyor: `top` konumu YALNIZ bir panel açıkken kullanılır (`ToastHost`),
+// panelin scrim'i sayfa başlığını zaten karartır ve uygulama kökü `inert`'tir. Toast ekranın en
+// üstüne çekildi; panelin üst kenarı en erken 15dvh'de başladığı için her ekran boyunda arada
+// boşluk kalır (844 px'te ~69 px, 568 px'lik en küçük telefonda ~27 px). R81'in asıl kazanımı —
+// baloncuğun OPAK bir yüzeye oturması (`TONE_SOLID`) — olduğu gibi duruyor.
 const POSITION: Record<'bottom' | 'top', string> = {
   bottom: 'bottom-[calc(1rem+env(safe-area-inset-bottom))]',
-  top: 'top-[calc(var(--header-h)+0.5rem+env(safe-area-inset-top))]',
+  top: 'top-[calc(0.5rem+env(safe-area-inset-top))]',
 };
 
 export function Toast({

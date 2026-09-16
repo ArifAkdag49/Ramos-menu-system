@@ -1,4 +1,4 @@
-import type { OrderView } from '../../data/orders';
+import type { OrderItemView, OrderView } from '../../data/orders';
 import type { TableRow } from '../../data/tables';
 
 /** Masa kartının tonu: boş (gri) · açık (lime) · hazır bekleyen (altın). */
@@ -32,3 +32,34 @@ export const formatTime = (iso: string): string => timeFormatter.format(new Date
  */
 export const tableBody = (hasSession: boolean, firstLoad: boolean): 'loading' | 'empty' | 'orders' =>
   hasSession ? 'orders' : firstLoad ? 'loading' : 'empty';
+
+const TABLE_ORDER: Record<'free' | 'open' | 'ready', number> = { ready: 0, open: 1, free: 2 };
+
+/**
+ * Masa ızgarasının görünüm sırası: **hazır → açık → boş** (M3 tasarım kapısı O1).
+ *
+ * Sunucu sırası masa numarasıdır; ekranı açan garsonun tek sorusu ise "hangi masam beni
+ * bekliyor". Boş masalar çoğunlukta olduğu için varsayılan görünümde açık ve hazır masalar
+ * katlamanın altında kalıyordu. Sıralama kararlıdır: grup içinde masa numarası sırası bozulmaz,
+ * yoksa garson ızgaradaki yer ezberini kaybeder.
+ */
+export const sortTables = <T extends Pick<TableRow, 'session_id' | 'orders_ready'>>(rows: T[]): T[] =>
+  [...rows].sort((a, b) => TABLE_ORDER[tableTone(a)] - TABLE_ORDER[tableTone(b)]);
+
+/**
+ * Kalem listesinin görünüm sırası: iptal edilmiş kalemler **sona** iner (M3 tasarım kapısı Y8).
+ *
+ * Veri sırası (fiş sırası: içecekler sonda, kategori sırası, kalem sırası) değişmez — yalnız
+ * ekranda "yapılmayacak iş" kartın en değerli ilk satırını harcamasın diye kaydırılır.
+ */
+export const sortOrderItems = <T extends Pick<OrderItemView, 'status'>>(items: T[]): T[] =>
+  [...items].sort((a, b) => Number(a.status === 'cancelled') - Number(b.status === 'cancelled'));
+
+/**
+ * Sipariş girişinin gövdesi (M3 tasarım kapısı Y1). `tableBody` ile aynı kural: iskelet yalnız
+ * **ilk yüklemede** görünür (elde hiç ürün yok ve sorgu uçuyor); arka plan tazelemesinde eldeki
+ * menü ekranda kalır, yoksa her tazelemede 107 ürünlük liste iskelete dönüşüp kaydırma yeri
+ * kaybolurdu.
+ */
+export const menuBody = (hasProducts: boolean, firstLoad: boolean): 'loading' | 'menu' =>
+  hasProducts || !firstLoad ? 'menu' : 'loading';

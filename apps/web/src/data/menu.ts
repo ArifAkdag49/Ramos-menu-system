@@ -24,6 +24,13 @@ export interface MenuData {
   categories: MenuCategory[];
   products: MenuProduct[];
   byId: Map<string, MenuProduct>;
+  /**
+   * İlk yükleme: elde hiç menü yok ve sorgu uçuyor. Sipariş girişi buna bakıp iskelet gösterir
+   * (M3 tasarım kapısı Y1) — 107 ürünlük menü restoran Wi-Fi'siyle saniyeler sürebiliyor ve
+   * ekran o süre boyunca bomboş kalıyordu. Arka plan tazelemesinde `false`'tur: eldeki menü
+   * ekranda kalır.
+   */
+  isLoading: boolean;
 }
 
 /** Menüyü iki sorguyla okur: kategoriler ve iç içe seçimli ürünler. */
@@ -62,5 +69,5 @@ export function useMenu(): MenuData {
   const categories = categoriesQuery.data ?? [];
   const products = productsQuery.data ?? [];
   const byId = new Map(products.map((p) => [p.id, p]));
-  return { categories, products, byId };
+  return { categories, products, byId, isLoading: categoriesQuery.isLoading || productsQuery.isLoading };
 }

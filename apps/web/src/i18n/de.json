@@ -114,6 +114,8 @@
       "ingredientsTitle": "Zutaten — zum Entfernen antippen",
       "noteLabel": "Notiz",
       "notePlaceholder": "Notiz an die Küche (optional)",
+      "submitHint": "Zuerst {{group}} auswählen",
+      "requiredMark": "Erforderlich",
       "quantity": {
         "increase": "Menge erhöhen",
         "decrease": "Menge verringern",

@@ -27,12 +27,17 @@ export function Stepper({
         disabled={value <= min}
         onClick={() => onChange(Math.max(min, value - 1))}
       />
-      <span
-        aria-live="polite"
-        aria-label={valueLabel}
-        className="tabular min-w-10 text-center text-lg font-semibold"
-      >
-        {value}
+      {/*
+        O7 (M3 tasarım kapısı, axe `aria-prohibited-attr`): sayı jenerik bir `span`'da
+        `aria-label="Adet 2"` taşıyordu. ARIA 1.2 jenerik öğede `aria-label`'ı yasaklar; ekran
+        okuyucular yok sayar, yani adet değişimi bağlamsız ("2") duyurulurdu. Görünen sayı
+        dekoratif, duyuru görünmez bir canlı bölgeden yapılıyor — ikisi de aynı değeri okur.
+      */}
+      <span className="tabular min-w-10 text-center text-lg font-semibold">
+        <span aria-hidden="true">{value}</span>
+        <span role="status" className="sr-only">
+          {valueLabel}
+        </span>
       </span>
       <IconButton
         label={increaseLabel}
