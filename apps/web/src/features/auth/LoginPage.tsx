@@ -1,7 +1,8 @@
-import { Eye, EyeOff, Flame, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
+import logoUrl from '../../assets/brand/ramos-logo.webp';
 import { homeFor, useAuth } from '../../lib/auth';
 import { Button } from '../../ui/Button';
 
@@ -47,8 +48,16 @@ export function LoginPage() {
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <form onSubmit={onSubmit} className="w-full max-w-sm">
         <div className="mb-10 flex flex-col items-center gap-3 text-center">
-          <Flame aria-hidden size={40} className="text-lime" />
-          <h1 className="text-4xl font-bold tracking-tight">RAMO&apos;S</h1>
+          {/* İşletmenin logosu (şeffaf arka plan, koyu zemin için). width/height: yüklenirken sayfa kaymasın. */}
+          <h1 className="w-full">
+            <img
+              src={logoUrl}
+              alt="RAMO'S Döner & Grill House"
+              width={720}
+              height={287}
+              className="mx-auto h-auto w-72 max-w-full"
+            />
+          </h1>
           <p className="text-base text-muted">{t('login.subtitle')}</p>
         </div>
 
