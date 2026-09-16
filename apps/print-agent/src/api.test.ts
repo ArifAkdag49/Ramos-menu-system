@@ -31,7 +31,8 @@ vi.mock('@supabase/supabase-js', () => ({
   })),
 }));
 
-const { createSupabaseApi } = await import('./api');
+const { createSupabaseApi, createTimeoutFetch, DEFAULT_RPC_TIMEOUT_MS } = await import('./api');
+const { createClient } = await import('@supabase/supabase-js');
 
 const env = {
   SUPABASE_URL: 'https://x.supabase.co',
@@ -138,5 +139,56 @@ describe('createSupabaseApi — 401 üzerinde bir kez yeniden giriş', () => {
     const job = await api.claim();
     expect(job).toBeNull();
     expect(attempts).toBe(2);
+  });
+});
+
+// ---------- Review fix round 4 (R71, I-2) ----------
+//
+// Bulgu: `rpc()` çağrılarında istemci tarafı zaman aşımı yoktu. Yarı açık bir TCP bağlantısında
+// istek ne çözülür ne reddedilir; tek sınır undici'nin ~300 sn'lik varsayılanıydı —
+// `claim_print_job`'ın 60 sn'lik reclaim penceresinden çok uzun. Çözüm: `global.fetch`'i
+// `AbortSignal.timeout()` ile saran bir fetch (`createTimeoutFetch`).
+
+describe('createTimeoutFetch — R71: her deneme istemci tarafı zaman aşımıyla sınırlanır', () => {
+  it('temel fetch hiç çözülmese bile istek zaman aşımı içinde REDDEDER (askıda kalmaz)', async () => {
+    const hangingFetch = vi.fn(
+      (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('zaman aşımı'), { name: 'AbortError' })));
+        }),
+    ) as unknown as typeof fetch;
+
+    const timeoutFetch = createTimeoutFetch(20, hangingFetch); // testte hızlı olsun diye 20 ms
+    await expect(timeoutFetch('https://x.example/rpc', {})).rejects.toThrow();
+    expect(hangingFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('normal (hızlı çözülen) istekleri etkilemez — yanıt olduğu gibi geçer', async () => {
+    const fastFetch = vi.fn(async () => new Response('ok', { status: 200 })) as unknown as typeof fetch;
+    const timeoutFetch = createTimeoutFetch(5000, fastFetch);
+    const res = await timeoutFetch('https://x.example/rpc', {});
+    expect(await res.text()).toBe('ok');
+  });
+
+  it('varsayılan zaman aşımı 10 sn (~claim_print_job\'ın 60 sn\'lik reclaim penceresinden kısa)', () => {
+    expect(DEFAULT_RPC_TIMEOUT_MS).toBe(10000);
+  });
+});
+
+describe('createSupabaseApi — R71: istemci global.fetch AbortSignal.timeout ile sarılı olarak kurulur', () => {
+  it('createClient bir global.fetch seçeneğiyle çağrılır ve bu fetch, temel fetch hiç çözülmese bile reddeder', async () => {
+    const hangingBaseFetch = vi.fn(
+      (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('zaman aşımı'), { name: 'AbortError' })));
+        }),
+    ) as unknown as typeof fetch;
+
+    await createSupabaseApi(env, log, { rpcTimeoutMs: 20, baseFetch: hangingBaseFetch });
+
+    const call = (createClient as unknown as { mock: { calls: unknown[][] } }).mock.calls.at(-1)!;
+    const options = call[2] as { global?: { fetch?: typeof fetch } };
+    expect(typeof options.global?.fetch).toBe('function');
+    await expect(options.global!.fetch!('https://x.example/rpc', {})).rejects.toThrow();
   });
 });

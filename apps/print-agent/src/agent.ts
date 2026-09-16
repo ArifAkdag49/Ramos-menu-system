@@ -79,6 +79,14 @@ export class Agent {
   /** R69: yazıcıya dokunan İKİ işlem (`checkPrinter`'ın durum sorgusu, `drain`'in gönderimi)
    *  aynı anda ASLA çalışmasın diye tutulan gerçek bir mutex — bkz. `withPrinterLock`. */
   private printerMutex: Promise<unknown> = Promise.resolve();
+  /** M3 (review fix round 4): `stop()`'un art arda çağrılmalarını TEK bir çalışmaya indirger —
+   *  bkz. `stop`. */
+  private stopPromise: Promise<void> | null = null;
+  /** M5 (review fix round 4): şu an sürmekte olan bir onay yeniden denemesi
+   *  `STALE_CONFIRMATION_WARN_MS`'i aştıysa bu, o denemenin başlangıç zamanıdır (yoksa `null`).
+   *  `sendHeartbeat`'in hata alanına yansıtılır — aksi hâlde ajan sessizce sonsuza dek yeniden
+   *  dener ve operatör hiçbir yerde bunu göremez (heartbeat sağlıklı görünmeye devam eder). */
+  private stuckConfirmationSince: number | null = null;
 
   constructor(
     private api: AgentApi,
@@ -119,6 +127,12 @@ export class Agent {
   }
 
   async start() {
+    // M2 (review fix round 4): `stop()` sonrası aynı `Agent` örneği yeniden `start()` edilebilir
+    // olsun diye kapanış bayrakları burada sıfırlanır — aksi hâlde `stopping` kalıcı olarak
+    // true kalır ve `drain()` bir daha ASLA iş sahiplenmez (cli.ts her süreçte yeni bir `Agent`
+    // kurduğundan üretimde etkisi yok, ama sınıfın kendisi tek-kullanımlık bir tuzak olurdu).
+    this.stopping = false;
+    this.stopPromise = null;
     this.settings = await this.api.settings();
     this.api.onSettings((s) => {
       this.settings = s;
@@ -136,25 +150,48 @@ export class Agent {
     this.fireAndForget(this.drain(), 'drain');
   }
 
-  async stop() {
+  // R70(b)/M1 (review fix round 3, sabitlendi round 4'te): `api.close()`'u çağırmadan ÖNCE
+  // beklemeyi sürdürmemiz gereken TEK koşul. Bilinçli olarak `stop()`'un `while` döngüsünden
+  // AYRI, adlandırılmış ve doğrudan test edilebilir bir fonksiyon: eski (round-2) hâl bunu iki
+  // AYRI, SIRALI döngüde kontrol ediyordu — ilki yalnız `pendingConfirmations === 0` iken
+  // `draining`i bekliyor, `pendingConfirmations > 0`a döner dönmez (hâlâ `draining` olsa bile!)
+  // o döngüden çıkıp yalnız `pendingConfirmations`ı izleyen İKİNCİ bir döngüye geçiyordu — o
+  // ikinci döngü `draining`i BİR DAHA HİÇ kontrol etmiyordu. Burada iki koşul HER ÇAĞRIDA
+  // birlikte değerlendirilir; `stop()`'un döngüsü bu fonksiyonu her pollda yeniden çağırır.
+  private shouldKeepWaitingBeforeClose(): boolean {
+    return this.draining || this.pendingConfirmations > 0;
+  }
+
+  async stop(): Promise<void> {
+    // M3 (review fix round 4): `stop()` art arda (ör. ikinci bir SIGINT ile) çağrılırsa
+    // `api.close()`'un yalnız BİR kez çalışması için çalışma belleğe alınır — bkz. `cli.ts`'teki
+    // `createShutdownHandler` (M4), o da ikinci sinyalde bu memoize edilmiş söze "katılır".
+    if (this.stopPromise) return this.stopPromise;
+    this.stopPromise = this.stopInternal();
+    return this.stopPromise;
+  }
+
+  private async stopInternal(): Promise<void> {
     // R70(a) (review fix round 3): bu andan itibaren `drain()` artık YENİ iş sahiplenmez —
     // yalnız elindeki işi (varsa) sonuna kadar işler. Kapanış süresi böylece kuyruğun
     // derinliğine değil, tek bir işe + onun onayına bağlı kalır.
     this.stopping = true;
     this.timers.forEach(clearInterval);
     this.timers = [];
-    // R70(b) (review fix round 3): TEK, birleşik bir bekleme koşulu. Önceki hâl `draining` ile
-    // `pendingConfirmations`ı AYRI, sıralı döngülerde kontrol ediyordu: ilk döngü yalnız
-    // `pendingConfirmations === 0` iken `draining`i bekliyor, `pendingConfirmations > 0`a
-    // döner dönmez (hâlâ `draining` olsa bile!) o döngüden çıkıp yalnız `pendingConfirmations`ı
-    // izleyen İKİNCİ bir döngüye geçiyordu. O ikinci döngü `draining`i hiç kontrol etmiyordu —
-    // bir işin onayı bitip `pendingConfirmations` sıfıra döndüğü an `drain()` henüz (o zamanki
-    // koda göre) yeni bir iş sahiplenip basmaya başlamış olsa bile `api.close()` hemen
-    // çağrılabiliyordu (bkz. round-2 re-review bulgusu). Artık her pollda İKİ koşul da BİRLİKTE
-    // değerlendirilir; süre sınırı yoktur (R68 korunur — basılmış-ama-onaylanmamış iş asla
-    // terk edilmez).
-    while (this.draining || this.pendingConfirmations > 0) {
+    // R72 (review fix round 4, I-1): round 3, eski `stopGraceMs` uyarılarını sildi ve yerine
+    // hiçbir şey koymadı — kapanış beklemesi artık süresiz VE tam olarak çift-fiş riskinin en
+    // yüksek olduğu pencerede (basılmış-ama-onaylanmamış iş) log'da tek satır yoktu. Şimdi
+    // bekleme başlarken BİR kez, sonra ~10 sn'de bir tekrar loglanır (her 25 ms'de değil —
+    // log'u boğmamak için).
+    const waitStartedAt = this.now();
+    let lastLoggedAt = waitStartedAt;
+    this.deps.log.info('kapanış bekleniyor', { draining: this.draining, pendingConfirmations: this.pendingConfirmations });
+    while (this.shouldKeepWaitingBeforeClose()) {
       await sleep(25);
+      if (this.now() - lastLoggedAt >= 10000) {
+        lastLoggedAt = this.now();
+        this.deps.log.info('kapanış bekleniyor', { draining: this.draining, pendingConfirmations: this.pendingConfirmations });
+      }
     }
     await this.api.close();
   }
@@ -206,9 +243,23 @@ export class Agent {
     await this.checkPrinter();
   }
 
+  // M5 (review fix round 4): `completeSuccessWithRetry` kalıcı bir hatayı (ör. `job_not_found`,
+  // bir rol/izin regresyonu) geçici bir ağ kesintisinden AYIRMIYOR — böyle bir durum olursa
+  // (olasılığı düşük) yeniden deneme SESSİZCE sonsuza dek sürer ve heartbeat bu süre boyunca
+  // (yazıcı sorunsuzsa) sağlıklı durum bildirmeye devam eder: operatör için görünmez bir fiş
+  // kaybı riski. Ucuz bir kısmi önlem: 60 sn eşiğini aşan bir onay `stuckConfirmationSince` ile
+  // işaretlenir, heartbeat'in hata alanına (yazıcı durumunu EZMEDEN, yanına eklenerek) yansır —
+  // KDS/admin ekranında görünür olur. Kalıcı/geçici hata ayrımının kendisi bu turun kapsamı
+  // dışında bırakıldı (aşağıdaki `Karar` satırına bkz.).
+  private heartbeatError(): string | null {
+    if (this.stuckConfirmationSince === null) return this.lastError;
+    const stuckSeconds = Math.max(0, Math.round((this.now() - this.stuckConfirmationSince) / 1000));
+    return this.lastError ? `complete_stuck_${stuckSeconds}s;${this.lastError}` : `complete_stuck_${stuckSeconds}s`;
+  }
+
   async sendHeartbeat() {
     try {
-      await this.api.heartbeat({ reachable: this.reachable, state: this.state, error: this.lastError });
+      await this.api.heartbeat({ reachable: this.reachable, state: this.state, error: this.heartbeatError() });
     } catch (e) {
       this.deps.log.warn('heartbeat failed', { e: String(e) });
     }
@@ -243,6 +294,7 @@ export class Agent {
           const elapsedMs = this.now() - startedAt;
           if (!warnedStale && elapsedMs >= STALE_CONFIRMATION_WARN_MS) {
             warnedStale = true;
+            this.stuckConfirmationSince = startedAt; // M5: heartbeat'in hata alanına yansısın
             this.deps.log.error(
               'basılan bir iş bir dakikadır kapatılamadı — reclaim penceresine girildi, yeniden denemeye devam ediliyor (asla vazgeçilmez)',
               { job: jobId, elapsedMs, e: String(e) },
@@ -256,6 +308,7 @@ export class Agent {
       }
     } finally {
       this.pendingConfirmations--;
+      this.stuckConfirmationSince = null; // M5: doğrulandı (ya da işlem sona erdi) — heartbeat'teki uyarı temizlenir
     }
   }
 

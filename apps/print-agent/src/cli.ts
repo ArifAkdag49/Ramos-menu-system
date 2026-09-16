@@ -10,6 +10,7 @@ import { loadConfig, type AgentEnv } from './config';
 import { startFakePrinter } from './fake-printer';
 import { encodeLines } from './escpos';
 import { createLogger, type Logger } from './log';
+import { createShutdownHandler } from './shutdown';
 import { printWithChecks, queryStatus } from './transport';
 
 const [cmd = 'run', ...rest] = process.argv.slice(2);
@@ -180,19 +181,10 @@ async function cmdRun(): Promise<void> {
   const settings = await api.settings().catch(() => null);
   log.info('ajan çalışıyor', { host: settings?.host ?? null, port: settings?.port ?? null });
 
-  let stopping = false;
-  const shutdown = (signal: string): void => {
-    if (stopping) return;
-    stopping = true;
-    log.info('kapatılıyor', { signal });
-    void agent
-      .stop()
-      .catch((e: unknown) => log.error('kapatma sırasında hata', { e: String(e) }))
-      .finally(() => {
-        releaseLock();
-        process.exit(0);
-      });
-  };
+  const shutdown = createShutdownHandler(agent, log, () => {
+    releaseLock();
+    process.exit(0);
+  });
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 }

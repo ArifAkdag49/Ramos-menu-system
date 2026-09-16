@@ -20,15 +20,49 @@ function toJob(row: PrintJobRow): Job {
   return { id: row.id, type: row.type, payload: row.payload as unknown as Job['payload'], attempts: row.attempts };
 }
 
+// R71 (review fix round 4, I-2): `sb.rpc()` çağrılarının istemci tarafında zaman aşımı yoktu.
+// Yarı açık bir TCP bağlantısında (ör. modem yeniden başlaması) istek ne çözülür ne reddedilir —
+// tek sınır undici'nin ~300 sn'lik varsayılanıydı, `claim_print_job`'ın 60 sn'lik stale-`printing`
+// reclaim penceresinden ÇOK uzun. Sonuç: fiş basılır → `complete(true)` askıda kalır (ne başarı ne
+// hata) → `completeSuccessWithRetry` bu TEK denemede sonsuza dek takılı kalır (asla reddetmediği
+// için yeniden deneme döngüsüne HİÇ girmez) → t+60 sn'de iş geri alınıp AYNI FİŞ İKİNCİ KEZ
+// BASILIR. Çözüm: istemciye `global.fetch`'i `AbortSignal.timeout()` ile saran bir fetch veriyoruz
+// — her DENEME (istek) bu süre içinde REDDEDEREK çözülür, bu da onu `completeSuccessWithRetry`'nin
+// zaten var olan (R68: sınırsız deneme sayılı) geri çekilme/yeniden deneme döngüsüne düşürür. Deneme
+// SAYISI hâlâ sınırsızdır — yalnız her TEKİL denemenin süresi sınırlanır.
+export const DEFAULT_RPC_TIMEOUT_MS = 10000;
+
+/** R71: `baseFetch`'i (varsayılan: gerçek `fetch`) `AbortSignal.timeout(timeoutMs)` ile sarar —
+ *  temel istek ne kadar sürerse sürsün (hatta hiç çözülmese bile), dönen söz `timeoutMs` içinde
+ *  (reddederek) çözülür. Saf, `createSupabaseApi`'den bağımsız test edilebilir bir fonksiyon. */
+export function createTimeoutFetch(timeoutMs: number, baseFetch: typeof fetch = fetch): typeof fetch {
+  return ((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+    baseFetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs) })) as typeof fetch;
+}
+
+export interface SupabaseApiOptions {
+  /** R71: her Supabase RPC/HTTP denemesinin istemci tarafı üst sınırı. Varsayılan 10 sn. */
+  rpcTimeoutMs?: number;
+  /** Yalnız testler için: gerçek `fetch`'in yerine geçecek temel uygulama. */
+  baseFetch?: typeof fetch;
+}
+
 /**
  * Yazıcı kullanıcısıyla giriş yapar, `print-jobs` ve `settings` private kanallarını dinler.
  * R55: `claim`/`complete` bu çalıştırmaya özgü bir kimlik kullanır (`${AGENT_ID}#${başlangıç}`),
  * `agent_heartbeat` ise sade `AGENT_ID` gönderir — takılmış eski bir süreçle yeniden başlayan
  * süreç böylece birbirinin işini kapatamaz (ownership guard'ı devre dışı bırakmazlar).
  */
-export async function createSupabaseApi(env: AgentEnv, log: Logger = consoleLogger): Promise<AgentApi> {
+export async function createSupabaseApi(
+  env: AgentEnv,
+  log: Logger = consoleLogger,
+  opts: SupabaseApiOptions = {},
+): Promise<AgentApi> {
+  const rpcTimeoutMs = opts.rpcTimeoutMs ?? DEFAULT_RPC_TIMEOUT_MS;
   const sb: SupabaseClient<Database> = createClient<Database>(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: true },
+    // R71: TÜM istekler (auth, rpc, realtime REST) bu sarmalı fetch'ten geçer.
+    global: { fetch: createTimeoutFetch(rpcTimeoutMs, opts.baseFetch) },
   });
 
   const runAgentId = `${env.AGENT_ID}#${Date.now()}`;

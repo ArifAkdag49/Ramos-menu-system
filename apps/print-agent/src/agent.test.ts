@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Agent, type AgentApi, type Job } from './agent';
+import { createTimeoutFetch } from './api';
 import { PrinterError } from './transport';
 
 const settings = { host: '127.0.0.1', port: 9100, codepage: 'cp857', codepageNumber: 61, transliterate: false };
@@ -509,5 +510,192 @@ describe('Agent — R70 minor: onay yeniden denemesi sürerken yazıcı durumu g
 
     await agent.checkPrinterIfIdle();
     expect(printer.status.mock.calls.length).toBe(statusCallsAfterInitial + 1); // artık atlanmadı
+  });
+});
+
+// ---------- Review fix round 4 ----------
+
+describe('Agent — R71 (I-2): bir Supabase isteği istemci tarafında hiç zaman aşımına uğramasa bile ajan sonsuza dek takılmaz', () => {
+  it('her deneme AbortSignal.timeout ile sarılı gerçek `createTimeoutFetch` sayesinde sınırlı sürede reddeder, yeniden dener ve stop() sonunda döner', async () => {
+    const api = fakeApi([job('a')]);
+    let attempts = 0;
+    // R71'in gerçek mekanizması: temel fetch hiç çözülmese bile (yarı açık TCP'yi taklit eder)
+    // `createTimeoutFetch` her denemeyi ~20 ms'de reddeder.
+    const hangingBaseFetch = vi.fn(
+      (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('zaman aşımı'), { name: 'AbortError' })));
+        }),
+    ) as unknown as typeof fetch;
+    const timeoutFetch = createTimeoutFetch(20, hangingBaseFetch);
+
+    api.complete = vi.fn(async (_id: string, ok: boolean) => {
+      attempts += 1;
+      if (attempts < 3) {
+        await timeoutFetch('https://x.example/rest/v1/rpc/complete_print_job', {}); // her zaman reddeder
+        return; // buraya asla ulaşılmaz
+      }
+      expect(ok).toBe(true);
+    });
+
+    const printer = { status: vi.fn(async () => okState), print: vi.fn(async () => ({ before: okState, after: okState })) };
+    const agent = new Agent(api, { printer, log: freshLog() }, { completeRetryBaseMs: 0 });
+    await agent.checkPrinter();
+
+    const drainPromise = agent.drain();
+    await tick(); // print() bitti, completeSuccessWithRetry başladı — ilk deneme zaman aşımına gidiyor
+
+    const stopPromise = agent.stop(); // R71 sayesinde her deneme sınırlı sürede reddeder — sonsuza dek asılı kalmaz
+
+    await drainPromise;
+    await stopPromise;
+
+    expect(attempts).toBe(3);
+    expect(api.close).toHaveBeenCalled();
+  }, 5000);
+});
+
+describe('Agent — R72 (I-1): kapanış beklemesi artık sessiz değil', () => {
+  it('bekleme başlarken bir kez, sonra ~10 sn\'de bir tekrar log\'lanır (her 25 ms\'de değil)', async () => {
+    const api = fakeApi([job('a')]);
+    let resolveComplete: (() => void) | undefined;
+    api.complete = vi.fn(() => new Promise<void>((resolve) => { resolveComplete = resolve; }));
+    const printer = { status: vi.fn(async () => okState), print: vi.fn(async () => ({ before: okState, after: okState })) };
+    const testLog = freshLog();
+    let fakeMs = 0;
+    const now = () => new Date(fakeMs);
+    const agent = new Agent(api, { printer, log: testLog, now }, { completeRetryBaseMs: 5 });
+    await agent.checkPrinter();
+
+    const drainPromise = agent.drain();
+    await tick(); // print bitti, complete() çağrıldı ve ASILI kaldı (pendingConfirmations=1)
+
+    const stopPromise = agent.stop();
+    await tick();
+    const waitLogs = () => testLog.info.mock.calls.filter((c) => c[0] === 'kapanış bekleniyor').length;
+    expect(waitLogs()).toBe(1); // yalnız başlangıç logu
+
+    fakeMs += 11000; // sahte saat 10 sn eşiğini aştı
+    await new Promise((r) => setTimeout(r, 90)); // birkaç 25 ms'lik gerçek poll turu geçsin
+    expect(waitLogs()).toBe(2); // eşik aşıldığı için bir kez daha log'landı
+
+    resolveComplete!();
+    await drainPromise;
+    await stopPromise;
+  });
+});
+
+describe('Agent — M1 (round-4 re-review): R70(b) birleşik bekleme koşulu doğrudan sabitlenir', () => {
+  it('draining VE pendingConfirmations ayrı ayrı değil BİRLİKTE değerlendirilir — biri bile true ise beklemeye devam edilir', () => {
+    const api = fakeApi([]);
+    const printer = { status: vi.fn(async () => okState), print: vi.fn() };
+    const agent = new Agent(api, { printer, log: freshLog() });
+    const agentInternal = agent as unknown as {
+      draining: boolean;
+      pendingConfirmations: number;
+      shouldKeepWaitingBeforeClose(): boolean;
+    };
+
+    agentInternal.draining = false;
+    agentInternal.pendingConfirmations = 0;
+    expect(agentInternal.shouldKeepWaitingBeforeClose()).toBe(false); // ikisi de temiz — kapanabilir
+
+    agentInternal.draining = true;
+    agentInternal.pendingConfirmations = 0;
+    expect(agentInternal.shouldKeepWaitingBeforeClose()).toBe(true);
+
+    // R70(b)'nin asıl sabitlediği durum: `draining` ZATEN false olsa bile `pendingConfirmations`
+    // hâlâ pozitifse yine de beklemeye devam edilmeli — eski (round-2) iki-AYRI-döngü biçiminde
+    // bu durumu ikinci döngü doğru yakalıyordu, ama İLK döngüden `pendingConfirmations > 0`a
+    // dönüldüğü anda çıkılıp `draining` bir daha HİÇ kontrol edilmiyordu. Bu fonksiyon her
+    // çağrıda İKİ koşulu da BİRLİKTE, yeniden değerlendirir.
+    agentInternal.draining = false;
+    agentInternal.pendingConfirmations = 1;
+    expect(agentInternal.shouldKeepWaitingBeforeClose()).toBe(true);
+
+    agentInternal.draining = true;
+    agentInternal.pendingConfirmations = 1;
+    expect(agentInternal.shouldKeepWaitingBeforeClose()).toBe(true);
+  });
+});
+
+describe('Agent — M2 (round-4 re-review): stop() sonrası aynı örnek start() ile yeniden kullanılabilir', () => {
+  it('start() → stop() → start() sonrası ajan yeniden iş basabilir (stopping sıfırlanır)', async () => {
+    const jobs: Job[] = [];
+    const api = fakeApi(jobs);
+    const printed: string[] = [];
+    const printer = {
+      status: vi.fn(async () => okState),
+      print: vi.fn(async (_s: unknown, bytes: Uint8Array) => {
+        printed.push(Buffer.from(bytes).toString('latin1'));
+        return { before: okState, after: okState };
+      }),
+    };
+    const agent = new Agent(api, { printer, log: freshLog() });
+
+    await agent.start();
+    await tick();
+    await agent.stop();
+
+    jobs.push(job('a'));
+    await agent.start(); // yeniden başlatma — stopping/stopPromise sıfırlanmalı
+    await tick();
+    expect(printed.length).toBe(1); // yeniden basabildi — eski koddaysa `stopping` kalıcı true kalır, hiç basmaz
+
+    await agent.stop();
+  });
+});
+
+describe('Agent — M3 (round-4 re-review): stop() idempotenttir', () => {
+  it('art arda birden çok kez (eşzamanlı da) çağrılırsa api.close() yalnızca BİR kez çalışır', async () => {
+    const api = fakeApi([]);
+    const printer = { status: vi.fn(async () => okState), print: vi.fn() };
+    const agent = new Agent(api, { printer, log: freshLog() });
+    await agent.checkPrinter();
+
+    await Promise.all([agent.stop(), agent.stop(), agent.stop()]);
+
+    expect(api.close).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Agent — M5 (round-4 re-review): 60 sn\'yi aşan takılı bir onay heartbeat\'in hata alanına yansır', () => {
+  it('stuck eşiği aşılınca heartbeat.error \'complete_stuck\' içerir, doğrulanınca temizlenir', async () => {
+    const api = fakeApi([job('a')]);
+    let attempt = 0;
+    let rejectAttempt: ((e: Error) => void) | undefined;
+    let resolveAttempt: (() => void) | undefined;
+    api.complete = vi.fn(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          attempt += 1;
+          if (attempt === 1) rejectAttempt = reject;
+          else resolveAttempt = resolve;
+        }),
+    );
+    const printer = { status: vi.fn(async () => okState), print: vi.fn(async () => ({ before: okState, after: okState })) };
+    let fakeMs = 0;
+    const now = () => new Date(fakeMs);
+    const testLog = freshLog();
+    const agent = new Agent(api, { printer, log: testLog, now }, { completeRetryBaseMs: 5 });
+    await agent.checkPrinter();
+
+    const drainPromise = agent.drain();
+    await tick(); // print bitti, ilk complete() denemesi başladı (attempt=1) ve ASILI
+
+    fakeMs = 61000; // sahte saat 60 sn eşiğini aştı
+    rejectAttempt!(new Error('kesinti')); // ilk deneme reddedildi — catch artık STALE eşiğini görecek
+    await new Promise((r) => setTimeout(r, 40)); // backoff (5 ms) geçsin, 2. deneme başlasın ve ASILI kalsın
+
+    await agent.sendHeartbeat();
+    const stuckCall = (api.heartbeat as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0] as { error: string | null };
+    expect(stuckCall.error).toContain('complete_stuck');
+
+    resolveAttempt!(); // 2. deneme başarıyla biter
+    await drainPromise;
+
+    await agent.sendHeartbeat();
+    const clearedCall = (api.heartbeat as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0] as { error: string | null };
+    expect(clearedCall.error ?? '').not.toContain('complete_stuck'); // doğrulandı — temizlendi
   });
 });
