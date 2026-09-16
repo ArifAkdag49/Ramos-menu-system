@@ -56,10 +56,10 @@
 ### M5 — Fiş ve yazdırma (Plan 3)
 - [x] Görev 17 — Fiş satır modeli (`renderTicket`) — `c54460d`, `fd603f4` — 19/19 paylaşılan test ✓, `npm run check` ✓; inceleme temiz (1 düzeltme turu: meta/kalem ayracı, uzun kelime bölme, çift genişlik bütçesi, TESTDRUCK tarihi, STORNO meta satırı)
 - [x] Görev 18 — Ajan çekirdeği: ESC/POS, TCP, durum, sahte yazıcı — `e7c5f26`, `12fef1d`, `bb42271` — 22/22 test ✓, typecheck+lint temiz; inceleme 2 Critical (girinti kağıda ulaşmıyordu; `sendBytes` sonsuza kadar asılabiliyordu) + 3 Important buldu, 1 düzeltme turunda kapandı; yeniden inceleme gerçek bayt ve gerçek soketlerle doğruladı: 22/22 satır `linesToText` ile birebir, iş başına tek TCP bağlantısı, `ESC t 91` kurtarma yolu gerçekten doğru Türkçe basıyor, 15/15 karakter doğru kod noktasında
-- [ ] Görev 19 — Ajan döngüsü: kuyruk, yazıcı kapısı, heartbeat, ayar yenileme, CLI
+- [x] Görev 19 — Ajan döngüsü: kuyruk, yazıcı kapısı, heartbeat, ayar yenileme, CLI — `3055db2`, `7b4a1bb`, `dfb14cf`, `192cec0`, `a157953` — 8 dosya / 80 test ✓, typecheck + `eslint .` + build temiz; sahte yazıcıyla canlı döngü testi geçti (iş ~30 sn'de `printed`, girinti kağıda ulaştı, CP857 gidiş-dönüş doğru, R55 koşuya özgü kimlik canlı doğrulandı). 4 düzeltme turu: çift fiş yolları (sınırsız onay denemesi R68, gerçek yazıcı mutex'i R69, kapanışta yeni iş sahiplenmeyi durdurma R70), istemci tarafı RPC zaman aşımı (R71) ve onun livelock regresyonu (R78: `complete` 10 sn / diğerleri 25 sn), kapanış log'u (R72), idempotent `stop()`, ikinci Ctrl+C görünürlüğü, takılı onay işareti. Son inceleme (opus) R71'in çift fiş açmadığını bağımsız kanıtladı: zaman aşımına uğrayan `claim`de hiçbir şey basılmıyor, iptal edilen `complete`in ikinci denemesi `job_not_printing`'i yutuyor, `AbortSignal.timeout` her yerde yeniden denenebilir sayılıyor. Gerçek kesinti/SIGINT/livelock doğrulaması Görev 20'de
 - [ ] Görev 20 — Paketleme, otomatik başlatma, gerçek Xprinter testi
 ### M6 — Admin (Plan 4)
-- [ ] Görev 21 — Admin kabuğu ve canlı durum
+- [ ] Görev 21 — Admin kabuğu ve canlı durum · + R79: `printer_status.last_error` operatöre gösterilecek (`derivePrinterProblem`'e `complete_stuck*` dalı + i18n) — yoksa takılı onay işareti DB'de kalıp kimseye görünmüyor
 - [ ] Görev 22 — Menü yönetimi (tek/toplu görsel yükleme dahil)
 - [ ] Görev 23 — Personel, masalar, siparişler, denetim kaydı
 - [ ] Görev 24 — Raporlar, CSV, Ayarlar · tasarım kapısı
