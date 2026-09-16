@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { createBrowserRouter } from 'react-router';
+import { AdminLayout } from '../features/admin/AdminLayout';
+import { DashboardPage } from '../features/admin/DashboardPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { KitchenPage } from '../features/kitchen/KitchenPage';
 import { OrderPage } from '../features/waiter/OrderPage';
@@ -10,7 +12,6 @@ import { TablesPage } from '../features/waiter/TablesPage';
 import { WaiterLayout } from '../features/waiter/WaiterLayout';
 import type { Role } from '../lib/auth';
 import {
-  AdminDashboardPage,
   AdminMenuPage,
   AdminOrdersPage,
   AdminReportsPage,
@@ -46,13 +47,19 @@ export const router = createBrowserRouter([
 
   { path: '/kitchen', element: gate(KITCHEN, <KitchenPage />) },
 
-  { path: '/admin', element: gate(ADMIN, <AdminDashboardPage />) },
-  { path: '/admin/menu/*', element: gate(ADMIN, <AdminMenuPage />) },
-  { path: '/admin/staff', element: gate(ADMIN, <AdminStaffPage />) },
-  { path: '/admin/tables', element: gate(ADMIN, <AdminTablesPage />) },
-  { path: '/admin/orders', element: gate(ADMIN, <AdminOrdersPage />) },
-  { path: '/admin/reports', element: gate(ADMIN, <AdminReportsPage />) },
-  { path: '/admin/settings', element: gate(ADMIN, <AdminSettingsPage />) },
+  {
+    path: '/admin',
+    element: gate(ADMIN, <AdminLayout />),
+    children: [
+      { index: true, element: <DashboardPage /> },
+      { path: 'menu/*', element: <AdminMenuPage /> },
+      { path: 'staff', element: <AdminStaffPage /> },
+      { path: 'tables', element: <AdminTablesPage /> },
+      { path: 'orders', element: <AdminOrdersPage /> },
+      { path: 'reports', element: <AdminReportsPage /> },
+      { path: 'settings', element: <AdminSettingsPage /> },
+    ],
+  },
 
   { path: '/', element: <HomeRedirect /> },
   { path: '*', element: <HomeRedirect /> },

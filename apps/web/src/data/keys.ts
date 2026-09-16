@@ -9,4 +9,6 @@ export const qk = {
   settings: ['settings'] as const,
   staff: ['staff'] as const,
   bill: (sessionId: string) => ['bill', sessionId] as const,
+  report: (from: string, to: string) => ['report', from, to] as const,
+  audit: (limit: number) => ['audit', limit] as const,
 };

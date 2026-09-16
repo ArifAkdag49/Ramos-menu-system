@@ -28,7 +28,8 @@
     "printer_unreachable": "Yazıcıya ulaşılamıyor — kablosunu kontrol et",
     "paper_end": "Yazıcıda kağıt bitti — kağıt tak",
     "cover_open": "Yazıcı kapağı açık — kapağı kapat",
-    "jobs_failed": "Basılamayan fiş var — tekrar dene"
+    "jobs_failed": "Basılamayan fiş var — tekrar dene",
+    "complete_stuck": "Yazdırma onayı takıldı — fiş çıkmadıysa siparişi yeniden bastır"
   },
   "login": {
     "title": "Giriş",
@@ -183,13 +184,117 @@
     }
   },
   "admin": {
-    "dashboard": { "title": "Canlı durum" },
     "menu": { "title": "Menü" },
     "staff": { "title": "Personel" },
     "tables": { "title": "Masalar" },
     "orders": { "title": "Siparişler" },
     "reports": { "title": "Raporlar" },
-    "settings": { "title": "Ayarlar" }
+    "settings": { "title": "Ayarlar" },
+    "nav": {
+      "label": "Yönetim",
+      "open": "Menüyü aç",
+      "shortcuts": "Ekranlar",
+      "waiter": "Garson ekranı",
+      "kitchen": "Mutfak ekranı"
+    },
+    "ago": {
+      "now": "az önce",
+      "minutes": "{{count}} dk önce",
+      "hours": "{{count}} sa önce",
+      "days": "{{count}} gün önce"
+    },
+    "dashboard": {
+      "title": "Canlı durum",
+      "openTables": "Açık masa",
+      "inKitchen": "Mutfakta",
+      "ready": "Hazır",
+      "revenue": "Bugünkü ciro",
+      "revenueNote": "{{orders}} sipariş · {{items}} kalem",
+      "openValueNote": "Açık masalarda {{total}}",
+      "businessDayNote": "İş günü {{date}} — sabah 05:00'te başlar",
+      "tables": {
+        "title": "Açık masalar",
+        "table": "Masa",
+        "openedBy": "Açan",
+        "elapsed": "Süre",
+        "total": "Tutar",
+        "state": "Durum",
+        "stateOpen": "Açık",
+        "empty": "Açık masa yok — masalar garson ekranından açılır"
+      },
+      "audit": { "title": "Son hareketler", "empty": "Henüz hareket yok" }
+    },
+    "printer": {
+      "title": "Yazıcı",
+      "state": {
+        "online": "Çevrimiçi",
+        "agent_offline": "Yazdırma ajanı çevrimdışı",
+        "printer_unreachable": "Yazıcıya ulaşılamıyor",
+        "paper_end": "Kağıt bitti",
+        "cover_open": "Kapak açık",
+        "complete_stuck": "Yazdırma onayı takıldı",
+        "jobs_failed": "Basılamayan fiş var"
+      },
+      "help": {
+        "agent_offline": "Restoran PC'si açık mı? Yazdırma programının çalıştığından emin ol.",
+        "printer_unreachable": "Yazıcı açık mı, ağ kablosu takılı mı? Kontrol et ve bir dakika bekle.",
+        "paper_end": "Yeni rulo tak ve kapağı kapat; bekleyen fişler kendiliğinden basılır.",
+        "cover_open": "Kapağı tam kapat; bekleyen fişler kendiliğinden basılır.",
+        "complete_stuck": "Fiş yazıcıya gitti ama basıldığı kaydedilemedi. Mutfaktaki fişi kontrol et; yoksa siparişi yeniden bastır.",
+        "jobs_failed": "Sorunu giderdikten sonra fişleri tek tek tekrar dene."
+      },
+      "unknown": "Durum bilinmiyor — yazdırma ajanı henüz bir şey bildirmedi",
+      "lastSeen": "Ajan sinyali: {{ago}}",
+      "lastSeenNever": "Ajan hiç bağlanmadı",
+      "lastPrint": "Son baskı: {{ago}}",
+      "lastPrintNever": "Henüz fiş basılmadı",
+      "host": "Ajan bilgisayarı: {{host}}",
+      "stuckFor": "Onay {{seconds}} saniyedir bekliyor",
+      "failedTitle": "Basılamayan fişler",
+      "jobType": {
+        "order": "Sipariş",
+        "addition": "Ek sipariş",
+        "storno": "İptal fişi",
+        "table_move": "Masa değişikliği",
+        "reprint": "Tekrar baskı",
+        "test": "Test fişi"
+      },
+      "testPrint": "Test fişi bas",
+      "testPrintSent": "Test fişi sıraya alındı",
+      "retried": "Tekrar sıraya alındı"
+    },
+    "audit": {
+      "action": {
+        "session_open": "Masa açtı",
+        "session_close": "Masayı kapattı",
+        "session_move": "Masayı taşıdı",
+        "order_submit": "Sipariş gönderdi",
+        "order_ready": "Siparişi hazır yaptı",
+        "order_ready_undo": "Hazırı geri aldı",
+        "order_served": "Siparişi teslim etti",
+        "order_reprint": "Fişi yeniden bastırdı",
+        "item_cancel": "Kalem iptal etti",
+        "product_sold_out": "Ürünü tükendi yaptı",
+        "product_available": "Ürünü satışa aldı",
+        "duty_on": "Mesai başlattı",
+        "duty_off": "Mesai bitirdi",
+        "insert": "{{entity}} ekledi",
+        "update": "{{entity}} değiştirdi",
+        "delete": "{{entity}} sildi"
+      },
+      "entity": {
+        "categories": "Kategori",
+        "products": "Ürün",
+        "product_variants": "Ürün seçeneği",
+        "ingredients": "Malzeme",
+        "product_ingredients": "Ürün malzemesi",
+        "option_groups": "Seçim grubu",
+        "options": "Seçenek",
+        "product_option_groups": "Ürünün seçim grubu",
+        "dining_tables": "Masa",
+        "settings": "Ayarlar"
+      }
+    }
   },
   "status": {
     "in_kitchen": "Mutfakta",

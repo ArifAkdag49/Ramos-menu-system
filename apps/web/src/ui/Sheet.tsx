@@ -1,3 +1,4 @@
+import { clsx } from 'clsx';
 import { X } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -6,6 +7,21 @@ import { IconButton } from './IconButton';
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+/**
+ * Görev 21: admin çekmecesi soldan açılır (masaüstünde sol menü olan yapı telefonda çekmeceye
+ * iner — `adaptive-navigation`). Odak kapanı, `Esc`, scrim, `inert` ve kaydırma kilidi iki yönde
+ * de aynıdır; değişen yalnız panelin yerleşimi.
+ */
+const SIDE_CONTAINER: Record<'bottom' | 'left', string> = {
+  bottom: 'items-end',
+  left: 'items-stretch justify-start',
+};
+
+const SIDE_PANEL: Record<'bottom' | 'left', string> = {
+  bottom: 'max-h-[85dvh] w-full rounded-t-[var(--radius-sheet)] border-t pb-[env(safe-area-inset-bottom)]',
+  left: 'h-dvh w-[min(20rem,85vw)] rounded-r-[var(--radius-sheet)] border-r pb-[env(safe-area-inset-bottom)]',
+};
 
 /**
  * Alttan açılan panel. Odak kapanı vardır, `Esc` ile ve scrim'e dokununca kapanır.
@@ -24,6 +40,7 @@ export function Sheet({
   children,
   footer,
   busy = false,
+  side = 'bottom',
 }: {
   open: boolean;
   onClose: () => void;
@@ -31,6 +48,8 @@ export function Sheet({
   closeLabel: string;
   children: ReactNode;
   footer?: ReactNode;
+  /** `bottom` alttan açılan panel (varsayılan), `left` soldan açılan çekmece. */
+  side?: 'bottom' | 'left';
   /**
    * R74: panel bir işi beklerken (ör. mutfağa gönderim, ağ yeniden denemesiyle saniyelere
    * çıkabilir) üç kapanma yolu da kilitlenir — Esc, scrim ve kapat düğmesi. Yarıda çıkılabilseydi
@@ -95,7 +114,7 @@ export function Sheet({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end">
+    <div className={clsx('fixed inset-0 z-50 flex', SIDE_CONTAINER[side])}>
       <div
         aria-hidden="true"
         data-testid="sheet-scrim"
@@ -107,7 +126,10 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative z-50 max-h-[85dvh] w-full overflow-y-auto rounded-t-[var(--radius-sheet)] border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-overlay)]"
+        className={clsx(
+          'relative z-50 overflow-y-auto border-border bg-surface shadow-[var(--shadow-overlay)]',
+          SIDE_PANEL[side],
+        )}
       >
         <div className="sticky top-0 flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
           <h2 className="text-xl font-semibold">{title}</h2>

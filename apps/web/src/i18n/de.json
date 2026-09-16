@@ -28,7 +28,8 @@
     "printer_unreachable": "Drucker nicht erreichbar — Kabel prüfen",
     "paper_end": "Kein Papier im Drucker — Papier einlegen",
     "cover_open": "Druckerdeckel ist offen — Deckel schließen",
-    "jobs_failed": "Ein Beleg konnte nicht gedruckt werden — nochmal versuchen"
+    "jobs_failed": "Ein Beleg konnte nicht gedruckt werden — nochmal versuchen",
+    "complete_stuck": "Druckbestätigung hängt — fehlt der Beleg, Bestellung neu drucken"
   },
   "login": {
     "title": "Anmelden",
@@ -183,13 +184,117 @@
     }
   },
   "admin": {
-    "dashboard": { "title": "Live-Status" },
     "menu": { "title": "Speisekarte" },
     "staff": { "title": "Personal" },
     "tables": { "title": "Tische" },
     "orders": { "title": "Bestellungen" },
     "reports": { "title": "Berichte" },
-    "settings": { "title": "Einstellungen" }
+    "settings": { "title": "Einstellungen" },
+    "nav": {
+      "label": "Verwaltung",
+      "open": "Menü öffnen",
+      "shortcuts": "Bildschirme",
+      "waiter": "Kellner-Bildschirm",
+      "kitchen": "Küchen-Bildschirm"
+    },
+    "ago": {
+      "now": "gerade eben",
+      "minutes": "vor {{count}} Min.",
+      "hours": "vor {{count}} Std.",
+      "days": "vor {{count}} Tagen"
+    },
+    "dashboard": {
+      "title": "Live-Status",
+      "openTables": "Offene Tische",
+      "inKitchen": "In der Küche",
+      "ready": "Fertig",
+      "revenue": "Umsatz heute",
+      "revenueNote": "{{orders}} Bestellungen · {{items}} Positionen",
+      "openValueNote": "Auf offenen Tischen {{total}}",
+      "businessDayNote": "Geschäftstag {{date}} — beginnt um 05:00 Uhr",
+      "tables": {
+        "title": "Offene Tische",
+        "table": "Tisch",
+        "openedBy": "Geöffnet von",
+        "elapsed": "Dauer",
+        "total": "Betrag",
+        "state": "Status",
+        "stateOpen": "Offen",
+        "empty": "Kein Tisch offen — Tische werden im Kellner-Bildschirm geöffnet"
+      },
+      "audit": { "title": "Letzte Aktivitäten", "empty": "Noch keine Aktivitäten" }
+    },
+    "printer": {
+      "title": "Drucker",
+      "state": {
+        "online": "Online",
+        "agent_offline": "Druck-Agent offline",
+        "printer_unreachable": "Drucker nicht erreichbar",
+        "paper_end": "Kein Papier",
+        "cover_open": "Deckel offen",
+        "complete_stuck": "Druckbestätigung hängt",
+        "jobs_failed": "Beleg nicht gedruckt"
+      },
+      "help": {
+        "agent_offline": "Ist der Restaurant-PC an? Prüfe, ob das Druckprogramm läuft.",
+        "printer_unreachable": "Ist der Drucker an und das Netzwerkkabel gesteckt? Prüfen und eine Minute warten.",
+        "paper_end": "Neue Rolle einlegen und Deckel schließen; wartende Belege werden dann gedruckt.",
+        "cover_open": "Deckel ganz schließen; wartende Belege werden dann gedruckt.",
+        "complete_stuck": "Der Beleg ging an den Drucker, aber der Druck konnte nicht bestätigt werden. Prüfe den Beleg in der Küche; fehlt er, die Bestellung neu drucken.",
+        "jobs_failed": "Nach dem Beheben die Belege einzeln nochmal versuchen."
+      },
+      "unknown": "Status unbekannt — der Druck-Agent hat noch nichts gemeldet",
+      "lastSeen": "Agent-Signal: {{ago}}",
+      "lastSeenNever": "Agent war noch nie verbunden",
+      "lastPrint": "Letzter Druck: {{ago}}",
+      "lastPrintNever": "Noch kein Beleg gedruckt",
+      "host": "Agent-Rechner: {{host}}",
+      "stuckFor": "Bestätigung wartet seit {{seconds}} Sekunden",
+      "failedTitle": "Nicht gedruckte Belege",
+      "jobType": {
+        "order": "Bestellung",
+        "addition": "Nachbestellung",
+        "storno": "Stornobeleg",
+        "table_move": "Tischwechsel",
+        "reprint": "Neudruck",
+        "test": "Testbeleg"
+      },
+      "testPrint": "Testbeleg drucken",
+      "testPrintSent": "Testbeleg in die Warteschlange gestellt",
+      "retried": "Erneut in die Warteschlange gestellt"
+    },
+    "audit": {
+      "action": {
+        "session_open": "Tisch geöffnet",
+        "session_close": "Tisch geschlossen",
+        "session_move": "Tisch gewechselt",
+        "order_submit": "Bestellung gesendet",
+        "order_ready": "Bestellung fertig gemeldet",
+        "order_ready_undo": "Fertig zurückgenommen",
+        "order_served": "Bestellung serviert",
+        "order_reprint": "Beleg neu gedruckt",
+        "item_cancel": "Position storniert",
+        "product_sold_out": "Produkt als ausverkauft markiert",
+        "product_available": "Produkt wieder verfügbar",
+        "duty_on": "Schicht begonnen",
+        "duty_off": "Schicht beendet",
+        "insert": "{{entity}} angelegt",
+        "update": "{{entity}} geändert",
+        "delete": "{{entity}} gelöscht"
+      },
+      "entity": {
+        "categories": "Kategorie",
+        "products": "Produkt",
+        "product_variants": "Produktvariante",
+        "ingredients": "Zutat",
+        "product_ingredients": "Produktzutat",
+        "option_groups": "Auswahlgruppe",
+        "options": "Option",
+        "product_option_groups": "Auswahlgruppe des Produkts",
+        "dining_tables": "Tisch",
+        "settings": "Einstellungen"
+      }
+    }
   },
   "status": {
     "in_kitchen": "In der Küche",

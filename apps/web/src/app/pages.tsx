@@ -3,22 +3,13 @@ import { Navigate } from 'react-router';
 import { homeFor, useAuth } from '../lib/auth';
 
 /**
- * Görev 21'de tamamen değiştirilecek yer tutucu admin ekranları. Şimdilik yalnız başlığı
- * gösterirler; başlıklar i18n'den gelir. Garson sekmeleri (Masalar, Masa detayı, Hazır, Profil,
- * Sipariş girişi) Görev 13/14'te `features/waiter/*`'a, mutfak ekranı Görev 16'da
- * `features/kitchen/KitchenPage`'e taşındı.
+ * Henüz yazılmamış admin bölümleri için yer tutucu. Görev 21'de kabuk (`AdminLayout`) ve canlı
+ * durum ekranı (`features/admin/DashboardPage`) gerçek hâllerini aldı; kalanlar Görev 22-26'da
+ * doldurulacak. Başlık dışında bir şey göstermezler ve `AdminLayout`'un `<main>`'i içinde
+ * çizildikleri için kendi sayfa kabuklarını kurmazlar.
  */
 function Screen({ title }: { title: string }) {
-  return (
-    <main className="min-h-dvh px-4 py-6">
-      <h1 className="text-2xl font-semibold">{title}</h1>
-    </main>
-  );
-}
-
-export function AdminDashboardPage() {
-  const { t } = useTranslation();
-  return <Screen title={t('admin.dashboard.title')} />;
+  return <h1 className="text-2xl font-semibold">{title}</h1>;
 }
 
 export function AdminMenuPage() {
