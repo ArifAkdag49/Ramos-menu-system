@@ -94,7 +94,7 @@ apps/web/
     - `node --env-file=.env scripts/create-admin.mjs <username> "<Ad Soyad>"` (parola `ADMIN_PASSWORD` ortam değişkeninden)
     - `node --env-file=.env scripts/create-printer-user.mjs` → `apps/print-agent/.env` dosyasını yazar
 
-- [ ] **Adım 1: Saf mantık testlerini yaz (kırmızı)**
+- [x] **Adım 1: Saf mantık testlerini yaz (kırmızı)**
 
 `supabase/functions/admin-staff/logic.test.ts`:
 ```ts
@@ -141,7 +141,7 @@ export default defineConfig({ test: { environment: 'node', include: ['supabase/f
 
 Run: `npm run fn:test` → Expected: FAIL (`./logic` yok)
 
-- [ ] **Adım 2: `logic.ts` dosyasını yaz**
+- [x] **Adım 2: `logic.ts` dosyasını yaz**
 ```ts
 export type StaffRole = 'admin' | 'waiter' | 'kitchen';
 export interface CreateInput { username: string; display_name: string; role: StaffRole; pin: string; locale: 'tr' | 'de' }
@@ -180,7 +180,7 @@ export function guardDeactivate(a: { targetId: string; meId: string; targetRole:
 ```
 Run: `npm run fn:test` → Expected: PASS
 
-- [ ] **Adım 3: Deno giriş noktasını yaz**
+- [x] **Adım 3: Deno giriş noktasını yaz**
 
 `supabase/functions/admin-staff/index.ts`:
 ```ts
@@ -286,7 +286,7 @@ Deno.serve(async (req) => {
 });
 ```
 
-- [ ] **Adım 4: Yayın betiğini yaz ve fonksiyonu yayınla (kullanıcı onayıyla)**
+- [x] **Adım 4: Yayın betiğini yaz ve fonksiyonu yayınla (kullanıcı onayıyla)**
 
 `scripts/deploy-function.mjs`:
 ```js
@@ -317,7 +317,7 @@ curl -s -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/secr
 ```
 Run: `npm run fn:deploy -- admin-staff` → Expected: `201` ya da `200` ve JSON. MCP varsa `deploy_edge_function` da kullanılabilir.
 
-- [ ] **Adım 5: Canlı entegrasyon testini yaz ve çalıştır**
+- [x] **Adım 5: Canlı entegrasyon testini yaz ve çalıştır**
 
 `supabase/tests/staff.test.ts`:
 ```ts
@@ -366,7 +366,7 @@ describe('admin-staff', () => {
 ```
 Run: `npm run db:test -- staff` → Expected: PASS (4 test)
 
-- [ ] **Adım 6: İlk admin ve yazıcı hesabı betikleri (Faz A girdileriyle — durma)**
+- [x] **Adım 6: İlk admin ve yazıcı hesabı betikleri (Faz A girdileriyle — durma)**
 
 > **Faz B'de:** Aşağıdaki "Kullanıcıdan şunları iste" cümlesini **atla**. Faz A'da toplanan değerleri kullan:
 > - admin kullanıcı adı ve görünen ad (`BUILD-PROGRESS.md` başlığında)
@@ -417,7 +417,7 @@ console.log('Yazıcı hesabı hazır; apps/print-agent/.env yazıldı (commit ET
 ```
 `apps/print-agent/` klasörü yoksa önce oluştur (`mkdir`). Betikleri çalıştır. Parola asla ekrana ya da repoya yazılmaz; kullanıcıya yalnızca "oluşturuldu" bilgisi verilir.
 
-- [ ] **Adım 7: Commit**
+- [x] **Adım 7: Commit**
 ```bash
 git add supabase/functions/admin-staff supabase/vitest.functions.config.ts supabase/tests/staff.test.ts scripts/deploy-function.mjs scripts/create-admin.mjs scripts/create-printer-user.mjs package.json
 git commit -m "feat(auth): admin-staff Edge Function (oluştur/güncelle/PIN/pasifleştir), admin ve yazıcı hesap betikleri"

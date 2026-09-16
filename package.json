@@ -12,14 +12,16 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present && npm run fn:test",
     "build": "npm run build --workspaces --if-present",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "db:apply": "node --env-file=.env scripts/db.mjs apply",
     "db:sql": "node --env-file=.env scripts/db.mjs sql",
     "db:test": "vitest run --config supabase/vitest.config.ts",
     "db:seed": "node --env-file=.env --import tsx supabase/seed/build-seed.ts && node --env-file=.env scripts/db.mjs sql --file supabase/seed/seed.sql",
-    "db:types": "node --env-file=.env scripts/db.mjs types"
+    "db:types": "node --env-file=.env scripts/db.mjs types",
+    "fn:test": "vitest run --config supabase/vitest.functions.config.ts",
+    "fn:deploy": "node --env-file=.env scripts/deploy-function.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
