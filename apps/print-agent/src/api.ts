@@ -191,8 +191,9 @@ export async function createSupabaseApi(
         .single();
       if (error) throw new Error(`settings: ${error.message}`);
       return {
-        host: data.printer_host,
-        port: data.printer_port,
+        // Kurulum sihirbazının yazdığı yerel adres, sitedeki genel ayarın önüne geçer (config.ts).
+        host: env.PRINTER_HOST ?? data.printer_host,
+        port: env.PRINTER_PORT ?? data.printer_port,
         codepage: data.printer_codepage,
         codepageNumber: data.printer_codepage_number,
         transliterate: data.printer_transliterate,

@@ -28,6 +28,8 @@ apps/print-agent/logs/
 *.log
 # M2 (Görev 19 review): decoded bilet içeriği (masa adları, sipariş kalemleri) taşır — asla commit edilmez.
 fake-printer-out/
+# Yazıcı kurulum paketi (paket-olustur.ps1) ajan hesabının parolasını taşır — asla commit edilmez.
+apps/print-agent/release/
 
 # büyük kaynak dosyalar (yerelde durur, repoya girmez)
 docs/menu/source/*.pdf

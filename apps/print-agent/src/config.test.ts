@@ -39,6 +39,26 @@ describe('readConfig', () => {
   it('birden çok alan eksikse hepsini listeler', () => {
     expect(() => readConfig({})).toThrowError(/SUPABASE_URL.*SUPABASE_ANON_KEY.*AGENT_EMAIL.*AGENT_PASSWORD.*AGENT_ID/s);
   });
+
+  it('PRINTER_HOST/PRINTER_PORT boş ya da yoksa alanlar hiç eklenmez (site ayarı geçerli)', () => {
+    expect(readConfig(full)).not.toHaveProperty('PRINTER_HOST');
+    const cfg = readConfig({ ...full, PRINTER_HOST: '  ', PRINTER_PORT: '' });
+    expect(cfg).not.toHaveProperty('PRINTER_HOST');
+    expect(cfg).not.toHaveProperty('PRINTER_PORT');
+  });
+
+  it('PRINTER_HOST ve PRINTER_PORT doluysa kırpılıp okunur', () => {
+    const cfg = readConfig({ ...full, PRINTER_HOST: ' 192.168.178.250 ', PRINTER_PORT: '9100' });
+    expect(cfg.PRINTER_HOST).toBe('192.168.178.250');
+    expect(cfg.PRINTER_PORT).toBe(9100);
+  });
+
+  it('geçersiz PRINTER_HOST ya da PRINTER_PORT Türkçe mesajla ConfigError fırlatır', () => {
+    expect(() => readConfig({ ...full, PRINTER_HOST: '192.168.1.250:9100' })).toThrowError(/PRINTER_HOST geçersiz/);
+    expect(() => readConfig({ ...full, PRINTER_HOST: 'yazıcı adı' })).toThrow(ConfigError);
+    expect(() => readConfig({ ...full, PRINTER_PORT: '70000' })).toThrowError(/PRINTER_PORT geçersiz/);
+    expect(() => readConfig({ ...full, PRINTER_PORT: '91a' })).toThrow(ConfigError);
+  });
 });
 
 describe('defaultLogDir', () => {

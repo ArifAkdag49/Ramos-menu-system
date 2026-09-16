@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { linesToText, renderTicket, type TicketPayload, type Database } from '@ramos/shared';
 import { createClient } from '@supabase/supabase-js';
@@ -7,6 +8,7 @@ import { Agent, type AgentApi, type PrinterPort } from './agent';
 import { AGENT_VERSION, createSupabaseApi } from './api';
 import { loadConfig, type AgentEnv } from './config';
 import { startFakePrinter } from './fake-printer';
+import { discoverPrinters, localNetworks } from './discover';
 import { encodeLines } from './escpos';
 import { createLogger, type Logger } from './log';
 import { defaultProcIo, isSameAgentProcess, probeProcess } from './proc';
@@ -170,7 +172,11 @@ async function cmdRun(): Promise<void> {
   log.info('ajan başlıyor', { version: AGENT_VERSION, agentId: cfg.AGENT_ID });
   const { api, agent } = await startAgentWithRetry(cfg, log);
   const settings = await api.settings().catch(() => null);
-  log.info('ajan çalışıyor', { host: settings?.host ?? null, port: settings?.port ?? null });
+  log.info('ajan çalışıyor', {
+    host: settings?.host ?? null,
+    port: settings?.port ?? null,
+    hostSource: cfg.PRINTER_HOST ? 'bu PC (.env PRINTER_HOST)' : 'site ayarı',
+  });
 
   const shutdown = createShutdownHandler(agent, log, () => {
     releaseLock();
@@ -271,8 +277,8 @@ async function cmdTestPrint(): Promise<void> {
       .single();
     if (error) throw new Error(`settings: ${error.message}`);
 
-    const host = hostArg ?? data.printer_host;
-    const port = portArg ? Number(portArg) : data.printer_port;
+    const host = hostArg ?? cfg.PRINTER_HOST ?? data.printer_host;
+    const port = portArg ? Number(portArg) : (cfg.PRINTER_PORT ?? data.printer_port);
     const payload = testPrintPayload(data);
     const lines = renderTicket(payload, { transliterate: data.printer_transliterate });
     const bytes = encodeLines(lines, { codepage: data.printer_codepage, codepageNumber: data.printer_codepage_number });
@@ -369,6 +375,62 @@ async function cmdFakePrinter(): Promise<void> {
   process.on('SIGTERM', shutdown);
 }
 
+// ---------- find-printer (kurulum sihirbazı) ----------
+
+// `Kurulum.cmd` bunu `--json` ile çağırır: bu PC'nin yerel ağlarını tarar, TCP 9100'ü açık ve
+// durum sorusuna ESC/POS biçiminde cevap veren cihazları listeler. Giriş/.env gerektirmez.
+// `--extra 192.168.1.250,...` önce denenecek adresleri ekler (ör. önceki kurulumun adresi).
+async function cmdFindPrinter(): Promise<void> {
+  const networks = localNetworks();
+  const extraHosts = (arg('extra') ?? '').split(',').map((h) => h.trim()).filter(Boolean);
+  const printers = await discoverPrinters({ networks, extraHosts });
+  const result = {
+    networks,
+    printers: printers.map((p) => ({ host: p.host, port: p.port, escpos: p.escpos, raw: p.state.raw })),
+  };
+  if (rest.includes('--json')) {
+    console.log(JSON.stringify(result));
+    return;
+  }
+  console.log(`Taranan ağlar: ${networks.map((n) => `${n.name} ${n.address}/${n.prefix}`).join(', ') || '(yok)'}`);
+  if (printers.length === 0) console.log('Port 9100 açık cihaz bulunamadı.');
+  for (const p of result.printers) {
+    console.log(`${p.host}:${p.port} · ${p.escpos ? 'fiş yazıcısı (ESC/POS)' : 'port açık ama ESC/POS cevabı yok'} · durum ${p.raw || '-'}`);
+  }
+}
+
+// ---------- site-status (kurulum sihirbazı) ----------
+
+// Ajan hesabıyla giriş yapılabildiğini doğrular ve sitenin gördüğü son ajanı döner — sihirbaz
+// bununla "başka bir bilgisayarda çalışan ajan var mı" uyarısını ve kurulum sonrası
+// "bu PC siteye bağlandı mı" kontrolünü yapar.
+async function cmdSiteStatus(): Promise<void> {
+  const cfg = loadConfig();
+  const sb = createClient<Database>(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+  const { error: signInError } = await sb.auth.signInWithPassword({ email: cfg.AGENT_EMAIL, password: cfg.AGENT_PASSWORD });
+  if (signInError) throw new Error(`Ajan girişi başarısız: ${signInError.message}`);
+  try {
+    const [{ data: st, error: stError }, { data: set, error: setError }] = await Promise.all([
+      sb.from('printer_status').select('agent_id, host, last_seen_at, printer_reachable').eq('id', 'main').maybeSingle(),
+      sb.from('settings').select('printer_host, printer_port').eq('id', 1).single(),
+    ]);
+    if (stError) throw new Error(`printer_status: ${stError.message}`);
+    if (setError) throw new Error(`settings: ${setError.message}`);
+    const secondsAgo = st?.last_seen_at ? Math.round((Date.now() - Date.parse(st.last_seen_at)) / 1000) : null;
+    console.log(
+      JSON.stringify({
+        thisComputer: os.hostname(),
+        lastAgent: st ? { ...st, seconds_ago: secondsAgo } : null,
+        sitePrinterHost: set.printer_host,
+        sitePrinterPort: set.printer_port,
+        localPrinterHost: cfg.PRINTER_HOST ?? null,
+      }),
+    );
+  } finally {
+    await sb.auth.signOut();
+  }
+}
+
 // ---------- dispatch ----------
 
 async function main(): Promise<void> {
@@ -388,8 +450,14 @@ async function main(): Promise<void> {
     case 'fake-printer':
       await cmdFakePrinter();
       break;
+    case 'find-printer':
+      await cmdFindPrinter();
+      break;
+    case 'site-status':
+      await cmdSiteStatus();
+      break;
     default:
-      console.error(`Bilinmeyen komut: ${cmd}. Kullanım: run | status | test-print | dry-run | fake-printer`);
+      console.error(`Bilinmeyen komut: ${cmd}. Kullanım: run | status | test-print | dry-run | fake-printer | find-printer | site-status`);
       process.exit(1);
   }
 }

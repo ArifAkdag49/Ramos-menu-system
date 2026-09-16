@@ -285,3 +285,37 @@ describe('createTimeoutFetch — M-a: çağıranın kendi signal\'ı sessizce at
     await expect(timeoutFetch('https://x.example/rpc', {})).rejects.toThrow();
   });
 });
+
+describe('createSupabaseApi — kurulum sihirbazı: yerel PRINTER_HOST site ayarının önüne geçer', () => {
+  const siteRow = {
+    printer_host: '192.168.1.250',
+    printer_port: 9100,
+    printer_codepage: 'cp857',
+    printer_codepage_number: 61,
+    printer_transliterate: false,
+  };
+
+  function stubSettings(): void {
+    const client = vi.mocked(createClient).mock.results.at(-1)!.value as { from: ReturnType<typeof vi.fn> };
+    const chain = { select: () => chain, eq: () => chain, single: async () => ({ data: siteRow, error: null }) };
+    client.from.mockReturnValue(chain);
+  }
+
+  it('PRINTER_HOST yoksa sitedeki printer_host/port kullanılır', async () => {
+    const api = await createSupabaseApi(env, log);
+    stubSettings();
+    expect(await api.settings()).toMatchObject({ host: '192.168.1.250', port: 9100, codepageNumber: 61 });
+  });
+
+  it('PRINTER_HOST (ve PRINTER_PORT) doluysa onlar kullanılır; kod sayfası ayarları siteden gelmeye devam eder', async () => {
+    const api = await createSupabaseApi({ ...env, PRINTER_HOST: '192.168.178.250', PRINTER_PORT: 9101 }, log);
+    stubSettings();
+    expect(await api.settings()).toEqual({
+      host: '192.168.178.250',
+      port: 9101,
+      codepage: 'cp857',
+      codepageNumber: 61,
+      transliterate: false,
+    });
+  });
+});

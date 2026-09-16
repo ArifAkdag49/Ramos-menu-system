@@ -9,6 +9,14 @@ export interface AgentEnv {
   AGENT_PASSWORD: string;
   AGENT_ID: string;
   LOG_DIR: string;
+  /**
+   * Yazıcı kurulum sihirbazı (`Kurulum.cmd`): bu PC'nin ağında bulunan yazıcının adresi.
+   * Doluysa sitedeki `settings.printer_host` yerine bu kullanılır — farklı ağlardaki
+   * bilgisayarlar (ev / restoran) kendi yazıcılarını kullanabilsin diye. Boşsa site ayarı geçerli.
+   */
+  PRINTER_HOST?: string;
+  /** `PRINTER_HOST` ile birlikte isteğe bağlı port (boşsa site ayarı). */
+  PRINTER_PORT?: number;
 }
 
 const REQUIRED = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AGENT_EMAIL', 'AGENT_PASSWORD', 'AGENT_ID'] as const;
@@ -53,6 +61,15 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
     );
   }
   const logDir = env.LOG_DIR && env.LOG_DIR.trim() !== '' ? env.LOG_DIR : defaultLogDir();
+  const printerHost = env.PRINTER_HOST?.trim() ?? '';
+  if (printerHost !== '' && !/^[A-Za-z0-9.-]{1,253}$/.test(printerHost)) {
+    throw new ConfigError(`PRINTER_HOST geçersiz: "${printerHost}". Örnek: PRINTER_HOST=192.168.1.250`);
+  }
+  const printerPortRaw = env.PRINTER_PORT?.trim() ?? '';
+  const printerPort = printerPortRaw === '' ? undefined : Number(printerPortRaw);
+  if (printerPort !== undefined && !(Number.isInteger(printerPort) && printerPort >= 1 && printerPort <= 65535)) {
+    throw new ConfigError(`PRINTER_PORT geçersiz: "${printerPortRaw}". 1–65535 arası bir sayı olmalı (yazıcı için genelde 9100).`);
+  }
   return {
     SUPABASE_URL: env.SUPABASE_URL!,
     SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY!,
@@ -60,6 +77,8 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
     AGENT_PASSWORD: env.AGENT_PASSWORD!,
     AGENT_ID: env.AGENT_ID!,
     LOG_DIR: logDir,
+    ...(printerHost !== '' ? { PRINTER_HOST: printerHost } : {}),
+    ...(printerPort !== undefined ? { PRINTER_PORT: printerPort } : {}),
   };
 }
 

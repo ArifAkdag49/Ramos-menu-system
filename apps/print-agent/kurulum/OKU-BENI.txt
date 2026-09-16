@@ -1,0 +1,50 @@
+﻿RAMO'S YAZICI KURULUMU
+======================
+
+Bu klasör, mutfak fiş yazıcısını (Xprinter XP-80 / XP-Q80A) siteye bağlar.
+Siparişleri yazıcıya bu bilgisayar gönderir; bilgisayar açık kaldığı sürece fişler basılır.
+
+
+KURULUM
+-------
+1) Yazıcıyı açın. Ethernet kablosu modeme takılı olsun.
+2) Bu bilgisayar da aynı modeme bağlı olsun (kablo ya da Wi-Fi).
+3) "Kurulum.cmd" dosyasına çift tıklayın ve ekrandaki soruları cevaplayın.
+
+Sihirbaz şunları kendisi yapar:
+  - Node.js yoksa kurar (Windows izin isterse "Evet" deyin)
+  - Yazıcıyı ağda bulur
+  - Yazıcı başka bir ağın adresinde kalmışsa ve USB ile bağlıysa, yazıcıya bu ağdan
+    boş bir adres yazar (bir kez USB kablosu takmanız yeterli)
+  - Bir test fişi basar
+  - Bilgisayar her açıldığında kendiliğinden çalışacak şekilde kurar
+
+Sonunda yeşil "KURULUM TAMAM" yazısını görmelisiniz.
+
+
+ÖNEMLİ: AYNI ANDA TEK BİLGİSAYAR
+--------------------------------
+Yazdırma programı aynı anda yalnız BİR bilgisayarda açık olmalı. İki bilgisayarda açık
+olursa sipariş hangisine düşerse orada basılır.
+Başka bir bilgisayara geçmeden önce eski bilgisayarda "Kaldir.cmd" çalıştırın.
+Sihirbaz, başka bir bilgisayarda çalışan program görürse sizi uyarır.
+
+
+YAZICI BULUNAMAZSA
+------------------
+- Yazıcı açık mı, ethernet ışıkları yanıyor mu?
+- Yazıcıyı USB kablosuyla bu bilgisayara takıp Kurulum.cmd'yi tekrar çalıştırın.
+- Yazıcının ayar fişini basmak için: yazıcı kapalıyken FEED tuşuna basılı tutun,
+  yazıcıyı açın, fiş çıkınca bırakın. Fişte yazıcının IP adresi yazar.
+- Fiş boş çıkıyorsa kağıt rulosu ters takılmıştır (termal yüz dışa bakmalı).
+
+
+KALDIRMA
+--------
+"Kaldir.cmd" dosyasına çift tıklayın.
+
+
+GİZLİLİK
+--------
+Bu klasördeki ".env" dosyası yazıcı hesabının parolasını içerir. Klasörü yalnız
+işletmenin bilgisayarlarına kopyalayın, e-postayla ya da herkese açık bir yere göndermeyin.
