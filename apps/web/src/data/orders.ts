@@ -8,6 +8,10 @@ import { qk } from './keys';
 import { mapOrders, type OrderRow, type OrderView } from './orderMapper';
 import { useStaffNames } from './staff';
 
+// Görev 13: garson ekranları `OrderView`/`OrderItemView`'ı bu modülden içe aktarır (veri
+// hook'larıyla aynı yerden) — tip burada yeniden dışa verilir, ikinci bir tanım oluşturulmaz.
+export type { OrderItemView, OrderView } from './orderMapper';
+
 export const ORDER_SELECT = `id, order_no, round_no, status, created_at, ready_at, note, waiter_id,
   table_sessions!inner(id, dining_tables!inner(name)),
   order_items(id, product_id, quantity, product_code, product_name, variant_name_de, variant_name_tr,

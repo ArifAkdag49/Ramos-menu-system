@@ -31,6 +31,15 @@ export function Sheet({
   footer?: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  // `onClose` çoğu çağrı yerinde satır içi bir kapanış: her ebeveyn render'ında yeni bir
+  // referans. Efekt yalnız `open`'a bağlı kalır, güncel kapanışı bu ref'ten okur — aksi
+  // hâlde her ebeveyn render'ında `inert` yeniden uygulanır ve odak ilk elemana geri çalınır.
+  // Ref, render gövdesinde değil kendi efektinde güncellenir (react-hooks/refs); bu efekt her
+  // commit sonrası çalışır ve olay dinleyicisi tetiklenmeden önce ref güncel olur.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -44,7 +53,7 @@ export function Sheet({
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !panel.current) return;
@@ -68,7 +77,7 @@ export function Sheet({
       document.body.style.overflow = previousOverflow;
       previous?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

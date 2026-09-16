@@ -49,4 +49,49 @@ describe('Sheet', () => {
     unmount();
     expect(document.body.style.overflow).toBe('');
   });
+
+  /**
+   * Görev 11 inceleme bulgusu: `onClose` çoğu çağrı yerinde satır içi bir kapanış — her
+   * ebeveyn render'ında yeni bir referans. Efekt `[open, onClose]`'a bağlıysa her render'da
+   * yeniden çalışır: `inert` yeniden uygulanır ve odak ilk elemana geri çalınır — telefonda
+   * garson bir şeye dokunurken klavye zıplar ya da seçim kaybolur.
+   */
+  it('Görev 13: ebeveyn yeniden render olduğunda (kararsız onClose) inert tekrar uygulanmaz ve odak çalınmaz', () => {
+    const appRoot = document.createElement('div');
+    appRoot.id = 'root';
+    document.body.appendChild(appRoot);
+    const setAttributeSpy = vi.spyOn(Element.prototype, 'setAttribute');
+
+    try {
+      const { rerender } = render(
+        <Sheet open onClose={() => {}} title="Ürün seçenekleri" closeLabel="Kapat">
+          <button type="button">Birinci</button>
+          <button type="button">İkinci</button>
+        </Sheet>,
+      );
+      const second = screen.getByRole('button', { name: 'İkinci' });
+      second.focus();
+      expect(document.activeElement).toBe(second);
+
+      const inertCalls = () =>
+        setAttributeSpy.mock.calls.filter(
+          (args, i) => args[0] === 'inert' && setAttributeSpy.mock.instances[i] === appRoot,
+        ).length;
+      const before = inertCalls();
+
+      // Ebeveynin satır içi `onClose`'u her render'da yeni bir fonksiyon referansı verir.
+      rerender(
+        <Sheet open onClose={() => {}} title="Ürün seçenekleri" closeLabel="Kapat">
+          <button type="button">Birinci</button>
+          <button type="button">İkinci</button>
+        </Sheet>,
+      );
+
+      expect(inertCalls()).toBe(before);
+      expect(document.activeElement).toBe(second);
+    } finally {
+      setAttributeSpy.mockRestore();
+      appRoot.remove();
+    }
+  });
 });

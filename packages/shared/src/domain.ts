@@ -17,3 +17,10 @@ export interface SubmitItem {
   option_ids: string[]; removed_ingredient_ids: string[]; note: string | null;
 }
 export const localName = (x: Named, locale: Locale): string => (locale === 'tr' && x.name_tr) || x.name_de;
+
+/**
+ * DB'de masa adı hep Almanca ("Tisch 12" — global-constraints §5 "Menü adları"). TR arayüzde
+ * "Masa 12" gösterilir; fiş her zaman Almanca kalır (bu fonksiyon fiş render'ında kullanılmaz).
+ */
+export const localTableName = (name: string, locale: Locale): string =>
+  locale === 'tr' ? name.replace(/^Tisch(?=\s|$)/, 'Masa') : name;

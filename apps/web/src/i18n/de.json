@@ -9,7 +9,21 @@
     "logout": "Abmelden",
     "retry": "Nochmal versuchen",
     "loading": "Lädt",
-    "search": "Suchen"
+    "search": "Suchen",
+    "elapsedMinutes": "{{count}} Min."
+  },
+  "roles": {
+    "admin": "Admin",
+    "waiter": "Kellner",
+    "kitchen": "Küche",
+    "printer": "Drucker"
+  },
+  "printer": {
+    "agent_offline": "Keine Verbindung zum Drucker — bitte prüfen",
+    "printer_unreachable": "Drucker nicht erreichbar — Kabel prüfen",
+    "paper_end": "Kein Papier im Drucker — Papier einlegen",
+    "cover_open": "Druckerdeckel ist offen — Deckel schließen",
+    "jobs_failed": "Ein Beleg konnte nicht gedruckt werden — nochmal versuchen"
   },
   "login": {
     "title": "Anmelden",
@@ -19,11 +33,41 @@
     "submit": "Anmelden"
   },
   "waiter": {
-    "tables": { "title": "Tische" },
-    "table": { "title": "Tisch" },
+    "tables": {
+      "title": "Tische",
+      "filterAll": "Alle",
+      "filterOpen": "Offen",
+      "filterReady": "Fertig",
+      "emptyFiltered": "Für diesen Filter gibt es keinen Tisch",
+      "emptyFilteredAction": "Alle anzeigen"
+    },
+    "table": {
+      "title": "Tisch",
+      "empty": "Dieser Tisch hat noch keine Bestellung",
+      "cancelReason": "Storniert: {{reason}}"
+    },
     "order": { "title": "Bestellung aufnehmen" },
-    "ready": { "title": "Fertig" },
-    "profile": { "title": "Profil" }
+    "ready": { "title": "Fertig", "empty": "Kein fertiges Essen wartet" },
+    "profile": { "title": "Profil", "language": "Sprache" },
+    "actions": {
+      "markServed": "Serviert",
+      "markServedDrink": "Getränk serviert",
+      "reprint": "Nochmal drucken",
+      "more": "Weitere Aktionen"
+    },
+    "duty": {
+      "on": "Im Dienst",
+      "off": "Nicht im Dienst",
+      "start": "Dienst beginnen",
+      "stop": "Dienst beenden",
+      "offBanner": "Du bist nicht im Dienst — du siehst keine Bestellungen"
+    },
+    "banner": {
+      "offline": "Kein Internet — der Bildschirm aktualisiert sich automatisch, sobald du wieder online bist",
+      "realtimeOffline": "Live-Verbindung wird wiederhergestellt"
+    },
+    "printBadge": { "queued": "Wird gedruckt" },
+    "nav": { "label": "Kellner-Navigation" }
   },
   "kitchen": {
     "title": "Küche"

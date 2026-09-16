@@ -9,7 +9,21 @@
     "logout": "Çıkış",
     "retry": "Tekrar dene",
     "loading": "Yükleniyor",
-    "search": "Ara"
+    "search": "Ara",
+    "elapsedMinutes": "{{count}} dk"
+  },
+  "roles": {
+    "admin": "Yönetici",
+    "waiter": "Garson",
+    "kitchen": "Mutfak",
+    "printer": "Yazıcı"
+  },
+  "printer": {
+    "agent_offline": "Yazıcı bağlantısı yok — kontrol ettir",
+    "printer_unreachable": "Yazıcıya ulaşılamıyor — kablosunu kontrol et",
+    "paper_end": "Yazıcıda kağıt bitti — kağıt tak",
+    "cover_open": "Yazıcı kapağı açık — kapağı kapat",
+    "jobs_failed": "Basılamayan fiş var — tekrar dene"
   },
   "login": {
     "title": "Giriş",
@@ -19,11 +33,41 @@
     "submit": "Giriş"
   },
   "waiter": {
-    "tables": { "title": "Masalar" },
-    "table": { "title": "Masa" },
+    "tables": {
+      "title": "Masalar",
+      "filterAll": "Tümü",
+      "filterOpen": "Açık",
+      "filterReady": "Hazır",
+      "emptyFiltered": "Bu filtrede masa yok",
+      "emptyFilteredAction": "Tümünü göster"
+    },
+    "table": {
+      "title": "Masa",
+      "empty": "Bu masada sipariş yok",
+      "cancelReason": "İptal: {{reason}}"
+    },
     "order": { "title": "Sipariş al" },
-    "ready": { "title": "Hazır" },
-    "profile": { "title": "Profil" }
+    "ready": { "title": "Hazır", "empty": "Bekleyen hazır yemek yok" },
+    "profile": { "title": "Profil", "language": "Dil" },
+    "actions": {
+      "markServed": "Teslim edildi",
+      "markServedDrink": "Teslim edildi (içecek)",
+      "reprint": "Tekrar bas",
+      "more": "Diğer işlemler"
+    },
+    "duty": {
+      "on": "Mesai açık",
+      "off": "Mesai kapalı",
+      "start": "Mesaiye başla",
+      "stop": "Mesaiyi bitir",
+      "offBanner": "Mesain kapalı — sipariş göremezsin"
+    },
+    "banner": {
+      "offline": "İnternet yok — ekran bağlantı gelince kendiliğinden güncellenir",
+      "realtimeOffline": "Canlı bağlantı yeniden kuruluyor"
+    },
+    "printBadge": { "queued": "Yazdırılıyor" },
+    "nav": { "label": "Garson gezinmesi" }
   },
   "kitchen": {
     "title": "Mutfak"

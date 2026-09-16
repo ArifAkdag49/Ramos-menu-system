@@ -3,8 +3,9 @@ import { Navigate } from 'react-router';
 import { homeFor, useAuth } from '../lib/auth';
 
 /**
- * Görev 13–16 ve 21'de tamamen değiştirilecek yer tutucu ekranlar.
- * Şimdilik yalnız başlığı gösterirler; başlıklar i18n'den gelir.
+ * Görev 14 (sipariş girişi) ve 15–16, 21'de tamamen değiştirilecek yer tutucu ekranlar.
+ * Şimdilik yalnız başlığı gösterirler; başlıklar i18n'den gelir. Garson sekmeleri (Masalar,
+ * Masa detayı, Hazır, Profil) Görev 13'te `features/waiter/*`'a taşındı.
  */
 function Screen({ title }: { title: string }) {
   return (
@@ -14,29 +15,9 @@ function Screen({ title }: { title: string }) {
   );
 }
 
-export function WaiterTablesPage() {
-  const { t } = useTranslation();
-  return <Screen title={t('waiter.tables.title')} />;
-}
-
-export function WaiterTablePage() {
-  const { t } = useTranslation();
-  return <Screen title={t('waiter.table.title')} />;
-}
-
 export function WaiterOrderPage() {
   const { t } = useTranslation();
   return <Screen title={t('waiter.order.title')} />;
-}
-
-export function WaiterReadyPage() {
-  const { t } = useTranslation();
-  return <Screen title={t('waiter.ready.title')} />;
-}
-
-export function WaiterProfilePage() {
-  const { t } = useTranslation();
-  return <Screen title={t('waiter.profile.title')} />;
 }
 
 export function KitchenPage() {
