@@ -35,6 +35,10 @@ const itemIds = (orderId: string) =>
   sql<{ id: string }>(`select id from public.order_items where order_id = '${orderId}' order by sort`);
 const statusOf = async (orderId: string) =>
   (await sql<{ status: string }>(`select status from public.orders where id = '${orderId}'`))[0]!.status;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const stornoCount = async (orderId: string) =>
+  (await sql<{ n: number }>(
+    `select count(*)::int as n from public.print_jobs where order_id = '${orderId}' and type = 'storno'`))[0]!.n;
 
 describe('kalem iptali', () => {
   it('sebep zorunlu, STORNO fişi basılır, son kalem iptalinde sipariş iptal olur', async () => {
@@ -59,6 +63,20 @@ describe('kalem iptali', () => {
     const [a] = await itemIds(o.order_id);
     expect((await kitchen.rpc('cancel_order_item', { p_item_id: a!.id, p_reason: 'x' })).error?.message)
       .toBe('not_authorized');
+  });
+
+  it('teslim edilmiş siparişin son kalemi iptal edilince sipariş served kalır, STORNO basılmaz (R42)', async () => {
+    const o = await order([{ product_id: f.colaId, quantity: 1 }]);
+    expect((await waiter.rpc('mark_order_served', { p_order_id: o.order_id })).error).toBeNull();
+    const [only] = await itemIds(o.order_id);
+    const r = await waiter.rpc('cancel_order_item', { p_item_id: only!.id, p_reason: 'Gast hat storniert' });
+    expect(r.error).toBeNull();
+    expect(r.data).toMatchObject({ order_status: 'served' });
+    expect(await statusOf(o.order_id)).toBe('served');
+    const [item] = await sql<{ status: string }>(
+      `select status from public.order_items where id = '${only!.id}'`);
+    expect(item!.status).toBe('cancelled');
+    expect(await stornoCount(o.order_id)).toBe(0);   // R40: served siparişte STORNO fişi yok
   });
 });
 
@@ -87,6 +105,36 @@ describe('hazır / geri al / teslim', () => {
 });
 
 describe('masa kapatma ve taşıma', () => {
+  it('masa satırı kilitliyken kapatma bekler — submit_order ile aynı kilit sırası (R41)', async () => {
+    const o = await order();
+    await kitchen.rpc('mark_order_ready', { p_order_id: o.order_id });
+    // Başka bir oturum masa satırını 4 sn kilitli tutar; kapatma bu kilidi beklemelidir.
+    const marker = crypto.randomUUID();
+    let heldError: unknown;
+    const held = sql(`-- ${marker}
+      begin;
+      select id from public.dining_tables where id = '${f.tableId}' for update;
+      select pg_sleep(4);
+      commit;`).catch((e: unknown) => { heldError = e; });
+    const lockHolders = async () => (await sql<{ n: number }>(`
+      select count(*)::int as n from pg_stat_activity
+      where pid <> pg_backend_pid() and query like '%${marker}%'`))[0]!.n;
+    const waitStart = Date.now();
+    while ((await lockHolders()) === 0) {
+      if (Date.now() - waitStart > 5000) throw new Error('kilit isteği başlamadı');
+      await sleep(100);
+    }
+    await sleep(300);
+
+    const t0 = Date.now();
+    const { error } = await waiter.rpc('close_table_session', { p_session_id: o.session_id });
+    const elapsed = Date.now() - t0;
+    await held;
+    expect(heldError).toBeUndefined();
+    expect(error).toBeNull();
+    expect(elapsed).toBeGreaterThan(2000);
+  });
+
   it('mutfakta sipariş varken kapanmaz; hazır olanlar kapanışta teslim sayılır', async () => {
     const o = await order();
     expect((await waiter.rpc('close_table_session', { p_session_id: o.session_id })).error?.message)
@@ -168,6 +216,24 @@ describe('mesai, dil, push, rapor', () => {
     expect(row!.user_id).toBe(ids.waiter2);
     await waiter2.rpc('delete_push_subscription', { p_endpoint: ep });
     expect(await sql(`select 1 from public.push_subscriptions where endpoint = '${ep}'`)).toEqual([]);
+  });
+
+  it('tamamen iptal edilen sipariş ne orders ne by_hour sayımına girer (R39)', async () => {
+    type Report = { orders: number; by_hour: { hour: number; orders: number }[] };
+    const sumHours = (r: Report) => r.by_hour.reduce((n, h) => n + Number(h.orders), 0);
+    const today = (await sql<{ d: string }>(`select public.business_date()::text as d`))[0]!.d;
+    const report = async () =>
+      (await admin.rpc('report_range', { p_from: today, p_to: today })).data as Report;
+
+    const before = await report();
+    const o = await order([{ product_id: f.colaId, quantity: 1 }]);
+    const [only] = await itemIds(o.order_id);
+    await waiter.rpc('cancel_order_item', { p_item_id: only!.id, p_reason: 'Gast hat storniert' });
+    expect(await statusOf(o.order_id)).toBe('cancelled');
+
+    const after = await report();
+    expect(after.orders).toBe(before.orders);
+    expect(sumHours(after)).toBe(sumHours(before));
   });
 
   it('rapor yalnız admin', async () => {
