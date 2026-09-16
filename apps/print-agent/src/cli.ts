@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { linesToText, renderTicket, type TicketPayload, type Database } from '@ramos/shared';
@@ -10,6 +9,7 @@ import { loadConfig, type AgentEnv } from './config';
 import { startFakePrinter } from './fake-printer';
 import { encodeLines } from './escpos';
 import { createLogger, type Logger } from './log';
+import { defaultProcIo, isSameAgentProcess, probeProcess } from './proc';
 import { createShutdownHandler } from './shutdown';
 import { printWithChecks, queryStatus } from './transport';
 
@@ -49,22 +49,11 @@ function isRunning(pid: number): boolean {
 }
 
 // I3(c): yalnız PID varlığı güvenilir değil — temiz olmayan bir kapanışın ardından (özellikle
-// reboot sonrası) Windows aynı PID'i tamamen başka bir sürece verebilir. Süreç başlangıç
-// zamanını da karşılaştırarak "aynı ajan mı, yoksa PID yeniden mi kullanılmış" ayrımını
-// yaparız; sorgu başarısız olursa (ör. Windows dışı platform, powershell yok) `null` döner ve
-// eski (yalnız PID) davranışına düşülür — asla başlatmayı riskli biçimde kolaylaştırmaz.
+// reboot sonrası) işletim sistemi aynı PID'i tamamen başka bir sürece verebilir. Süreç
+// başlangıç zamanı (ve Linux'ta komut satırı) karşılaştırılarak "aynı ajan mı, yoksa PID
+// yeniden mi kullanılmış" ayrımı yapılır — bkz. `proc.ts` ve R85.
 function processStartTime(pid: number): number | null {
-  if (process.platform !== 'win32') return null;
-  try {
-    const out = execFileSync(
-      'powershell',
-      ['-NoProfile', '-NonInteractive', '-Command', `(Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToFileTimeUtc()`],
-      { encoding: 'utf8', timeout: 3000 },
-    ).trim();
-    return out ? Number(out) : null;
-  } catch {
-    return null;
-  }
+  return probeProcess(pid, process.platform, defaultProcIo).startTime;
 }
 
 function readLockInfo(lockPath: string): LockInfo | null {
@@ -91,12 +80,14 @@ function acquireLock(dir: string, log: Logger): () => void {
   const lockPath = path.join(dir, 'agent.lock');
   const existing = readLockInfo(lockPath);
   if (existing && isRunning(existing.pid)) {
-    const currentStart = processStartTime(existing.pid);
-    const samePid = existing.startTime === null || currentStart === null || existing.startTime === currentStart;
-    if (samePid) {
+    const probe = probeProcess(existing.pid, process.platform, defaultProcIo);
+    if (isSameAgentProcess(existing.startTime, probe)) {
       throw new Error(`Ajan zaten çalışıyor (pid ${existing.pid}). Kilit dosyası: ${lockPath}`);
     }
-    log.warn('kilit dosyasındaki pid yeniden kullanılmış görünüyor (reboot sonrası) — kilit devralınıyor', { pid: existing.pid });
+    log.warn('kilit dosyasındaki pid yeniden kullanılmış görünüyor (reboot sonrası) — kilit devralınıyor', {
+      pid: existing.pid,
+      isAgent: probe.isAgent,
+    });
   }
   if (existing) {
     try {

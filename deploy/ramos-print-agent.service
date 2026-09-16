@@ -4,8 +4,11 @@
 #   sudo useradd -r -s /usr/sbin/nologin ramos
 #   sudo mkdir -p /opt/ramos-print-agent /var/log/ramos-print-agent
 #   sudo cp dist/ramos-agent.mjs /opt/ramos-print-agent/
-#   sudo cp apps/print-agent/.env /opt/ramos-print-agent/.env   # AGENT_PASSWORD taşır: chmod 600
+#   sudo cp apps/print-agent/.env /opt/ramos-print-agent/.env
 #   sudo chown -R ramos:ramos /opt/ramos-print-agent /var/log/ramos-print-agent
+#   # .env AGENT_PASSWORD taşır — yalnız ajan kullanıcısı okuyabilsin (M9: bu bir yorum değil,
+#   # çalıştırılması gereken bir adımdır; atlanırsa parola 644 ile herkese okunur kalır):
+#   sudo chmod 600 /opt/ramos-print-agent/.env
 #   sudo cp deploy/ramos-print-agent.service /etc/systemd/system/
 #   sudo systemctl daemon-reload && sudo systemctl enable --now ramos-print-agent
 #

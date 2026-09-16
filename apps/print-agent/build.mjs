@@ -8,10 +8,17 @@
 // çalışmasını garanti eder (kurulum klasöründe `"type": "module"` yoktur).
 import { build } from 'esbuild';
 import { rmSync } from 'node:fs';
+import path from 'node:path';
 
-rmSync('dist', { recursive: true, force: true });
+// M7 (inceleme turu 1): tüm yollar BU DOSYANIN klasörüne göre çözülür, `cwd`'ye göre değil.
+// `node apps/print-agent/build.mjs` depo kökünden çalıştırıldığında göreli `rmSync('dist')`
+// KÖKTEKİ `dist/` klasörünü siliyordu.
+const root = import.meta.dirname;
+
+rmSync(path.join(root, 'dist'), { recursive: true, force: true });
 
 await build({
+  absWorkingDir: root,
   entryPoints: ['src/cli.ts'],
   outfile: 'dist/ramos-agent.mjs',
   bundle: true,
@@ -20,9 +27,12 @@ await build({
   target: 'node22',
   sourcemap: false,
   minify: false,
-  // Paketlenen bağımlılıkların bir kısmı CJS'tir ve `require`/`__dirname` bekler; ESM çıktısında
-  // bunlar tanımsızdır. Banner, esbuild'in CJS→ESM sarmalayıcılarının ihtiyaç duyduğu `require`i
-  // `createRequire` ile geri kazandırır.
+  // Paketlenen bağımlılıklardan bazıları CJS'tir; esbuild bunları ESM çıktısında sarmalar ama
+  // bir bağımlılık ÇALIŞMA ANINDA `require(...)` çağırırsa (koşullu/tembel yükleme) ESM'de
+  // `require` tanımsızdır ve süreç çöker. Banner onu `createRequire` ile geri kazandırır.
+  // BUGÜN ölü kod: `grep -c "require(" dist/ramos-agent.mjs` → 1 (yalnız esbuild'in kendi
+  // `__require` yardımcısının ADI). Bir güvenlik ağı olarak bırakıldı: maliyeti 1 satır,
+  // eksikliğinin maliyeti restoranda açılışta çöken bir ajan.
   banner: { js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);" },
   logLevel: 'info',
 });
