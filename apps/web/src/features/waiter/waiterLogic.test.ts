@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTime, printBadge, sortReady, tableTone } from './waiterLogic';
+import { formatTime, printBadge, sortReady, tableBody, tableTone } from './waiterLogic';
 
 describe('waiterLogic', () => {
   it('masa tonu', () => {
@@ -29,5 +29,25 @@ describe('waiterLogic', () => {
   it('saat: Europe/Berlin dilimine göre biçimlenir (spec §8.2 "19:42" örneği)', () => {
     // Eylülde Almanya CEST'te (UTC+2): 17:42 UTC -> 19:42 yerel.
     expect(formatTime('2026-09-15T17:42:00Z')).toBe('19:42');
+  });
+});
+
+/**
+ * R76: boş masada spinner göstermek BUILD-PROMPT §10.8'i ("boş durumlar yol gösterir") çiğniyordu —
+ * her arka plan tazelemesinde "Bu masada sipariş yok — Sipariş al" yerine dönen bir çember
+ * çıkıyordu (M3 kapısının referans görüntüsü de bu yüzden boş çıktı). Spinner yalnız ilk yükleme.
+ */
+describe('tableBody (R76)', () => {
+  it('ilk yüklemede (veri hiç gelmemiş, sorgu uçuyor) yükleniyor gösterir', () => {
+    expect(tableBody(false, true)).toBe('loading');
+  });
+
+  it('arka plan tazelemesinde boş durum korunur', () => {
+    expect(tableBody(false, false)).toBe('empty');
+  });
+
+  it('oturum varsa ilk yükleme bitmiş sayılır ve siparişler çizilir', () => {
+    expect(tableBody(true, false)).toBe('orders');
+    expect(tableBody(true, true)).toBe('orders');
   });
 });

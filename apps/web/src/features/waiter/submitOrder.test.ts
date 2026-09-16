@@ -21,4 +21,28 @@ describe('submitWithRetry', () => {
     await expect(submitWithRetry(send, 'id-3', { delays: [0, 0, 0] })).rejects.toMatchObject({ key: 'network' });
     expect(send).toHaveBeenCalledTimes(3);
   });
+
+  /**
+   * Bekleme yalnız **denemeler arasındadır**: son denemeden sonra da uyusaydı garson hatayı
+   * gereksiz yere 4 sn geç görürdü. Üç test de `delays: [0,0,0]` kullandığı için bu davranış
+   * ölçülmüyordu; burada gerçek gecikmelerle ve sahte zamanlayıcıyla sabitlenir.
+   */
+  it('son denemeden sonra beklemez — arada iki kez bekler', async () => {
+    vi.useFakeTimers();
+    try {
+      const send = vi.fn().mockRejectedValue(new RpcError('network'));
+      const settled = submitWithRetry(send, 'id-4', { delays: [1000, 2000, 4000] }).catch((e: unknown) => e);
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(send).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(send).toHaveBeenCalledTimes(3);
+
+      // Üçüncü hatadan sonra hiçbir zamanlayıcı kurulmaz ve sonuç hemen elde olur.
+      expect(vi.getTimerCount()).toBe(0);
+      await expect(settled).resolves.toMatchObject({ key: 'network' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

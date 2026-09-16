@@ -1,5 +1,4 @@
 import { formatOrderNo, localTableName, type Locale } from '@ramos/shared';
-import { useIsFetching } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import {
   AlertTriangle,
@@ -16,7 +15,6 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
-import { qk } from '../../data/keys';
 import {
   useCloseSession,
   useMarkServed,
@@ -26,7 +24,8 @@ import {
   type OrderItemView,
   type OrderView,
 } from '../../data/orders';
-import { useOpenSession, useTableOverview } from '../../data/tables';
+import { useSettings } from '../../data/settings';
+import { useOpenSessionQuery, useTableOverview } from '../../data/tables';
 import { toast } from '../../lib/toast';
 import { Badge } from '../../ui/Badge';
 import { Banner } from '../../ui/Banner';
@@ -39,8 +38,9 @@ import { ItemLines } from '../common/ItemLinesView';
 import { BillSheet } from './BillSheet';
 import { CancelItemSheet } from './CancelItemSheet';
 import { MoveTableSheet } from './MoveTableSheet';
+import { localCancelReason, parseCancelReasons, type CancelReason } from './cancelReasons';
 import { errorKey } from './submitError';
-import { formatTime, printBadge } from './waiterLogic';
+import { formatTime, printBadge, tableBody } from './waiterLogic';
 
 const STATUS_TONE: Record<OrderView['status'], 'open' | 'ready' | 'empty' | 'danger'> = {
   in_kitchen: 'open',
@@ -73,13 +73,13 @@ export function TableDetailPage() {
 
   const rows = useTableOverview();
   const table = rows.find((r) => r.table_id === tableId);
-  const session = useOpenSession(tableId);
+  const sessionQuery = useOpenSessionQuery(tableId);
+  const session = sessionQuery.data ?? null;
   const orders = useSessionOrders(session?.id);
+  const cancelReasons = parseCancelReasons(useSettings()?.cancel_reasons);
 
-  // Sipariş gönderdikten hemen sonra bu sayfaya gelindiğinde oturum sorgusu daha yolda olur;
-  // o anda "Bu masada sipariş yok" yazmak garsona siparişin kaybolduğunu düşündürür. Sorgu
-  // uçarken boş durum yerine yükleniyor gösterilir.
-  const sessionLoading = useIsFetching({ queryKey: qk.session(tableId ?? '') }) > 0;
+  // R76: spinner yalnız ilk yüklemede; arka plan tazelemesinde boş durum korunur.
+  const body = tableBody(!!session, sessionQuery.isLoading);
 
   const markServed = useMarkServed();
   const reprint = useReprint();
@@ -110,11 +110,11 @@ export function TableDetailPage() {
     <div className="flex flex-col gap-4 px-4 py-4">
       <h1 className="text-xl font-semibold">{tableName}</h1>
 
-      {!session && sessionLoading ? (
+      {body === 'loading' ? (
         <div className="flex justify-center py-12">
           <Spinner className="text-muted" label={t('common.loading')} />
         </div>
-      ) : !session ? (
+      ) : body === 'empty' || !session ? (
         <EmptyState
           icon={<UtensilsCrossed aria-hidden size={40} />}
           title={t('waiter.table.empty')}
@@ -132,6 +132,7 @@ export function TableDetailPage() {
                 key={order.id}
                 order={order}
                 locale={locale}
+                cancelReasons={cancelReasons}
                 onMarkServed={() => markServed.mutate(order.id)}
                 onReprint={() => reprint.mutate(order.id)}
                 onCancelItem={setCancelItem}
@@ -160,7 +161,7 @@ export function TableDetailPage() {
             <div className="flex gap-2">
               <Button
                 variant="secondary"
-                className="flex-1"
+                className="min-w-0 flex-1"
                 icon={<Receipt aria-hidden size={18} />}
                 onClick={() => setPanel('bill')}
               >
@@ -168,7 +169,7 @@ export function TableDetailPage() {
               </Button>
               <Button
                 variant="secondary"
-                className="flex-1"
+                className="min-w-0 flex-1"
                 icon={<ArrowRightLeft aria-hidden size={18} />}
                 onClick={() => setPanel('move')}
               >
@@ -176,7 +177,10 @@ export function TableDetailPage() {
               </Button>
               <Button
                 variant="secondary"
-                className="flex-1"
+                // M10: adı "Kapat" değil — paneldeki kapat düğmesiyle aynı erişilebilir adı
+                // taşıyordu. Uzun olduğu için satırda daha fazla pay alır; sığmazsa (Almanca
+                // "Tisch schließen" daha da uzun) taşmak yerine iki satıra sarılır.
+                className="min-w-0 flex-[1.7]"
                 icon={<DoorClosed aria-hidden size={18} />}
                 onClick={() => {
                   setCloseProblem(null);
@@ -237,6 +241,7 @@ export function TableDetailPage() {
 function OrderCard({
   order,
   locale,
+  cancelReasons,
   onMarkServed,
   onReprint,
   onCancelItem,
@@ -244,6 +249,7 @@ function OrderCard({
 }: {
   order: OrderView;
   locale: Locale;
+  cancelReasons: CancelReason[];
   onMarkServed: () => void;
   onReprint: () => void;
   onCancelItem: (item: OrderItemView) => void;
@@ -273,7 +279,11 @@ function OrderCard({
       </div>
 
       <ul className="flex flex-col gap-3">
-        {order.items.map((item) => (
+        {order.items.map((item) => {
+          // M3: sebep sunucuda Almanca durur (STORNO fişi Almanca); arayüzde yerel etikete eşlenir,
+          // eşleşmeyen serbest metin Almanca kalır ve `lang="de"` ile sarılır.
+          const reason = item.cancel_reason ? localCancelReason(item.cancel_reason, cancelReasons, locale) : null;
+          return (
           <li key={item.id} className={item.status === 'cancelled' ? 'opacity-60' : undefined}>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -294,11 +304,15 @@ function OrderCard({
                 </Button>
               ) : null}
             </div>
-            {item.status === 'cancelled' && item.cancel_reason ? (
-              <p className="text-sm text-danger-ink">{t('waiter.table.cancelReason', { reason: item.cancel_reason })}</p>
+            {item.status === 'cancelled' && reason ? (
+              <p className="text-sm text-danger-ink">
+                {t('waiter.table.cancelReasonLabel')}{' '}
+                <span lang={reason.isGerman ? 'de' : undefined}>{reason.text}</span>
+              </p>
             ) : null}
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       <div className="flex items-center gap-2">

@@ -48,6 +48,9 @@ export function Button({
       aria-busy={loading || undefined}
       className={clsx(
         'inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl font-semibold',
+        // İkon yazıyla birlikte gelir (BUILD-PROMPT §10.3); dar bir sütunda yazı sarılırken
+        // ikonun ezilmemesi gerekir, yoksa anlamını kaybeder.
+        '[&>svg]:shrink-0',
         'transition-[filter,background-color,transform] duration-150 ease-out active:scale-[0.98]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
         'disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100',

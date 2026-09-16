@@ -20,6 +20,7 @@ import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
 import { cartLineSummary } from './cartLineSummary';
 import { useCart } from './cartStore';
+import { MissingProductLine } from './MissingProductLine';
 import { submitErrorView, type SubmitErrorView } from './submitError';
 
 /**
@@ -56,7 +57,9 @@ export function SendConfirm({
   const { send, isPending } = useSubmitOrder(tableId);
   const [problem, setProblem] = useState<SubmitErrorView | null>(null);
 
-  const count = lines.reduce((n, l) => n + l.quantity, 0);
+  // M1: "kalem" / "Position" = SATIR. Adetleri toplamak "2× döner + 1 kola" için "3 kalem"
+  // derdi; Almancası ("3 Positionen") düpedüz yanlış olurdu.
+  const count = lines.length;
   const total = cartTotalCents(lines, byId);
   const bad = new Set(problem?.badLineKeys ?? []);
 
@@ -81,6 +84,7 @@ export function SendConfirm({
   return (
     <Sheet
       open
+      busy={isPending}
       onClose={onBack}
       title={t('waiter.send.title')}
       closeLabel={t('common.back')}
@@ -113,7 +117,19 @@ export function SendConfirm({
         <ul className="flex flex-col gap-2">
           {lines.map((line) => {
             const product = byId.get(line.productId);
-            if (!product) return null;
+            // R75: bu satır gönderilecek, o hâlde görünmek zorunda — sunucu `product_*` hatası
+            // döndüğünde işaretlenecek satır bu.
+            if (!product)
+              return (
+                <MissingProductLine
+                  key={line.key}
+                  productId={line.productId}
+                  onRemove={() => {
+                    remove(tableId, line.key);
+                    setProblem(null);
+                  }}
+                />
+              );
             const marked = bad.has(line.key);
             return (
               <li

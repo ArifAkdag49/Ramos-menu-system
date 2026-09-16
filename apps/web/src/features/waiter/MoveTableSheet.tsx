@@ -97,7 +97,9 @@ export function MoveTableSheet({
                   aria-pressed={selected}
                   onClick={() => setTargetId(row.table_id)}
                   className={
-                    'min-h-14 rounded-card border px-2 text-base font-semibold transition-colors ' +
+                    // M5: uzun masa adı ("Test-Tisch-2") hücreden taşıyordu; kırılmasına izin
+                    // verilir ve hücre dikeyde büyür.
+                    'min-h-14 break-words rounded-card border px-2 py-2 text-base font-semibold transition-colors ' +
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg ' +
                     (selected ? 'border-lime bg-lime/15 text-lime' : 'border-border bg-surface-2 text-text')
                   }

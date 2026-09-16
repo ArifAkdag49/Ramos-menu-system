@@ -1,6 +1,9 @@
 import { clsx } from 'clsx';
+import { domAnimation, LazyMotion, useReducedMotion } from 'motion/react';
+import * as m from 'motion/react-m';
 import type { ReactNode } from 'react';
 import { TONE_CLASS, type Tone } from './tone';
+import { toastMotion } from './toastMotion';
 
 /**
  * Kısa onay mesajı. Odağı çalmaz.
@@ -9,35 +12,51 @@ import { TONE_CLASS, type Tone } from './tone';
  * monte kalır, mesaj içine yazılır. Birçok ekran okuyucu, bölge duyuru anında yeni oluşursa
  * hiçbir şey seslendirmez. Bu yüzden `<Toast>` ekranda sürekli dururken `children` gelip gider.
  */
+const POSITION: Record<'bottom' | 'top', string> = {
+  bottom: 'bottom-[calc(1rem+env(safe-area-inset-bottom))]',
+  top: 'top-[calc(1rem+env(safe-area-inset-top))]',
+};
+
 export function Toast({
   tone = 'open',
+  position = 'bottom',
   icon,
   children,
   className,
 }: {
   tone?: Tone;
+  /** R73: bir panel açıkken üstte gösterilir, yoksa altta. */
+  position?: 'bottom' | 'top';
   icon?: ReactNode;
   children?: ReactNode;
   className?: string;
 }) {
+  const reduced = useReducedMotion();
   return (
     <div
       role="status"
       aria-live="polite"
       aria-atomic="true"
-      className="pointer-events-none fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-60"
+      data-position={position}
+      className={clsx('pointer-events-none fixed inset-x-4 z-60', POSITION[position])}
     >
       {children ? (
-        <div
-          className={clsx(
-            'flex items-center gap-2 rounded-card border px-4 py-3 text-base shadow-[var(--shadow-overlay)]',
-            TONE_CLASS[tone],
-            className,
-          )}
-        >
-          {icon}
-          {children}
-        </div>
+        // R77: `LazyMotion` + `m.*` (tam `motion.*` değil) — mikro-animasyonun paket maliyetini
+        // düşük tutar. `strict` tam sürümün kazara kullanılmasını derlemede değil çalışmada
+        // yakalar, böylece ileride biri `motion.div` yazarsa fark edilir.
+        <LazyMotion features={domAnimation} strict>
+          <m.div
+            {...toastMotion(!!reduced)}
+            className={clsx(
+              'flex items-center gap-2 rounded-card border px-4 py-3 text-base shadow-[var(--shadow-overlay)]',
+              TONE_CLASS[tone],
+              className,
+            )}
+          >
+            {icon}
+            {children}
+          </m.div>
+        </LazyMotion>
       ) : null}
     </div>
   );

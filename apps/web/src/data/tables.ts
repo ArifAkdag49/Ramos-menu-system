@@ -32,9 +32,13 @@ export interface OpenSession {
   opened_by: string;
 }
 
-/** Bir masadaki açık oturumu (varsa) okur. */
-export function useOpenSession(tableId: string | null | undefined): OpenSession | null {
-  const { data } = useQuery({
+/**
+ * Bir masadaki açık oturum sorgusu. Ham sorguyu döndürür ki ekran "ilk yükleme mi, boş mu"
+ * ayrımını yapabilsin (R76); `useOpenSession` aynı sorgunun yalnız verisini verir — iki ayrı
+ * tanım yok, `useOpenSession` bunun üstüne kuruludur.
+ */
+export function useOpenSessionQuery(tableId: string | null | undefined) {
+  return useQuery({
     queryKey: qk.session(tableId ?? ''),
     enabled: !!tableId,
     queryFn: async (): Promise<OpenSession | null> => {
@@ -48,5 +52,9 @@ export function useOpenSession(tableId: string | null | undefined): OpenSession 
       return data;
     },
   });
-  return data ?? null;
+}
+
+/** Bir masadaki açık oturumu (varsa) okur. */
+export function useOpenSession(tableId: string | null | undefined): OpenSession | null {
+  return useOpenSessionQuery(tableId).data ?? null;
 }

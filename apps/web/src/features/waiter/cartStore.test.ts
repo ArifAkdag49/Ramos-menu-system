@@ -68,7 +68,12 @@ describe('useCart', () => {
     expect(useCart.getState().carts.t1![0]!.quantity).toBe(2);
   });
 
-  it('sepeti değiştiren her işlem pendingOrderId’yi temizler', () => {
+  /**
+   * M2: **satır** işlemleri kimliği geçersiz kılar; `setNote` bilerek kılmaz. Notta geçersiz
+   * kılmak, "not yazdım ve tekrar gönderdim" akışında yeni bir `order_id` üretip gerçek bir
+   * çift sipariş doğururdu (R36'nın tam tersi).
+   */
+  it('satır işlemleri pendingOrderId’yi temizler, not yazmak temizlemez', () => {
     useCart.getState().ensurePendingId('t1');
     expect(useCart.getState().pendingOrderId.t1).toBeDefined();
     useCart.getState().add('t1', line());
@@ -82,6 +87,10 @@ describe('useCart', () => {
     useCart.getState().ensurePendingId('t1');
     useCart.getState().remove('t1', key);
     expect(useCart.getState().pendingOrderId.t1).toBeUndefined();
+
+    const id = useCart.getState().ensurePendingId('t1');
+    useCart.getState().setNote('t1', 'Kinderstuhl');
+    expect(useCart.getState().pendingOrderId.t1).toBe(id);
   });
 
   it('setNote ve remove masa bazında çalışır', () => {
@@ -101,6 +110,40 @@ describe('useCart', () => {
     expect(useCart.getState().carts.t1 ?? []).toHaveLength(0);
     expect(useCart.getState().notes.t1).toBeUndefined();
     expect(useCart.getState().pendingOrderId.t1).toBeUndefined();
+  });
+
+  /**
+   * R74(b): gönderim uçarken garson yeni kalem eklerse, geç gelen başarı sepetin **tamamını**
+   * silemez — yoksa hiç gönderilmemiş kalem sessizce kaybolur ve garson yemek gelmeyince
+   * fark eder. Yalnız gönderilen satır anahtarları temizlenir.
+   */
+  describe('clearSubmitted (R74)', () => {
+    it('yalnız gönderilen satırları siler, uçuş sırasında eklenen kalem kalır', () => {
+      useCart.getState().add('t1', line());
+      const sent = useCart.getState().carts.t1!.map((l) => l.key);
+      useCart.getState().add('t1', line({ productId: 'p-cola', variantId: null, optionIds: [] }));
+
+      useCart.getState().clearSubmitted('t1', sent);
+
+      expect(useCart.getState().carts.t1).toHaveLength(1);
+      expect(useCart.getState().carts.t1![0]!.productId).toBe('p-cola');
+    });
+
+    it('gönderilen not ve sipariş kimliği temizlenir', () => {
+      useCart.getState().add('t1', line());
+      useCart.getState().setNote('t1', 'Kinderstuhl');
+      const id = useCart.getState().ensurePendingId('t1');
+      useCart.getState().clearSubmitted('t1', useCart.getState().carts.t1!.map((l) => l.key));
+      expect(useCart.getState().notes.t1).toBeUndefined();
+      expect(useCart.getState().pendingOrderId.t1).toBeUndefined();
+      expect(useCart.getState().ensurePendingId('t1')).not.toBe(id);
+    });
+
+    it('geriye satır kalmazsa masanın sepeti tamamen kalkar', () => {
+      useCart.getState().add('t1', line());
+      useCart.getState().clearSubmitted('t1', useCart.getState().carts.t1!.map((l) => l.key));
+      expect(useCart.getState().carts.t1).toBeUndefined();
+    });
   });
 
   it('persist deposu adı ramos-cart-v1', () => {

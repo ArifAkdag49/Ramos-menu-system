@@ -15,10 +15,18 @@ interface CartState {
   setQty: (tableId: TableId, key: string, quantity: number) => void;
   setNote: (tableId: TableId, note: string) => void;
   ensurePendingId: (tableId: TableId) => string;
+  clearSubmitted: (tableId: TableId, keys: string[]) => void;
   clear: (tableId: TableId) => void;
 }
 
-/** Sepet değiştiren her işlem `pendingOrderId`'yi de temizler (idempotency, brief Adım 2). */
+/**
+ * **Satır** işlemleri (ekle/güncelle/sil/çoğalt/adet) `pendingOrderId`'yi geçersiz kılar: sepetin
+ * içeriği değiştiyse artık başka bir siparişten söz ediyoruz (idempotency, R36).
+ *
+ * M2 — `setNote` bilerek buraya dahil DEĞİLDİR: not, gönderilen kalemleri değiştirmez. Notta da
+ * geçersiz kılsaydık "gönderdim, cevap gelmedi, notu düzelttim, tekrar gönderdim" akışı yeni bir
+ * `order_id` üretir ve sunucudaki idempotency devre dışı kalırdı — yani gerçek bir çift sipariş.
+ */
 const touch = (tableId: TableId, pendingOrderId: CartState['pendingOrderId']) => ({
   ...pendingOrderId,
   [tableId]: undefined,
@@ -96,6 +104,27 @@ export const useCart = create<CartState>()(
         set((s) => ({ pendingOrderId: { ...s.pendingOrderId, [tableId]: id } }));
         return id;
       },
+
+      /**
+       * Başarılı gönderimden sonra **yalnız gönderilen** satırları düşürür (R74). Gönderim
+       * uçarken (ağ yeniden denemesinde pencere saniyelere çıkabilir) garson yeni bir kalem
+       * eklediyse o kalem sepette kalır; yoksa hiç gönderilmemiş bir ürün sessizce kaybolur ve
+       * garson ancak yemek gelmeyince fark eder. Not ve sipariş kimliği her hâlükârda gider:
+       * ikisi de gönderilen siparişe aitti.
+       */
+      clearSubmitted: (tableId, keys) =>
+        set((s) => {
+          const sent = new Set(keys);
+          const rest = (s.carts[tableId] ?? []).filter((l) => !sent.has(l.key));
+          const carts = { ...s.carts };
+          const notes = { ...s.notes };
+          const pendingOrderId = { ...s.pendingOrderId };
+          if (rest.length) carts[tableId] = rest;
+          else delete carts[tableId];
+          delete notes[tableId];
+          delete pendingOrderId[tableId];
+          return { carts, notes, pendingOrderId };
+        }),
 
       clear: (tableId) =>
         set((s) => {

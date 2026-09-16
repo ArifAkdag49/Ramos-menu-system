@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { cleanupFixtureOrders, ensureFixtures, ensureTestUsers } from './helpers';
+import { cleanupFixtureOrders, clientFor, ensureFixtures, ensureTestUsers, submitKitchenTestOrder } from './helpers';
 
 const PASSWORD = process.env.TEST_USER_PASSWORD ?? '';
 const SHOT = (name: string) => `../../docs/screenshots/m3-flow-${name}-390.png`;
@@ -12,24 +12,27 @@ const SHOT = (name: string) => `../../docs/screenshots/m3-flow-${name}-390.png`;
  * riskli. Veri Plan 1 fikstürlerinden gelir (`Test-Tisch`, `T05 Test Drehspieß Sandwich`,
  * `Test Cola`) — hepsi `Test-%` desenli olduğu için `cleanupFixtureOrders()` süzgeci kapsar.
  *
+ * I4 — kurulum ve temizlik **kancada değil, gövdede** (`kitchen.spec.ts` / `waiter.spec.ts` ile
+ * aynı örüntü): Playwright kancaları `test.skip`'ten önce çalışır, yani `beforeAll`/`afterAll`
+ * kullanılsaydı `desktop` ve `tablet` projeleri de canlı Supabase'e gidip aynı fikstürleri
+ * kurar/silerdi — üstelik telefon testi koşarken. Burada `test.skip` gövdenin ilk satırı olduğu
+ * için proje seçilmeden (`npm run e2e`) koşulduğunda diğer iki proje hiçbir şeye dokunmadan
+ * atlanır; kurulum-temizlik çifti yalnız bir kez, `phone` projesinde çalışır.
+ *
  * Arayüz dili TR'dir (test kullanıcılarının `locale` alanı 'tr'), ama malzeme/seçenek adları
- * `localName()` ile yerelleştiği için eşleştirmeler iki dilli tutulur.
+ * `localName()` ile yerelleştiği için eşleştirmeler iki dilli tutulur. "İ" ile başlayan metinler
+ * `exact` adla aranır: JS'in `/i` bayrağı U+0130'u "i" ile eşlemez (BUILD-PROMPT §6'daki büyük
+ * harf tuzağının test tarafındaki yüzü).
  */
-test.describe('garson uçtan uca', () => {
-  test.beforeAll(async () => {
-    await ensureTestUsers();
-    await ensureFixtures();
-    await cleanupFixtureOrders();
-  });
+test('garson uçtan uca: sepet → gönder → hesap → iptal → taşı → kapat', async ({ page, context }, info) => {
+  test.skip(info.project.name !== 'phone', 'akış yalnız telefon görünümünde koşar');
+  test.setTimeout(240_000);
 
-  test.afterAll(async () => {
-    await cleanupFixtureOrders();
-  });
+  await ensureTestUsers();
+  const fixtures = await ensureFixtures();
+  await cleanupFixtureOrders();
 
-  test('sepet → gönder → hesap → iptal → taşı → kapat', async ({ page, context }, info) => {
-    test.skip(info.project.name !== 'phone', 'akış yalnız telefon görünümünde koşar');
-    test.setTimeout(240_000);
-
+  try {
     // 1 — giriş
     await page.goto('/login');
     await page.getByLabel(/kullanıcı adı/i).fill('test-waiter');
@@ -73,9 +76,7 @@ test.describe('garson uçtan uca', () => {
     await expect(sendButton).toBeEnabled();
     await page.screenshot({ path: SHOT('cart') });
 
-    // 7c — çevrimdışı: gönder pasif, şerit ne yapılacağını söyler (spec §13).
-    // Not: eşleştirmeler "İ" ile başlayan metinlerden kaçınır — JS'in `/i` bayrağı U+0130'u
-    // "i" ile eşlemez (BUILD-PROMPT §6'daki büyük harf tuzağının test tarafındaki yüzü).
+    // 7c — çevrimdışı: gönder pasif, şerit ne yapılacağını söyler (spec §13)
     await context.setOffline(true);
     await expect(sendButton).toBeDisabled();
     await expect(cart.getByText(/sepet saklandı/i)).toBeVisible();
@@ -87,27 +88,28 @@ test.describe('garson uçtan uca', () => {
     await sendButton.click();
     const confirm = page.getByRole('dialog');
     await expect(confirm.getByRole('button', { name: /onayla ve gönder/i })).toBeVisible();
+    await expect(confirm).toContainText('2 kalem');
     await expect(confirm).toContainText('21,50');
     await page.screenshot({ path: SHOT('confirm') });
     await confirm.getByRole('button', { name: /onayla ve gönder/i }).click();
 
     await expect(page).toHaveURL(/\/waiter\/table\/[^/]+$/);
     await expect(page.getByText(/mutfağa gönderildi · #\d{3}/i)).toBeVisible();
-    await page.screenshot({ path: SHOT('sent') });
 
-    // 1. tur listelenir ve yazdırma rozeti görünür (kuyrukta / basıldı / basılamadı)
+    // 1. tur listelenir; yazdırma rozeti kuyrukta ya da basıldı olmalı — "basılamadı" geçmez.
     const orderCard = page.getByRole('listitem').filter({ hasText: /#\d{3}/ }).first();
     await expect(orderCard).toContainText('Test Drehspieß Sandwich');
-    await expect(orderCard.getByText(/yazdırılıyor|basıldı|basılamadı/i).first()).toBeVisible();
+    await expect(orderCard.getByText(/yazdırılıyor|basıldı/i).first()).toBeVisible();
+    await page.screenshot({ path: SHOT('sent') });
 
     // 5 — hesap özeti: 21,50 €
     await page.getByRole('button', { name: /^hesap$/i }).click();
     const bill = page.getByRole('dialog');
     await expect(bill).toContainText('21,50');
     await page.screenshot({ path: SHOT('bill') });
-    await bill.getByRole('button', { name: /^kapat$/i }).click();
+    await bill.getByRole('button', { name: 'Kapat', exact: true }).click();
 
-    // 7a — kalem iptali: sebep "Müşteri vazgeçti" → üstü çizili kalem
+    // 7a — kalem iptali: sebep "Müşteri vazgeçti" → üstü çizili kalem, sebep TR okunur (M3)
     const colaItem = page.getByRole('listitem').filter({ hasText: 'Test Cola' }).last();
     await colaItem.getByRole('button', { name: 'İptal', exact: true }).click();
     const cancelSheet = page.getByRole('dialog');
@@ -117,13 +119,13 @@ test.describe('garson uçtan uca', () => {
     // Üstü çizgi kalemin tamamındadır; `× Test Cola` yalnız o satırın `<p>`'siyle eşleşir
     // (içteki `<span lang="de">` adet işaretini içermez).
     await expect(page.getByText(/× Test Cola/).first()).toHaveClass(/line-through/);
-    await expect(colaItem).toContainText('Gast hat storniert');
+    await expect(colaItem).toContainText('Müşteri vazgeçti');
     await page.screenshot({ path: SHOT('cancelled') });
 
     // hesap iptalden sonra yalnız kalan kalemi sayar
     await page.getByRole('button', { name: /^hesap$/i }).click();
     await expect(page.getByRole('dialog')).toContainText('19,00');
-    await page.getByRole('dialog').getByRole('button', { name: /^kapat$/i }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Kapat', exact: true }).click();
 
     // 7b — masa taşıma: Test-Tisch → Test-Tisch-2
     await page.getByRole('button', { name: /^taşı$/i }).click();
@@ -134,24 +136,54 @@ test.describe('garson uçtan uca', () => {
     await expect(page.getByRole('heading', { name: 'Test-Tisch-2' })).toBeVisible();
 
     // 6 — kapatma önce engellenir (mutfakta sipariş var), sonra teslim edilince geçer
-    await page.getByRole('button', { name: /^kapat$/i }).click();
+    const closeTable = page.getByRole('button', { name: 'Masayı kapat', exact: true });
+    await closeTable.click();
     const closeSheet = page.getByRole('dialog');
-    await closeSheet.getByRole('button', { name: /masayı kapat/i }).click();
+    await closeSheet.getByRole('button', { name: /evet, kapat/i }).click();
     await expect(closeSheet.getByText(/mutfakta hazırlanan sipariş var/i)).toBeVisible();
     await page.screenshot({ path: SHOT('close-blocked') });
-    await closeSheet.getByRole('button', { name: /^kapat$/i }).click();
+    await closeSheet.getByRole('button', { name: 'Kapat', exact: true }).click();
 
     await page.getByRole('button', { name: /diğer işlemler/i }).click();
     await page.getByRole('dialog').getByRole('button', { name: /teslim edildi \(içecek\)/i }).click();
 
-    await page.getByRole('button', { name: /^kapat$/i }).click();
-    await page.getByRole('dialog').getByRole('button', { name: /masayı kapat/i }).click();
+    await closeTable.click();
+    await page.getByRole('dialog').getByRole('button', { name: /evet, kapat/i }).click();
     await expect(page).toHaveURL(/\/waiter$/);
     await expect(page.getByText(/masa kapatıldı/i)).toBeVisible();
 
     // masa yeniden boş
-    const freed = page.getByRole('button', { name: 'Test-Tisch-2', exact: true });
-    await expect(freed).toHaveAttribute('data-tone', 'free');
+    await expect(page.getByRole('button', { name: 'Test-Tisch-2', exact: true })).toHaveAttribute('data-tone', 'free');
     await page.screenshot({ path: SHOT('tables') });
-  });
+
+    /*
+     * R76 — M3 tasarım kapısının referans görüntüleri gerçek veriyle alınır. Masa ızgarasında
+     * hem HAZIR (altın) hem açık (lime) bir masa bulunsun diye iki sipariş API üzerinden
+     * kurulur: bu görüntüler ekranın dolu hâlini belgelemeli, iskelet/boş hâlini değil.
+     */
+    const readyOrder = await submitKitchenTestOrder(fixtures);
+    const kitchen = await clientFor('kitchen');
+    const { error: readyError } = await kitchen.rpc('mark_order_ready', { p_order_id: readyOrder.orderId });
+    if (readyError) throw readyError;
+
+    const waiterApi = await clientFor('waiter');
+    const { error: openError } = await waiterApi.rpc('submit_order', {
+      p_order_id: crypto.randomUUID(),
+      p_table_id: fixtures.table2Id,
+      p_items: [{ product_id: fixtures.colaId, variant_id: null, quantity: 2, option_ids: [], removed_ingredient_ids: [] }],
+    });
+    if (openError) throw openError;
+
+    await page.goto('/waiter');
+    await expect(page.locator('button[data-tone="ready"]').first()).toBeVisible();
+    await expect(page.locator('button[data-tone="open"]').first()).toBeVisible();
+    await page.screenshot({ path: '../../docs/screenshots/m3-tables-390.png' });
+
+    await page.getByRole('button', { name: /Test-Tisch-2/ }).click();
+    await expect(page.getByRole('listitem').filter({ hasText: /#\d{3}/ }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /sipariş ekle/i })).toBeVisible();
+    await page.screenshot({ path: '../../docs/screenshots/m3-table-detail-390.png' });
+  } finally {
+    await cleanupFixtureOrders();
+  }
 });

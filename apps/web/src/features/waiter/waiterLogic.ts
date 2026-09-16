@@ -23,3 +23,12 @@ const timeFormatter = new Intl.DateTimeFormat('de-DE', {
 
 /** Saat dilimi her zaman Europe/Berlin (global-constraints §5), biçim "19:42". */
 export const formatTime = (iso: string): string => timeFormatter.format(new Date(iso));
+
+/**
+ * Masa detayının ana gövdesi. Spinner yalnız **ilk yüklemede** (`firstLoad` = react-query'nin
+ * `isLoading`'i: elde hiç veri yok ve sorgu uçuyor); arka plan tazelemesinde boş durum korunur —
+ * yoksa boş masada her tazelemede "Bu masada sipariş yok — Sipariş al" yerine dönen bir çember
+ * çıkar (R76 / BUILD-PROMPT §10.8).
+ */
+export const tableBody = (hasSession: boolean, firstLoad: boolean): 'loading' | 'empty' | 'orders' =>
+  hasSession ? 'orders' : firstLoad ? 'loading' : 'empty';

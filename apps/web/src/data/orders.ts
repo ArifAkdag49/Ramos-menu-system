@@ -91,6 +91,12 @@ export function useReadyOrders(): OrderView[] {
  * (`cartStore`), yani "iki farklı sepet aynı numaraya yazılır" durumu da oluşmaz.
  *
  * Başarıda sepet yalnız **burada** temizlenir; ekran kendi başına silmez.
+ *
+ * R74(b): temizlik `clear(tableId)` değil `clearSubmitted(tableId, keys)`. Ağ yeniden denemesinde
+ * gönderim saniyelerce uçabiliyor; o sırada sepete yeni bir kalem girmişse tamamını silmek onu da
+ * götürürdü. Anahtarlar gönderimden **önce** alınır, böylece "ne gönderdiysek onu düşür" olur.
+ * (Temizlik `onSuccess` yerine burada: `onSuccess`'in üçüncü argümanının anlamı TanStack
+ * sürümleri arasında değişti, anahtarları taşımak için ona bel bağlamıyoruz.)
  */
 export function useSubmitOrder(tableId: string) {
   const qc = useQueryClient();
@@ -98,9 +104,10 @@ export function useSubmitOrder(tableId: string) {
     mutationFn: async (): Promise<SubmitResult> => {
       const cart = useCart.getState();
       const id = cart.ensurePendingId(tableId);
-      const items = toSubmitItems(cart.carts[tableId] ?? []);
+      const lines = cart.carts[tableId] ?? [];
+      const items = toSubmitItems(lines);
       const note = cart.notes[tableId]?.trim() || null;
-      return submitWithRetry(
+      const result = await submitWithRetry(
         (orderId) =>
           callRpc<SubmitResult>('submit_order', {
             p_order_id: orderId,
@@ -110,9 +117,11 @@ export function useSubmitOrder(tableId: string) {
           }),
         id,
       );
-    },
-    onSuccess: () => {
-      useCart.getState().clear(tableId);
+      useCart.getState().clearSubmitted(
+        tableId,
+        lines.map((l) => l.key),
+      );
+      return result;
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ['orders'] });

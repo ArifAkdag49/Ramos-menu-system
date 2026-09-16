@@ -12,6 +12,7 @@ import { Sheet } from '../../ui/Sheet';
 import { Stepper } from '../../ui/Stepper';
 import { cartLineSummary } from './cartLineSummary';
 import { useCart } from './cartStore';
+import { MissingProductLine } from './MissingProductLine';
 import { SendConfirm } from './SendConfirm';
 
 /**
@@ -113,7 +114,15 @@ export function CartDrawer({
           <ul className="flex flex-col gap-3">
             {lines.map((line) => {
               const product = byId.get(line.productId);
-              if (!product) return null;
+              // R75: menüden düşmüş ürün sessizce gizlenmez — görünür ve silinebilir olur.
+              if (!product)
+                return (
+                  <MissingProductLine
+                    key={line.key}
+                    productId={line.productId}
+                    onRemove={() => remove(tableId, line.key)}
+                  />
+                );
               const summary = cartLineSummary(product, line, locale, t('waiter.order.removedPrefix'));
               return (
                 <li key={line.key} className="flex flex-col gap-3 rounded-card border border-border bg-surface p-3">

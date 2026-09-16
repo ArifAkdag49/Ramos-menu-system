@@ -39,6 +39,45 @@ describe('Sheet', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('scrim’e dokununca kapanır', async () => {
+    const onClose = open();
+    await userEvent.click(screen.getByTestId('sheet-scrim'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * R74(a): gönderim uçarken panel kapanabilirse garson geri dönüp kalem ekler; geç gelen
+   * başarı sepeti temizler ve yeni kalem hiç gönderilmeden kaybolur. `busy` iken üç kapanma
+   * yolunun (Esc, scrim, kapat düğmesi) hepsi kilitlenir.
+   */
+  describe('busy (R74)', () => {
+    const openBusy = (onClose = vi.fn()) => {
+      render(
+        <Sheet open busy onClose={onClose} title="Gönderilecek sipariş" closeLabel="Kapat">
+          <button type="button">Onayla ve gönder</button>
+        </Sheet>,
+      );
+      return onClose;
+    };
+
+    it('Esc kapatmaz', async () => {
+      const onClose = openBusy();
+      await userEvent.keyboard('{Escape}');
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('scrim’e dokunmak kapatmaz', async () => {
+      const onClose = openBusy();
+      await userEvent.click(screen.getByTestId('sheet-scrim'));
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('kapat düğmesi pasiftir', () => {
+      openBusy();
+      expect(screen.getByRole('button', { name: 'Kapat' })).toBeDisabled();
+    });
+  });
+
   it('M4: açıkken arka plan kaydırması kilitlenir, kapanınca geri açılır', () => {
     const { unmount } = render(
       <Sheet open onClose={vi.fn()} title="Ürün seçenekleri" closeLabel="Kapat">

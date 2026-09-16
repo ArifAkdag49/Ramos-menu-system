@@ -9,16 +9,8 @@ import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { Chip } from '../../ui/Chip';
 import { Sheet } from '../../ui/Sheet';
+import { parseCancelReasons, type CancelReason } from './cancelReasons';
 import { errorKey } from './submitError';
-
-interface CancelReason {
-  de: string;
-  tr?: string;
-  freeText?: boolean;
-}
-
-const isReason = (v: unknown): v is CancelReason =>
-  typeof v === 'object' && v !== null && typeof (v as { de?: unknown }).de === 'string';
 
 /**
  * Kalem iptali (spec §8.2: "Aktif kalemde 'İptal' (sebep seçtirir)"). Sebepler ayarlardan gelir
@@ -43,10 +35,7 @@ export function CancelItemSheet({
   const settings = useSettings();
   const cancelItem = useCancelItem();
 
-  // `settings.cancel_reasons` şemada `jsonb` (yani `Json`); biçimi tek yerde doğrulanır ki
-  // bozuk/eksik bir ayar satırı ekranı çökertmesin.
-  const raw: unknown = settings?.cancel_reasons;
-  const reasons: CancelReason[] = Array.isArray(raw) ? raw.filter(isReason) : [];
+  const reasons: CancelReason[] = parseCancelReasons(settings?.cancel_reasons);
 
   const [picked, setPicked] = useState<number | null>(null);
   const [freeText, setFreeText] = useState('');

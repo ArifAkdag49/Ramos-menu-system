@@ -49,20 +49,20 @@
     "table": {
       "title": "Masa",
       "empty": "Bu masada sipariş yok",
-      "cancelReason": "İptal: {{reason}}"
+      "cancelReasonLabel": "İptal:"
     },
     "cart": {
       "noteLabel": "Siparişe not",
       "notePlaceholder": "Mutfağa genel not (opsiyonel)",
       "total": "Toplam",
       "send": "Mutfağa gönder",
-      "offline": "İnternet yok — sepet saklandı, bağlantı gelince gönder"
+      "offline": "İnternet yok — sepet saklandı, bağlantı gelince gönder",
+      "unknownProduct": "Bu ürün menüden kalktı — sepetten çıkar"
     },
     "send": {
       "title": "Gönderilecek sipariş",
       "summary": "{{n}} kalem",
       "confirm": "Onayla ve gönder",
-      "sending": "Gönderiliyor",
       "sent": "Mutfağa gönderildi · {{orderNo}}",
       "duplicate": "Zaten gönderilmişti · {{orderNo}}",
       "retry": "Tekrar gönder",
@@ -72,7 +72,7 @@
       "title": "Kalemi iptal et",
       "reasonLabel": "Sebep",
       "otherLabel": "Sebebi yaz",
-      "otherPlaceholder": "Kısaca yaz",
+      "otherPlaceholder": "Mutfak için kısaca yaz (Almanca)",
       "confirm": "İptal et",
       "done": "İptal edildi — mutfağa STORNO basılıyor"
     },
@@ -92,7 +92,7 @@
     "close": {
       "title": "Masayı kapat",
       "question": "{{table}} kapatılsın mı? Ödeme kasada alınır.",
-      "confirm": "Masayı kapat",
+      "confirm": "Evet, kapat",
       "done": "Masa kapatıldı",
       "blocked": "Mutfakta hazırlanan sipariş var: önce hazır/teslim edilmeli ya da iptal edilmeli"
     },
@@ -136,7 +136,7 @@
       "addOrder": "Sipariş ekle",
       "bill": "Hesap",
       "move": "Taşı",
-      "close": "Kapat",
+      "close": "Masayı kapat",
       "cancelItem": "İptal",
       "tableActions": "Masa işlemleri"
     },

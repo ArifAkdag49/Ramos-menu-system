@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useOverlay } from '../lib/overlay';
 import { IconButton } from './IconButton';
 
 const FOCUSABLE =
@@ -22,6 +23,7 @@ export function Sheet({
   closeLabel,
   children,
   footer,
+  busy = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -29,6 +31,12 @@ export function Sheet({
   closeLabel: string;
   children: ReactNode;
   footer?: ReactNode;
+  /**
+   * R74: panel bir işi beklerken (ör. mutfağa gönderim, ağ yeniden denemesiyle saniyelere
+   * çıkabilir) üç kapanma yolu da kilitlenir — Esc, scrim ve kapat düğmesi. Yarıda çıkılabilseydi
+   * geç gelen başarı, o sırada eklenen kalemleri de sepetten silerdi.
+   */
+  busy?: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   // `onClose` çoğu çağrı yerinde satır içi bir kapanış: her ebeveyn render'ında yeni bir
@@ -37,8 +45,10 @@ export function Sheet({
   // Ref, render gövdesinde değil kendi efektinde güncellenir (react-hooks/refs); bu efekt her
   // commit sonrası çalışır ve olay dinleyicisi tetiklenmeden önce ref güncel olur.
   const onCloseRef = useRef(onClose);
+  const busyRef = useRef(busy);
   useEffect(() => {
     onCloseRef.current = onClose;
+    busyRef.current = busy;
   });
 
   useEffect(() => {
@@ -49,11 +59,13 @@ export function Sheet({
 
     appRoot?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
+    // R73: toast, panelin ana eylemini örtmesin diye açık panel sayısını bilmek zorunda.
+    useOverlay.getState().push();
     panel.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onCloseRef.current();
+        if (!busyRef.current) onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !panel.current) return;
@@ -75,6 +87,7 @@ export function Sheet({
       document.removeEventListener('keydown', onKeyDown);
       appRoot?.removeAttribute('inert');
       document.body.style.overflow = previousOverflow;
+      useOverlay.getState().pop();
       previous?.focus();
     };
   }, [open]);
@@ -85,7 +98,8 @@ export function Sheet({
     <div className="fixed inset-0 z-50 flex items-end">
       <div
         aria-hidden="true"
-        onClick={onClose}
+        data-testid="sheet-scrim"
+        onClick={busy ? undefined : onClose}
         className="absolute inset-0 z-40 cursor-pointer bg-[var(--scrim)]"
       />
       <div
@@ -97,7 +111,7 @@ export function Sheet({
       >
         <div className="sticky top-0 flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
           <h2 className="text-xl font-semibold">{title}</h2>
-          <IconButton label={closeLabel} icon={<X aria-hidden size={22} />} onClick={onClose} />
+          <IconButton label={closeLabel} icon={<X aria-hidden size={22} />} disabled={busy} onClick={onClose} />
         </div>
         <div className="px-4 py-4">{children}</div>
         {footer ? <div className="sticky bottom-0 bg-surface px-4 pb-4">{footer}</div> : null}
