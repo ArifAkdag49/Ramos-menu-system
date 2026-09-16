@@ -130,7 +130,15 @@ test('garson uçtan uca: sepet → gönder → hesap → iptal → taşı → ka
     // 7b — masa taşıma: Test-Tisch → Test-Tisch-2
     await page.getByRole('button', { name: /^taşı$/i }).click();
     const moveSheet = page.getByRole('dialog');
-    await moveSheet.getByRole('button', { name: 'Test-Tisch-2', exact: true }).click();
+    const moveTarget = moveSheet.getByRole('button', { name: 'Test-Tisch-2', exact: true });
+    await moveTarget.click();
+    // Seçim görünür olmalı: onay düğmesi adı doğru olsa bile ızgarada hangi masanın seçildiği
+    // belli değilse garson yanlış masaya taşıdığını ancak fiş çıkınca anlar.
+    await expect(moveTarget).toHaveAttribute('aria-pressed', 'true');
+    // Seçim görsel olarak da tamamlanmalı: `transition-colors` 150 ms sürüyor ve görüntü o
+    // aradayken alınırsa hücre hâlâ seçilmemiş görünür (ilk çekimde tam bu olmuştu). Sabit
+    // bekleme yok — beklenti rengin gerçekten lime olmasına bağlı ve kendiliğinden yeniden dener.
+    await expect(moveTarget).toHaveCSS('border-color', 'rgb(136, 182, 0)');
     await page.screenshot({ path: SHOT('move') });
     await moveSheet.getByRole('button', { name: /masasına taşı/i }).click();
     await expect(page.getByRole('heading', { name: 'Test-Tisch-2' })).toBeVisible();
