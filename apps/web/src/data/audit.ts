@@ -16,8 +16,8 @@ export interface AuditEntry {
  * (`audit_log_read`), yani listeyi gizlemek arayüzün işi değil: başka rol zaten satır göremez.
  * `details` kasıtlı olarak çekilmez — eski/yeni satırın tamamını taşır, ekranda kullanılmıyor.
  */
-export function useRecentAudit(limit: number): AuditEntry[] {
-  const { data } = useQuery({
+export function useRecentAudit(limit: number): { entries: AuditEntry[]; isPending: boolean } {
+  const { data, isPending } = useQuery({
     queryKey: qk.audit(limit),
     // Realtime konuları bu anahtarlara bağlı değil (lib/realtime MAP ortak); dakikada bir tazelenir.
     refetchInterval: 60_000,
@@ -31,5 +31,6 @@ export function useRecentAudit(limit: number): AuditEntry[] {
       return (data ?? []) as AuditEntry[];
     },
   });
-  return data ?? [];
+  // Boş dizi "kayıt yok" demek DEĞİLDİR; ekran ilk yüklemeyi ayırt edebilsin diye durum da döner.
+  return { entries: data ?? [], isPending };
 }

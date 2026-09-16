@@ -238,6 +238,7 @@
       "title": "Yazıcı",
       "state": {
         "online": "Çevrimiçi",
+        "unknown": "Durum bilinmiyor",
         "agent_offline": "Yazdırma ajanı çevrimdışı",
         "printer_unreachable": "Yazıcıya ulaşılamıyor",
         "paper_end": "Kağıt bitti",

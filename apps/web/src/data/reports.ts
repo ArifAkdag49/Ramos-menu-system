@@ -38,13 +38,13 @@ export interface ReportRange {
  * İş günü aralığı raporu. Tarihler `yyyy-MM-dd` biçiminde ve **iş günüdür** (Europe/Berlin,
  * 05:00 kuralı) — takvim günü değil; sunucudaki `orders.business_date` ile aynı ölçü.
  */
-export function useReportRange(from: string, to: string): ReportRange | undefined {
-  const { data } = useQuery({
+export function useReportRange(from: string, to: string): { report: ReportRange | undefined; isPending: boolean } {
+  const { data, isPending } = useQuery({
     queryKey: qk.report(from, to),
     // Realtime konuları bu anahtarlara bağlı değil (lib/realtime MAP ortak); dakikada bir tazelenir.
     refetchInterval: 60_000,
     enabled: !!from && !!to,
     queryFn: () => callRpc<ReportRange>('report_range', { p_from: from, p_to: to }),
   });
-  return data ?? undefined;
+  return { report: data ?? undefined, isPending };
 }

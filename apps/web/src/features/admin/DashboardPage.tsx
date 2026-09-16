@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { useRecentAudit, type AuditEntry } from '../../data/audit';
 import { useReportRange } from '../../data/reports';
 import { useStaffNames } from '../../data/staff';
-import { useTableOverview, type TableRow } from '../../data/tables';
+import { useTableOverviewQuery, type TableRow } from '../../data/tables';
 import { Badge } from '../../ui/Badge';
+import { Spinner } from '../../ui/Spinner';
 import type { Tone } from '../../ui/tone';
 import { Elapsed } from '../common/Elapsed';
-import { businessDate, dashboardStats } from './dashboardLogic';
+import { businessDate, dashboardStats, formatBusinessDay } from './dashboardLogic';
 import { PrinterCard } from './PrinterCard';
 
 const AUDIT_LIMIT = 10;
@@ -65,31 +66,38 @@ export function DashboardPage() {
   const { t, i18n } = useTranslation();
   const locale: Locale = i18n.language === 'de' ? 'de' : 'tr';
 
-  const tables = useTableOverview();
+  // "Henüz gelmedi" ile "yok" AYRI şeylerdir: ilk yüklemede boş durum metni göstermek operatöre
+  // yanlış bilgi verir (M3 kapısının (d) tuzağı). Bu yüzden sorguların bekleme durumu da okunur.
+  const tablesQuery = useTableOverviewQuery();
+  const tables = tablesQuery.data ?? [];
   const stats = dashboardStats(tables);
   const today = businessDate(new Date());
-  const report = useReportRange(today, today);
-  const audit = useRecentAudit(AUDIT_LIMIT);
+  const { report, isPending: reportPending } = useReportRange(today, today);
+  const { entries: audit, isPending: auditPending } = useRecentAudit(AUDIT_LIMIT);
   const staffNames = useStaffNames();
 
   const openTables = tables.filter((row) => row.session_id);
+  const tablesPending = tablesQuery.isPending;
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">{t('admin.dashboard.title')}</h1>
-        <p className="text-xs text-muted">{t('admin.dashboard.businessDayNote', { date: today })}</p>
+        <p className="text-xs text-muted">
+          {t('admin.dashboard.businessDayNote', { date: formatBusinessDay(today) })}
+        </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label={t('admin.dashboard.openTables')} value={String(stats.openTables)} />
-            <Stat label={t('admin.dashboard.inKitchen')} value={String(stats.inKitchen)} />
-            <Stat label={t('admin.dashboard.ready')} value={String(stats.ready)} />
+            <Stat label={t('admin.dashboard.openTables')} value={stats.openTables} pending={tablesPending} />
+            <Stat label={t('admin.dashboard.inKitchen')} value={stats.inKitchen} pending={tablesPending} />
+            <Stat label={t('admin.dashboard.ready')} value={stats.ready} pending={tablesPending} />
             <Stat
               label={t('admin.dashboard.revenue')}
               value={formatEuro(report?.value_cents ?? 0)}
+              pending={reportPending}
               note={t('admin.dashboard.revenueNote', {
                 orders: report?.orders ?? 0,
                 items: report?.items ?? 0,
@@ -97,25 +105,52 @@ export function DashboardPage() {
             />
           </div>
 
-          <OpenTables rows={openTables} locale={locale} openValueCents={stats.openValueCents} />
+          <OpenTables
+            rows={openTables}
+            locale={locale}
+            openValueCents={stats.openValueCents}
+            pending={tablesPending}
+          />
         </div>
 
         <div className="flex flex-col gap-6">
           <PrinterCard />
-          <AuditList entries={audit} staffNames={staffNames} />
+          <AuditList entries={audit} staffNames={staffNames} pending={auditPending} />
         </div>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
+function Stat({
+  label,
+  value,
+  note,
+  pending,
+}: {
+  label: string;
+  value: string | number;
+  note?: string;
+  pending: boolean;
+}) {
   return (
     <div className="flex flex-col gap-1 rounded-card border border-border bg-surface px-4 py-3">
       <span className="text-xs font-medium text-muted">{label}</span>
-      <span className="tabular text-[30px] font-semibold leading-none">{value}</span>
-      {note ? <span className="text-xs text-muted">{note}</span> : null}
+      {/* Veri gelmeden "0" yazmak yanlış bilgidir; tire tarafsızdır ve düzen kaymaz. */}
+      <span className="tabular text-[30px] font-semibold leading-none">{pending ? '—' : value}</span>
+      {note ? <span className="text-xs text-muted">{pending ? ' ' : note}</span> : null}
     </div>
+  );
+}
+
+/** Liste gövdesinin ilk yükleme hâli — boş durum metniyle karıştırılmasın diye ayrı. */
+function Loading() {
+  const { t } = useTranslation();
+  return (
+    <p className="flex items-center justify-center gap-2 px-4 py-8 text-muted">
+      <Spinner label={t('common.loading')} />
+      <span>{t('common.loading')}</span>
+    </p>
   );
 }
 
@@ -130,10 +165,12 @@ function OpenTables({
   rows,
   locale,
   openValueCents,
+  pending,
 }: {
   rows: TableRow[];
   locale: Locale;
   openValueCents: number;
+  pending: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -144,11 +181,13 @@ function OpenTables({
           {t('admin.dashboard.tables.title')}
         </h2>
         <span className="text-xs text-muted">
-          {t('admin.dashboard.openValueNote', { total: formatEuro(openValueCents) })}
+          {pending ? ' ' : t('admin.dashboard.openValueNote', { total: formatEuro(openValueCents) })}
         </span>
       </div>
 
-      {rows.length === 0 ? (
+      {pending ? (
+        <Loading />
+      ) : rows.length === 0 ? (
         <p className="px-4 py-8 text-center text-muted">{t('admin.dashboard.tables.empty')}</p>
       ) : (
         <>
@@ -223,7 +262,15 @@ function OpenTables({
   );
 }
 
-function AuditList({ entries, staffNames }: { entries: AuditEntry[]; staffNames: Map<string, string> }) {
+function AuditList({
+  entries,
+  staffNames,
+  pending,
+}: {
+  entries: AuditEntry[];
+  staffNames: Map<string, string>;
+  pending: boolean;
+}) {
   const { t } = useTranslation();
 
   const describe = (e: AuditEntry): string => {
@@ -242,7 +289,9 @@ function AuditList({ entries, staffNames }: { entries: AuditEntry[]; staffNames:
         {t('admin.dashboard.audit.title')}
       </h2>
 
-      {entries.length === 0 ? (
+      {pending ? (
+        <Loading />
+      ) : entries.length === 0 ? (
         <p className="px-4 py-8 text-center text-muted">{t('admin.dashboard.audit.empty')}</p>
       ) : (
         <ol className="flex flex-col divide-y divide-border">

@@ -16,13 +16,21 @@ export interface TableRow {
   total_cents: number;
 }
 
-/** `table_overview` RPC'sinden masa/oturum özetini okur. */
-export function useTableOverview(): TableRow[] {
-  const { data } = useQuery({
+/**
+ * `table_overview` RPC'si — ham sorgu. Ekranın "ilk yükleme mi, boş mu" ayrımını yapabilmesi için
+ * dışa veriliyor (`useOpenSessionQuery` ile aynı gerekçe, R76): boş dizi hem "masa yok" hem "henüz
+ * gelmedi" demektir ve ikisi kullanıcıya AYNI ŞEYİ söylerse ekran yanlış bilgi vermiş olur.
+ */
+export function useTableOverviewQuery() {
+  return useQuery({
     queryKey: qk.tables,
     queryFn: () => callRpc<TableRow[]>('table_overview'),
   });
-  return data ?? [];
+}
+
+/** `table_overview` RPC'sinden masa/oturum özetini okur. */
+export function useTableOverview(): TableRow[] {
+  return useTableOverviewQuery().data ?? [];
 }
 
 export interface OpenSession {

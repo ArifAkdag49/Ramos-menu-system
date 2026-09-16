@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agoParts, businessDate, dashboardStats } from './dashboardLogic';
+import { agoParts, businessDate, dashboardStats, formatBusinessDay } from './dashboardLogic';
 
 describe('dashboardStats', () => {
   it('açık masa, mutfak, hazır ve açık tutar toplamı', () => {
@@ -54,4 +54,12 @@ describe('agoParts', () => {
   // Saatler istemci ile sunucu arasında birkaç saniye kayabilir; ileri tarih "-1 dk önce" olmaz.
   it('gelecekteki bir tarih "az önce" sayılır', () =>
     expect(agoParts('2026-09-16T12:00:20Z', now)).toEqual({ unit: 'now', count: 0 }));
+});
+
+// M6 kapisi (H3): ekranda tarih her yerde dd.MM.yyyy (BUILD-PROMPT §5); ISO biçim yalnız RPC'ye gider.
+describe('formatBusinessDay', () => {
+  it('ISO tarihi dd.MM.yyyy yapar', () => expect(formatBusinessDay('2026-09-16')).toBe('16.09.2026'));
+  it('beklenmeyen biçimi olduğu gibi bırakır', () => expect(formatBusinessDay('bugün')).toBe('bugün'));
+  it('businessDate çıktısıyla birlikte çalışır', () =>
+    expect(formatBusinessDay(businessDate(new Date('2026-01-10T03:30:00Z')))).toBe('09.01.2026'));
 });

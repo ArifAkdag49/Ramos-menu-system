@@ -80,7 +80,16 @@ export function PrinterCard() {
     return parts ? t(AGO_KEY[parts.unit as AgoUnit], { count: parts.count }) : null;
   };
 
-  const tone: Tone = problem ? TONE[problem] : 'open';
+  // M6 kapısı (H2): durum daha gelmediyse YEŞİL "Çevrimiçi" göstermek yalan söylemektir — yazıcı
+  // o anda çevrimdışı olabilir. Bilgi yokken rozet nötr (gri) "Durum bilinmiyor" olur; yeşil
+  // yalnızca gerçekten bir durum satırı okunduğunda ve sorun bulunmadığında çıkar.
+  const known = !!status;
+  const tone: Tone = known ? (problem ? TONE[problem] : 'open') : 'empty';
+  const stateLabel = known
+    ? problem
+      ? t(STATE_KEY[problem])
+      : t('admin.printer.state.online')
+    : t('admin.printer.state.unknown');
   const stuckSeconds = completeStuckSeconds(status?.last_error);
   const lastPrintAgo = ago(status?.last_printed_at);
   const lastSeenAgo = ago(status?.last_seen_at);
@@ -102,7 +111,7 @@ export function PrinterCard() {
           {t('admin.printer.title')}
         </h2>
         <span data-testid="printer-state" data-tone={tone}>
-          <Badge tone={tone}>{problem ? t(STATE_KEY[problem]) : t('admin.printer.state.online')}</Badge>
+          <Badge tone={tone}>{stateLabel}</Badge>
         </span>
       </div>
 
@@ -164,10 +173,13 @@ function FailedJobRow({ job, ago }: { job: FailedJob; ago: string | null }) {
       onError: (e) => toast(t(`errors.${e instanceof RpcError ? e.key : 'unknown'}`), 'danger'),
     });
 
+  // M6 kapısı (H1): bilgi ve eylem yan yana durunca dar admin sütununda Almanca metin
+  // ("Nachbestellung · gerade eben" + "Nochmal versuchen") düğmenin altına giriyordu. Alt alta
+  // dizilim hem tam genişlik veriyor hem de kırpma/örtüşme bırakmıyor.
   return (
-    <li className="flex items-center justify-between gap-3 rounded-control border border-border bg-surface-2 px-3 py-2">
-      <span className="min-w-0">
-        <span className="tabular font-semibold">{job.order_no !== null ? formatOrderNo(job.order_no) : '—'}</span>{' '}
+    <li className="flex flex-col gap-2 rounded-control border border-border bg-surface-2 px-3 py-2">
+      <span className="flex flex-wrap items-baseline gap-x-2">
+        <span className="tabular font-semibold">{job.order_no !== null ? formatOrderNo(job.order_no) : '—'}</span>
         <span className="text-muted">
           {t(JOB_TYPE_KEY[job.type])}
           {ago ? ` · ${ago}` : ''}
@@ -178,7 +190,7 @@ function FailedJobRow({ job, ago }: { job: FailedJob; ago: string | null }) {
         icon={<RotateCw aria-hidden size={18} />}
         loading={retry.isPending}
         onClick={onRetry}
-        className="shrink-0"
+        className="self-start px-2"
       >
         {t('common.retry')}
       </Button>

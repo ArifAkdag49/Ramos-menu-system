@@ -53,6 +53,15 @@ export function businessDate(now: Date): string {
   return previous.toISOString().slice(0, 10);
 }
 
+/**
+ * İş gününü operatöre gösterirken kullanılan biçim. Arayüzde tarih her yerde `dd.MM.yyyy`dir
+ * (BUILD-PROMPT §5); `yyyy-MM-dd` yalnız RPC'ye giden değerdir, ekrana yazılmaz.
+ */
+export function formatBusinessDay(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-');
+  return year && month && day ? `${day}.${month}.${year}` : isoDate;
+}
+
 export type AgoUnit = 'now' | 'minutes' | 'hours' | 'days';
 
 const MINUTE = 60_000;

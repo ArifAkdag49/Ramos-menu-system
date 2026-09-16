@@ -238,6 +238,7 @@
       "title": "Drucker",
       "state": {
         "online": "Online",
+        "unknown": "Status unbekannt",
         "agent_offline": "Druck-Agent offline",
         "printer_unreachable": "Drucker nicht erreichbar",
         "paper_end": "Kein Papier",

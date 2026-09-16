@@ -104,6 +104,15 @@ describe('<PrinterCard />', () => {
     expect(warning).toHaveTextContent(/mutfaktaki fişi kontrol et/i);
   });
 
+  it('M6 (H2): durum henüz gelmediyse yeşil "Çevrimiçi" DEĞİL, nötr "Durum bilinmiyor" gösterilir', () => {
+    view.status = undefined;
+    view.problem = null;
+    render(<PrinterCard />);
+    expect(state()).toHaveAttribute('data-tone', 'empty');
+    expect(state()).toHaveTextContent('Durum bilinmiyor');
+    expect(screen.queryByText('Çevrimiçi')).not.toBeInTheDocument();
+  });
+
   it('R79: ham hata metni operatöre gösterilmez', () => {
     view.problem = 'complete_stuck';
     view.status = status({ last_error: 'complete_stuck_75s;ECONNRESET' });
