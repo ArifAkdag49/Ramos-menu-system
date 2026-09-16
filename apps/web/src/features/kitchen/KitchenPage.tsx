@@ -44,11 +44,16 @@ export function KitchenPage() {
   const { unlock, beep } = useSoundAlert();
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Zamanlayıcı kimliği tutulur: art arda iki hata gelirse birincinin zamanlayıcısı ikinci mesajı
+  // erken silerdi (en kötü hâlde 1 sn görünürlük) — mutfak HAZIR'ın neden çalışmadığını kaçırır.
+  const errorTimer = useRef<number | undefined>(undefined);
   const showError = (err: unknown) => {
     const key = err instanceof RpcError ? err.key : 'unknown';
     setErrorMessage(t(`errors.${key}`));
-    window.setTimeout(() => setErrorMessage(null), ERROR_TOAST_MS);
+    window.clearTimeout(errorTimer.current);
+    errorTimer.current = window.setTimeout(() => setErrorMessage(null), ERROR_TOAST_MS);
   };
+  useEffect(() => () => window.clearTimeout(errorTimer.current), []);
 
   const [started, setStarted] = useState(false);
   const [soldOutOpen, setSoldOutOpen] = useState(false);

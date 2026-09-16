@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import '../../i18n';
@@ -77,5 +77,26 @@ describe('KitchenPage', () => {
     render(<KitchenPage />);
     await userEvent.click(screen.getByRole('button', { name: 'HAZIR' }));
     expect(await screen.findByRole('status')).toHaveTextContent(/mutfakta değil/i);
+  });
+
+  it('art arda gelen iki hatada ikinci mesaj, birincinin zamanlayıcısıyla erken silinmez', () => {
+    // Yeniden incelemenin minor bulgusu: `setTimeout` kimliği tutulmuyordu; birinci hatanın
+    // 4 sn'lik zamanlayıcısı, 3. saniyede gösterilen İKİNCİ mesajı 1 sn sonra siliyordu.
+    // Mutfakta bu, HAZIR'ın neden çalışmadığını gösteren mesajın kaçırılması demek.
+    vi.useFakeTimers();
+    try {
+      markReadyMutate.mockImplementation((_id: string, opts?: { onError?: (e: unknown) => void }) =>
+        opts?.onError?.(new RpcError('order_not_in_kitchen')),
+      );
+      render(<KitchenPage />);
+      const button = screen.getByRole('button', { name: 'HAZIR' });
+      act(() => void fireEvent.click(button));
+      act(() => vi.advanceTimersByTime(3_000));
+      act(() => void fireEvent.click(button));
+      act(() => vi.advanceTimersByTime(1_500)); // birinci zamanlayıcının 4 sn'si doldu
+      expect(screen.getByRole('status')).toHaveTextContent(/mutfakta değil/i);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
