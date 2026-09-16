@@ -133,7 +133,7 @@ describe('Agent — C1: fiziksel olarak basılan bir bilet asla ikinci kez bası
 });
 
 describe('Agent — R68/NEW-3: stop() basılmış-ama-doğrulanmamış bir işi asla terk etmez', () => {
-  it('complete(true) tekrarla başarısız olsa bile stop() — stopGraceMs çoktan geçmiş olsa da — doğrulanana kadar bekler', async () => {
+  it('complete(true) tekrarla başarısız olsa bile stop() süre sınırı olmadan doğrulanana kadar bekler', async () => {
     const events: string[] = [];
     const api = fakeApi([job('a')]);
     let calls = 0;
@@ -146,9 +146,8 @@ describe('Agent — R68/NEW-3: stop() basılmış-ama-doğrulanmamış bir işi 
       events.push('close');
     });
     const printer = { status: vi.fn(async () => okState), print: vi.fn(async () => ({ before: okState, after: okState })) };
-    // stopGraceMs KASITLI OLARAK çok kısa (1 ms) — completeSuccessWithRetry bunu kolayca aşacak;
-    // stop() yine de basılan işi doğrulanana kadar terk etmemeli.
-    const agent = new Agent(api, { printer, log: freshLog() }, { completeRetryBaseMs: 5, stopGraceMs: 1 });
+    // R70: `stopGraceMs` kaldırıldı — stop() artık süre sınırı olmadan doğrulanana kadar bekler.
+    const agent = new Agent(api, { printer, log: freshLog() }, { completeRetryBaseMs: 5 });
     await agent.checkPrinter();
     const drainPromise = agent.drain();
     await tick(); // print() dönsün, ilk complete() denemesi başlasın (pendingConfirmations > 0)
@@ -327,7 +326,7 @@ describe('Agent — I2: stop() sürmekte olan bir baskıyı bekler', () => {
           }),
       ),
     };
-    const agent = new Agent(api, { printer, log: freshLog() }, { stopGraceMs: 2000 });
+    const agent = new Agent(api, { printer, log: freshLog() });
     await agent.checkPrinter();
     const drainPromise = agent.drain();
     await new Promise((r) => setTimeout(r, 0));
@@ -377,5 +376,138 @@ describe('Agent — M4: host kaybolunca eski durum heartbeat üzerinden taşınm
     expect(api.heartbeat).toHaveBeenLastCalledWith(expect.objectContaining({ state: null, error: 'printer_host_missing' }));
 
     await agent.stop();
+  });
+});
+
+// ---------- Review fix round 3 (R70) ----------
+//
+// Bulgu: `stop()`'un `pendingConfirmations` beklemesi bittikten sonra `api.close()`
+// `this.draining`'i YENİDEN KONTROL ETMİYORDU; `drain()` ise bu sırada YENİ iş sahiplenip
+// basmaya devam edebiliyordu. Sahne: B işi basılıyor → `api.close()` oturumu kapatıyor →
+// `complete(B, true)` ölü oturumda sonsuza dek yeniden deneniyor → B `printing` kalıyor →
+// 60 sn'de `claim_print_job` geri alıp İKİNCİ KEZ bastırıyor.
+//
+// R70(a): `stopping` bayrağı — `stop()` çağrıldığı andan itibaren `drain()` YENİ iş
+// sahiplenmez (elindeki işi sonuna kadar işler). R70(b): son bekleme TEK, birleşik bir
+// koşuldur — `while (this.draining || this.pendingConfirmations > 0)` — `api.close()` asla
+// sürmekte olan bir baskının ya da bekleyen bir onayın altından çekilmez.
+
+describe('Agent — R70(a): stop() çağrıldıktan sonra drain() yeni iş sahiplenmez', () => {
+  it('elindeki işi (basılmakta olanı) bitirir ama kuyrukta bekleyen ikinci işi asla sahiplenmez', async () => {
+    const api = fakeApi([job('a'), job('b')]);
+    let resolvePrintA: (() => void) | undefined;
+    let printCalls = 0;
+    const printer = {
+      status: vi.fn(async () => okState),
+      print: vi.fn(() => {
+        printCalls += 1;
+        if (printCalls === 1) {
+          return new Promise<{ before: typeof okState; after: typeof okState }>((resolve) => {
+            resolvePrintA = () => resolve({ before: okState, after: okState });
+          });
+        }
+        return Promise.resolve({ before: okState, after: okState });
+      }),
+    };
+    const agent = new Agent(api, { printer, log: freshLog() });
+    await agent.checkPrinter();
+
+    const drainPromise = agent.drain();
+    await tick(); // print(a) başladı ve asılı kaldı — draining=true, b henüz sahiplenilmedi
+
+    const stopPromise = agent.stop(); // R70(a): stopping=true buradan itibaren
+
+    resolvePrintA!(); // a'nın baytları gitti — drain() devam eder, ama artık YENİ iş almamalı
+    await drainPromise;
+    await stopPromise;
+
+    expect(api.claim).toHaveBeenCalledTimes(1); // yalnız a — b hiç sahiplenilmedi
+    expect(printer.print).toHaveBeenCalledTimes(1); // b hiç basılmadı
+    expect(api.close).toHaveBeenCalled();
+  });
+});
+
+describe('Agent — R70(b): api.close() sürmekte olan baskı VE bekleyen onay bitmeden asla çağrılmaz', () => {
+  it('bir işin onayı sürerken stop() çağrılırsa, ardından o iş yüzünden sahiplenilebilecek hiçbir ikinci iş basılırken api.close() çağrılmaz', async () => {
+    const api = fakeApi([job('a'), job('b')]);
+    let resolveCompleteA: (() => void) | undefined;
+    api.complete = vi.fn(
+      (id: string) =>
+        new Promise<void>((resolve) => {
+          if (id === 'a') resolveCompleteA = resolve;
+          else resolve();
+        }),
+    );
+
+    let printCalls = 0;
+    let printBPending = false; // true: b'nin basımı başladı ama henüz bitmedi
+    let resolvePrintB: (() => void) | undefined;
+    const printer = {
+      status: vi.fn(async () => okState),
+      print: vi.fn(() => {
+        printCalls += 1;
+        if (printCalls === 2) {
+          printBPending = true;
+          return new Promise<{ before: typeof okState; after: typeof okState }>((resolve) => {
+            resolvePrintB = () => {
+              printBPending = false;
+              resolve({ before: okState, after: okState });
+            };
+          });
+        }
+        return Promise.resolve({ before: okState, after: okState });
+      }),
+    };
+
+    let closeCalledWhilePrintBPending = false;
+    api.close = vi.fn(async () => {
+      closeCalledWhilePrintBPending = printBPending;
+    });
+
+    const agent = new Agent(api, { printer, log: freshLog() });
+    await agent.checkPrinter();
+
+    const drainPromise = agent.drain();
+    await tick(); // a basıldı, complete(a) çağrıldı ve ASILI kaldı (pendingConfirmations=1)
+
+    const stopPromise = agent.stop(); // stopping=true buradan itibaren (R70a) — b artık sahiplenilmemeli
+
+    resolveCompleteA!(); // a'nın onayı biter — pendingConfirmations 0'a düşer
+
+    // Eski (kusurlu) kodda burada drain() b'yi sahiplenip basmaya başlıyor ve stop()'un yalnız
+    // pendingConfirmations'a bakan ikinci döngüsü api.close()'u b HÂLÂ basılırken çağırabiliyordu.
+    // Bu yüzden gerçek zamanlı olarak eski kodun ~200 ms'lik yoklama aralığını aşacak kadar bekliyoruz.
+    await new Promise((r) => setTimeout(r, 300));
+
+    resolvePrintB?.(); // (yalnız eski koddaysa) b'nin basımını serbest bırak, test asılı kalmasın
+    await drainPromise;
+    await stopPromise;
+
+    expect(closeCalledWhilePrintBPending).toBe(false);
+    expect(api.claim).toHaveBeenCalledTimes(1); // R70(a) ile b hiç sahiplenilmemeli
+    expect(api.close).toHaveBeenCalled();
+  }, 10000);
+});
+
+// İsteğe bağlı minor: uzun bir onay denemesi (`completeSuccessWithRetry`) sürerken yazıcı
+// FİİLEN boştadır (bayt zaten gitti, yalnız Supabase'e `complete` RPC'si deneniyor) — eski kod
+// `checkPrinterIfIdle`'ı yalnız `this.draining`'e bakarak atlıyordu, bu yüzden heartbeat bu süre
+// boyunca bayat durum bildiriyordu. Düzeltme ucuz olduğu için kapatıldı: yeni `printerBusy`
+// bayrağı yalnız gerçek `printer.print()` çağrısı sürerken true'dur; `draining` yerine bu
+// kullanılır. Karar: minor düzeltildi (ayrı bir bayrakla) — ertelenmedi.
+describe('Agent — R70 minor: onay yeniden denemesi sürerken yazıcı durumu güncel kalır', () => {
+  it('completeSuccessWithRetry sürerken (yazıcı fiilen boşta) checkPrinterIfIdle artık atlanmaz', async () => {
+    const api = fakeApi([job('a')]);
+    api.complete = vi.fn(() => new Promise<void>(() => {})); // hiç çözülmez — pendingConfirmations>0 sabit kalır
+    const printer = { status: vi.fn(async () => okState), print: vi.fn(async () => ({ before: okState, after: okState })) };
+    const agent = new Agent(api, { printer, log: freshLog() });
+    await agent.checkPrinter();
+    const statusCallsAfterInitial = printer.status.mock.calls.length;
+
+    void agent.drain();
+    await tick(); // print() bitti, completeSuccessWithRetry api.complete()'i çağırdı ve ASILI (draining hâlâ true)
+
+    await agent.checkPrinterIfIdle();
+    expect(printer.status.mock.calls.length).toBe(statusCallsAfterInitial + 1); // artık atlanmadı
   });
 });
