@@ -8,7 +8,8 @@
       1) Node.js 22+ (yoksa winget ile kurulur)
       2) Bu PC'de çalışan eski ajan durdurulur, ajan hesabıyla siteye giriş denenir,
          başka bir bilgisayarda çalışan ajan varsa uyarılır
-      3) Ağ taranır (TCP 9100 + ESC/POS durum cevabı)
+      3) Ağ taranır (TCP 9100 + ESC/POS durum cevabı). Durum sorusuna cevap vermeyen cihazlara
+         (bazı Star / ucuz modeller) kısa bir deneme fişi gönderilir, "fiş çıktı mı?" diye sorulur.
       4) Bulunamazsa (markadan bağımsız): tek yönetici izniyle bilgisayara markaların fabrika
          ağlarından geçici adresler eklenip yazıcı aranır; bulunursa o ağın adresi kalıcı kalır
          ("köprü"), yazıcının kendi adresine dokunulmaz. Olmazsa ayar fişindeki adres sorulur.
@@ -17,6 +18,9 @@
       6) Test fişi; özel harfler (ä ö ü ß ş ğ ı) bozuksa bu PC için sade harf modu (PRINTER_ASCII=1)
       7) Prize takılıyken uyku / hazırda bekletme / kapak kapanınca uyku kapatılır (onayla)
       8) Ajan Zamanlanmış Görev olarak kurulur ve siteye bağlandığı doğrulanır
+
+    Kurulumdan sonra yazıcının adresi değişirse (modem yeniden başladı, otomatik IP) ajan yazıcıya
+    1 dakika ulaşamayınca ağda kendisi arar; aynı yazıcıyı (MAC adresiyle) bulursa yeni adrese geçer.
 
     Yerel PRINTER_HOST, sitedeki genel yazıcı ayarının önüne geçer: farklı ağlardaki
     bilgisayarlar kendi yazıcılarını kullanır. Aynı anda YALNIZ BİR bilgisayarda ajan açık olmalı.
@@ -372,28 +376,53 @@ function Get-PrinterIpCommand([string]$ip) {
 
 function Wait-NewPrinterIp([string]$newIp) {
     Write-Info "Yazıcının yeni adreste cevap vermesi bekleniyor ($newIp)..."
-    if (Wait-PrinterAt $newIp 25) { return $true }
+    if (Wait-PrinterPort $newIp 25) { return $true }
     Write-Host ''
     Write-Host '  Yazıcıyı KAPATIP 5 saniye sonra tekrar AÇIN (yeni adres yeniden başlatınca geçerli olur).' -ForegroundColor White
     if (-not $Yes) { try { [void](Read-Host '  Açtıktan sonra Enter tuşuna basın') } catch { } }
-    return (Wait-PrinterAt $newIp 60)
+    return [bool](Wait-PrinterPort $newIp 60)
 }
 
-# Adreste ESC/POS yazıcı cevap veriyor mu (`status --host`, giriş gerektirmez).
-function Test-PrinterAt([string]$ip) {
-    $r = Invoke-Agent @('status', '--host', $ip)
-    if ($r.Code -ne 0) { return $false }
-    $state = ConvertFrom-AgentJson $r
-    return ($null -ne $state -and $state.known)
+# Adresi yoklar (`probe`, giriş gerektirmez): open = TCP 9100 açık, escpos = durum sorusuna
+# ESC/POS cevabı verdi. Bazı yazıcılar (Star'ın ESC/POS modu, bazı ucuz modeller) durum sorusuna
+# hiç cevap vermez ama fişi sorunsuz basar: onlar open=true, escpos=false döner.
+function Get-PrinterProbe([string]$ip) {
+    $r = Invoke-Agent @('probe', '--host', $ip)
+    $p = ConvertFrom-AgentJson $r
+    if ($r.Code -ne 0 -or -not $p) { return [pscustomobject]@{ host = $ip; open = $false; escpos = $false } }
+    return $p
 }
 
-function Wait-PrinterAt([string]$ip, [int]$seconds) {
+# Port açılana kadar bekler; açılırsa yoklama sonucunu, açılmazsa $null döner.
+function Wait-PrinterPort([string]$ip, [int]$seconds) {
     $deadline = (Get-Date).AddSeconds($seconds)
-    while ((Get-Date) -lt $deadline) {
-        if (Test-PrinterAt $ip) { return $true }
+    while ($true) {
+        $p = Get-PrinterProbe $ip
+        if ($p.open) { return $p }
+        if ((Get-Date) -ge $deadline) { return $null }
         Start-Sleep -Seconds 2
     }
-    return $false
+}
+
+# Durum sorusuna cevap vermeyen cihazın yazıcı olduğunu deneme fişiyle doğrular. Onay "e" ister
+# (Enter "hayır"): fiş çıkmadığı hâlde yanlışlıkla Enter'a basılıp yanlış cihaz seçilmesin.
+function Confirm-PrinterByTicket([string]$ip) {
+    if ($DryRun) { Write-Info "Deneme modu: $ip adresine deneme fişi gönderilmedi."; return $false }
+    if ($Yes) { Write-Info "$ip durum sorusuna cevap vermiyor; -Yes ile fiş onayı alınamaz, atlandı."; return $false }
+    Write-Info "$ip adresindeki cihaz durum sorusuna cevap vermiyor (bazı yazıcılar böyledir). Kısa bir deneme fişi gönderiliyor..."
+    $r = Invoke-Agent @('probe-print', '--host', $ip)
+    if ($r.Code -ne 0) {
+        Write-Warn "Deneme fişi gönderilemedi: $($r.Text)"
+        return $false
+    }
+    return (Read-RamosConfirm "  Yazıcıdan ""RAMO'S KURULUM"" yazan kısa bir fiş çıktı mı? (e/H)")
+}
+
+# Yoklama sonucunu kabul eder: ESC/POS cevabı verdiyse doğrudan, vermediyse deneme fişiyle.
+function Test-PrinterAccepted($probe) {
+    if (-not $probe -or -not $probe.open) { return $false }
+    if ($probe.escpos) { return $true }
+    return (Confirm-PrinterByTicket $probe.host)
 }
 
 # ------------------------------------------------------------------------------------------
@@ -480,8 +509,8 @@ $extra = @($previousHost, $siteInfo.sitePrinterHost) | Where-Object { $_ } | Sel
 $chosenHost = $null
 if ($PrinterHost) {
     Write-Info "Adres verildi: $PrinterHost"
-    if (Test-PrinterAt $PrinterHost) { $chosenHost = $PrinterHost; Write-Ok "Yazıcı $PrinterHost adresinde cevap veriyor." }
-    else { Stop-Wizard "$PrinterHost adresinde yazıcı cevap vermiyor." }
+    if (Test-PrinterAccepted (Get-PrinterProbe $PrinterHost)) { $chosenHost = $PrinterHost; Write-Ok "Yazıcı $PrinterHost adresinde." }
+    else { Stop-Wizard "$PrinterHost adresinde yazıcı bulunamadı." }
 }
 
 $scan = Invoke-Agent @('find-printer', '--json', '--extra', (@($extra) -join ','))
@@ -512,11 +541,18 @@ if (-not $chosenHost -and -not $ForceUsb) {
             else { Stop-Wizard 'Geçerli bir numara seçilmedi.' }
         }
         Write-Ok "Seçilen yazıcı: $chosenHost"
+    } elseif ($other.Count -gt 0) {
+        Write-Info ('Durum sorusuna cevap vermeyen, yazıcı olabilecek cihazlar: ' + (($other | ForEach-Object { $_.host }) -join ', '))
+        foreach ($o in @($other | Select-Object -First 5)) {
+            if (Confirm-PrinterByTicket $o.host) {
+                $chosenHost = $o.host
+                Write-Ok "Yazıcı bulundu (deneme fişiyle doğrulandı): $chosenHost"
+                break
+            }
+        }
+        if (-not $chosenHost) { Write-Warn 'Ağda fiş yazıcısı bulunamadı.' }
     } else {
         Write-Warn 'Ağda fiş yazıcısı bulunamadı.'
-        if ($other.Count -gt 0) {
-            Write-Info ('Port 9100 açık ama yazıcı cevabı vermeyen cihazlar: ' + (($other | ForEach-Object { $_.host }) -join ', '))
-        }
     }
 }
 
@@ -548,7 +584,11 @@ if ($chosenHost) {
                 Write-Info 'Aranıyor (yarım dakikayı bulabilir)...'
                 $scan2 = ConvertFrom-AgentJson (Invoke-Agent @('find-printer', '--json'))
                 $hits = @()
-                if ($scan2) { $hits = @($scan2.printers | Where-Object { $_.escpos -and -not (Test-SameSubnet $_.host $net.Address $net.Prefix) }) }
+                $silent = @()
+                if ($scan2) {
+                    $hits = @($scan2.printers | Where-Object { $_.escpos -and -not (Test-SameSubnet $_.host $net.Address $net.Prefix) })
+                    $silent = @($scan2.printers | Where-Object { -not $_.escpos -and -not (Test-SameSubnet $_.host $net.Address $net.Prefix) })
+                }
                 $pickHost = $null
                 if ($hits.Count -eq 1 -or ($hits.Count -gt 1 -and $Yes)) {
                     $pickHost = $hits[0].host
@@ -558,13 +598,19 @@ if ($chosenHost) {
                     $pick = Read-Host '  Mutfak yazıcısının numarası'
                     if ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $hits.Count) { $pickHost = $hits[[int]$pick - 1].host }
                 }
+                if (-not $pickHost -and $silent.Count -gt 0) {
+                    Write-Info ('Durum sorusuna cevap vermeyen, yazıcı olabilecek cihazlar: ' + (($silent | ForEach-Object { $_.host }) -join ', '))
+                    foreach ($o in @($silent | Select-Object -First 5)) {
+                        if (Confirm-PrinterByTicket $o.host) { $pickHost = $o.host; break }
+                    }
+                }
                 if ($pickHost) {
                     Write-Ok "Yazıcı bulundu: $pickHost"
                     $keep = Get-BridgeIp $pickHost
                     $others = @($temps | Where-Object { $_ -ne $keep })
                     Write-Info "Yazıcıya kalıcı olarak ulaşmak için $keep adresi bırakılıyor, diğer geçici adresler kaldırılıyor (yönetici izni)."
                     if (Invoke-NetworkBridge $net.IfIndex -Kalici @($keep) -Kaldir $others) {
-                        if (Wait-PrinterAt $pickHost 15) {
+                        if (Wait-PrinterPort $pickHost 15) {
                             $chosenHost = $pickHost
                             $bridge = @{ IfIndex = $net.IfIndex; Ip = $keep }
                             Write-Ok "Köprü kuruldu: bu bilgisayar yazıcıya ($pickHost) $keep üzerinden ulaşıyor."
@@ -591,7 +637,7 @@ if ($chosenHost) {
         Write-Host '  Yazıcının ayar fişini basın: yazıcıyı kapatın, FEED tuşuna basılı tutarak açın, fiş çıkınca bırakın.' -ForegroundColor White
         $manualIp = Read-PrinterIp
         if ($manualIp -and (Test-SameSubnet $manualIp $net.Address $net.Prefix)) {
-            if (Wait-PrinterAt $manualIp 8) {
+            if (Test-PrinterAccepted (Wait-PrinterPort $manualIp 8)) {
                 $chosenHost = $manualIp
                 Write-Ok "Yazıcı bulundu: $chosenHost"
             } else {
@@ -601,7 +647,7 @@ if ($chosenHost) {
             $keep = Get-BridgeIp $manualIp
             Write-Info "Bilgisayara $keep adresi eklenecek (yönetici izni)."
             if (Invoke-NetworkBridge $net.IfIndex -Kalici @($keep)) {
-                if (Wait-PrinterAt $manualIp 20) {
+                if (Test-PrinterAccepted (Wait-PrinterPort $manualIp 20)) {
                     $chosenHost = $manualIp
                     $bridge = @{ IfIndex = $net.IfIndex; Ip = $keep }
                     Write-Ok "Köprü kuruldu: bu bilgisayar yazıcıya ($manualIp) $keep üzerinden ulaşıyor."
@@ -672,10 +718,10 @@ Write-Step 5 'Adres bu bilgisayarın ajan ayarına yazılıyor'
 
 $envTarget = Join-Path $InstallDir '.env'
 if ($existingEnv.Count -gt 0) {
-    $lines = @($existingEnv | Where-Object { $_ -notmatch '^\s*(PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII)\s*=' })
+    $lines = @($existingEnv | Where-Object { $_ -notmatch '^\s*(PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII|PRINTER_MAC)\s*=' })
     if (-not (Get-EnvValue $lines 'AGENT_ID')) { $lines += "AGENT_ID=$agentId" }
 } else {
-    $lines = @(Read-EnvLines $PackageEnv | Where-Object { $_ -notmatch '^\s*(AGENT_ID|LOG_DIR|PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII)\s*=' })
+    $lines = @(Read-EnvLines $PackageEnv | Where-Object { $_ -notmatch '^\s*(AGENT_ID|LOG_DIR|PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII|PRINTER_MAC)\s*=' })
     $lines += "AGENT_ID=$agentId"
 }
 # Paketteki hesap bilgileri eski kurulumdakinin yerine geçer (ör. parola sonradan değiştiyse).

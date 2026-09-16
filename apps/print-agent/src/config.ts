@@ -23,6 +23,11 @@ export interface AgentEnv {
    * bağımsız okunur fiş. Yoksa kapalı.
    */
   PRINTER_ASCII?: boolean;
+  /**
+   * Yazıcının donanım (MAC) adresi, `aa:bb:cc:dd:ee:ff`. Ajan yazıcıya ilk ulaştığında kendisi
+   * öğrenip yazar; yazıcının IP adresi değişirse (DHCP) ağda aynı cihazı bununla tanır.
+   */
+  PRINTER_MAC?: string;
 }
 
 const REQUIRED = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AGENT_EMAIL', 'AGENT_PASSWORD', 'AGENT_ID'] as const;
@@ -83,6 +88,11 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
   else if (asciiRaw !== '') {
     throw new ConfigError(`PRINTER_ASCII geçersiz: "${env.PRINTER_ASCII}". 1 (sade harf) ya da 0 olmalı.`);
   }
+  const macRaw = env.PRINTER_MAC?.trim() ?? '';
+  const printerMac = macRaw === '' ? null : normalizeMac(macRaw);
+  if (macRaw !== '' && !printerMac) {
+    throw new ConfigError(`PRINTER_MAC geçersiz: "${macRaw}". Örnek: PRINTER_MAC=02:b0:3e:f5:25:de`);
+  }
   return {
     SUPABASE_URL: env.SUPABASE_URL!,
     SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY!,
@@ -93,7 +103,36 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
     ...(printerHost !== '' ? { PRINTER_HOST: printerHost } : {}),
     ...(printerPort !== undefined ? { PRINTER_PORT: printerPort } : {}),
     ...(printerAscii !== undefined ? { PRINTER_ASCII: printerAscii } : {}),
+    ...(printerMac ? { PRINTER_MAC: printerMac } : {}),
   };
+}
+
+/** MAC adresini `aa:bb:cc:dd:ee:ff` biçimine getirir (`-` ya da `:` ayraçlı); geçersiz, boş (00…) ya da yayın (ff…) ise null. */
+export function normalizeMac(raw: string): string | null {
+  const m = raw.trim().toLowerCase().match(/^([0-9a-f]{2})[-:]([0-9a-f]{2})[-:]([0-9a-f]{2})[-:]([0-9a-f]{2})[-:]([0-9a-f]{2})[-:]([0-9a-f]{2})$/);
+  if (!m) return null;
+  const mac = m.slice(1).join(':');
+  if (mac === '00:00:00:00:00:00' || mac === 'ff:ff:ff:ff:ff:ff') return null;
+  return mac;
+}
+
+/**
+ * `.env` dosyasında verilen anahtarları günceller (yoksa sona ekler); diğer satırlara dokunmaz.
+ * Ajan çalışırken yazıcının yeni adresini / MAC'ini kalıcı kılmak için kullanılır. Önce geçici
+ * dosyaya yazılıp yerine taşınır: yazma yarıda kesilirse (elektrik) eski dosya bozulmaz.
+ */
+export function updateEnvFile(file: string, updates: Record<string, string>): void {
+  const text = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
+  const lines = text.split(/\r?\n/);
+  if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+  for (const [key, value] of Object.entries(updates)) {
+    const i = lines.findIndex((l) => new RegExp(`^\\s*${key}\\s*=`).test(l));
+    if (i >= 0) lines[i] = `${key}=${value}`;
+    else lines.push(`${key}=${value}`);
+  }
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, `${lines.join('\n')}\n`, 'utf8');
+  fs.renameSync(tmp, file);
 }
 
 /** `.env`'i yükler ve doğrulanmış ayarları döner — CLI giriş noktası bunu çağırır. */

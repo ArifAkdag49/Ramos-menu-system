@@ -22,6 +22,14 @@ export interface PrinterPort {
 }
 export interface Logger { info(m: string, d?: object): void; warn(m: string, d?: object): void; error(m: string, d?: object): void }
 
+/** Yazıcının adresi değişince (DHCP) ağda yeniden bulma — gerçek uygulama: rediscover.ts. */
+export interface PrinterRediscoveryPort {
+  /** Yazıcıya ulaşılabildiğinde çağrılır (ör. MAC adresini öğrenmek için). */
+  learn(host: string): Promise<void>;
+  /** Yazıcının yeni adresini döner; emin olunamazsa null. */
+  find(s: AgentSettings): Promise<string | null>;
+}
+
 export interface AgentOptions {
   pollMs?: number;
   heartbeatMs?: number;
@@ -34,6 +42,10 @@ export interface AgentOptions {
   completeRetryBaseMs?: number;
   /** I4: art arda `claim` hatalarında geri çekilmenin tabanı (üstel, 60 sn'de tavanlanır). */
   claimRetryBaseMs?: number;
+  /** Yazıcıya bu süre boyunca hiç ulaşılamazsa ağda yeniden aranır (adresi değişmiş olabilir). */
+  rediscoverAfterMs?: number;
+  /** Başarısız bir aramadan sonra yenisi en erken bu kadar sonra yapılır. */
+  rediscoverRetryMs?: number;
 }
 
 const DEFAULT_OPTS: Required<AgentOptions> = {
@@ -42,6 +54,8 @@ const DEFAULT_OPTS: Required<AgentOptions> = {
   idleCheckMs: 15000,
   completeRetryBaseMs: 1000,
   claimRetryBaseMs: 5000,
+  rediscoverAfterMs: 60000,
+  rediscoverRetryMs: 120000,
 };
 
 // R68: bir bilet basıldıktan sonra onu kapatma denemesi bu süreden (60 sn — `claim_print_job`'ın
@@ -93,10 +107,23 @@ export class Agent {
    *  eklenirse (bugün YOK) bu alan bir işin işaretini bir diğerininkiyle EZEBİLİR — o zaman
    *  `Map<jobId, number>` gibi iş-başına bir yapıya geçirilmesi gerekir. */
   private stuckConfirmationSince: number | null = null;
+  /** Yazıcıya kesintisiz ulaşılamayan sürenin başlangıcı (ulaşılınca null). */
+  private unreachableSince: number | null = null;
+  private lastRediscoveryAt: number | null = null;
+  private rediscoveryRun: Promise<string | null> | null = null;
+  /** Ağda yeniden bulunan adres: ayarlar yeniden yüklense de (onSettings) bu adres korunur. */
+  private hostOverride: string | null = null;
 
   constructor(
     private api: AgentApi,
-    private deps: { printer: PrinterPort; log: Logger; now?: () => Date },
+    private deps: {
+      printer: PrinterPort;
+      log: Logger;
+      now?: () => Date;
+      rediscovery?: PrinterRediscoveryPort;
+      /** Yazıcı yeni adreste bulununca çağrılır (cli: .env'e PRINTER_HOST yazar). */
+      onHostChanged?: (host: string) => void | Promise<void>;
+    },
     opts: AgentOptions = {},
   ) {
     this.opts = { ...DEFAULT_OPTS, ...opts };
@@ -146,9 +173,9 @@ export class Agent {
     // kurduğundan üretimde etkisi yok, ama sınıfın kendisi tek-kullanımlık bir tuzak olurdu).
     this.stopping = false;
     this.stopPromise = null;
-    this.settings = await this.api.settings();
+    this.settings = this.withHostOverride(await this.api.settings());
     this.api.onSettings((s) => {
-      this.settings = s;
+      this.settings = this.withHostOverride(s);
       this.deps.log.info('settings reloaded', { host: s.host });
       // I1: ayar değişikliği de checkPrinter'ı tetikler — baskı sürerken ikinci bir TCP
       // oturumu açmasın diye aynı boşta-mı kapısından geçer.
@@ -209,10 +236,14 @@ export class Agent {
     await this.api.close();
   }
 
+  private withHostOverride(s: AgentSettings): AgentSettings {
+    return this.hostOverride ? { ...s, host: this.hostOverride } : s;
+  }
+
   async checkPrinter(): Promise<void> {
     if (!this.settings) {
       try {
-        this.settings = await this.api.settings();
+        this.settings = this.withHostOverride(await this.api.settings());
       } catch (e) {
         // C2: ayarlar okunamazsa (ör. açılışta ağ henüz hazır değil) bu da fırlamamalı.
         this.reachable = false;
@@ -231,13 +262,72 @@ export class Agent {
       const settings = this.settings;
       this.state = await this.withPrinterLock(() => this.deps.printer.status(settings));
       this.reachable = true;
+      this.unreachableSince = null;
       this.lastError = blockingProblem(this.state);
       // Sorun düzelince bekleyenler bir sonraki 5 sn'lik drain turunda basılır; burada drain tetiklenmez (yarış yok).
+      if (this.deps.rediscovery) this.fireAndForget(this.deps.rediscovery.learn(settings.host), 'yazıcı MAC öğrenme');
     } catch (e) {
       this.reachable = false;
       this.state = null;
       this.lastError = e instanceof PrinterError ? e.code : String(e);
+      if (this.unreachableSince === null) this.unreachableSince = this.now();
+      this.fireAndForget(this.rediscoverIfDue(), 'yazıcı arama');
     }
+  }
+
+  /**
+   * Yazıcıya `rediscoverAfterMs` boyunca hiç ulaşılamadıysa ağda yeniden arar: modem yeniden
+   * başlayınca otomatik IP alan yazıcının adresi değişebilir, eski adrese sonsuza dek bağlanmaya
+   * çalışmak yerine aynı yazıcı yeni adresinde bulunur. Aynı anda tek arama; başarısız aramadan
+   * sonra `rediscoverRetryMs` beklenir. Bulunan adres döner (bulunamazsa ya da zamanı değilse null).
+   */
+  async rediscoverIfDue(): Promise<string | null> {
+    if (this.rediscoveryRun) return this.rediscoveryRun;
+    const r = this.deps.rediscovery;
+    const current = this.settings;
+    if (!r || this.stopping || !current?.host || this.reachable || this.unreachableSince === null) return null;
+    const now = this.now();
+    if (now - this.unreachableSince < this.opts.rediscoverAfterMs) return null;
+    if (this.lastRediscoveryAt !== null && now - this.lastRediscoveryAt < this.opts.rediscoverRetryMs) return null;
+    this.lastRediscoveryAt = now;
+    this.rediscoveryRun = this.runRediscovery(r, current).finally(() => {
+      this.rediscoveryRun = null;
+    });
+    return this.rediscoveryRun;
+  }
+
+  private async runRediscovery(r: PrinterRediscoveryPort, current: AgentSettings): Promise<string | null> {
+    this.deps.log.warn('yazıcıya uzun süredir ulaşılamıyor — adresi değişmiş olabilir, ağda aranıyor', {
+      host: current.host,
+      unreachableMs: this.unreachableSince === null ? 0 : this.now() - this.unreachableSince,
+    });
+    let found: string | null;
+    try {
+      // R69: tarama yazıcının (yeni adresine) de TCP bağlantısı açar — yazıcı kilidi içinde çalışır,
+      // bir baskı ya da durum sorgusuyla aynı anda ikinci bir oturum açılmaz.
+      found = await this.withPrinterLock(() => r.find(current));
+    } catch (e) {
+      this.deps.log.error('yazıcı araması başarısız', { e: String(e) });
+      return null;
+    }
+    if (!found || found === current.host) {
+      this.deps.log.warn('yazıcı ağda başka bir adreste bulunamadı', { host: current.host });
+      return null;
+    }
+    // Arama sürerken kapanış başladıysa ya da ayarlar değiştiyse (ör. admin yeni adres girdi) eski sonuç uygulanmaz.
+    if (this.stopping || !this.settings || this.settings.host !== current.host) return null;
+    this.hostOverride = found;
+    this.settings = { ...this.settings, host: found };
+    this.deps.log.warn('yazıcı yeni adreste bulundu — bundan sonra bu adrese basılacak', { from: current.host, to: found });
+    if (this.deps.onHostChanged) {
+      try {
+        await this.deps.onHostChanged(found);
+      } catch (e) {
+        this.deps.log.error('yazıcının yeni adresi kaydedilemedi (bu çalışmada yine de kullanılır)', { e: String(e) });
+      }
+    }
+    await this.checkPrinter();
+    return found;
   }
 
   // I1: spec §10.3.3/§6 — yazıcı aynı anda tek TCP oturumu kabul eder. `printWithChecks`

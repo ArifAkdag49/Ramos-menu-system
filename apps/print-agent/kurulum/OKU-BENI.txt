@@ -1,7 +1,8 @@
 ﻿RAMO'S YAZICI KURULUMU
 ======================
 
-Bu klasör, mutfak fiş yazıcısını (Xprinter XP-80 / XP-Q80A) siteye bağlar.
+Bu klasör, mutfak fiş yazıcısını (ethernet kablolu fiş yazıcıları: Epson, Xprinter, SNRO,
+Rongta, HPRT, Munbyn, Bixolon ...) siteye bağlar.
 Siparişleri yazıcıya bu bilgisayar gönderir; bilgisayar açık kaldığı sürece fişler basılır.
 
 
@@ -14,6 +15,9 @@ KURULUM
 Sihirbaz şunları kendisi yapar:
   - Node.js yoksa kurar (Windows izin isterse "Evet" deyin)
   - Yazıcıyı ağda bulur (marka fark etmez: Epson, Xprinter, SNRO, Rongta, HPRT ...)
+  - Bazı yazıcılar sorulara cevap vermez ama basar. Böyle bir cihaz bulursa ona kısa bir
+    "RAMO'S KURULUM" deneme fişi gönderir ve "fiş çıktı mı?" diye sorar: fiş çıktıysa "e"
+    yazıp Enter'a basın.
   - Yazıcı fabrika adresinde kalmışsa (ör. 192.168.1.100) Windows'tan yönetici izni alıp
     markaların fabrika ağlarında kendisi arar ve bilgisayara o ağdan bir adres ekler
     ("köprü"). Yazıcının ayarına dokunulmaz, USB kablosu gerekmez. Bulamazsa yazıcının
@@ -33,6 +37,14 @@ Yazdırma programı aynı anda yalnız BİR bilgisayarda açık olmalı. İki bi
 olursa sipariş hangisine düşerse orada basılır.
 Başka bir bilgisayara geçmeden önce eski bilgisayarda "Kaldir.cmd" çalıştırın.
 Sihirbaz, başka bir bilgisayarda çalışan program görürse sizi uyarır.
+
+
+YAZICININ ADRESİ DEĞİŞİRSE
+--------------------------
+Modem yeniden başlayınca yazıcı başka bir adres alabilir. Program yazıcıya 1 dakika
+ulaşamazsa ağda kendisi arar ve aynı yazıcıyı (donanım adresinden tanıyarak) yeni adresinde
+bulursa oraya basmaya devam eder. Ağda birden fazla yazıcı varsa ve hangisi olduğundan emin
+olamazsa adresi değiştirmez; o zaman Kurulum.cmd'yi tekrar çalıştırın.
 
 
 BİLGİSAYAR AÇIK KALMALI

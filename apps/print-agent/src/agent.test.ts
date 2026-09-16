@@ -748,3 +748,92 @@ describe('Agent — M-b (round-4 re-review): start() önceki stop() bitmeden yen
     await agent.stop();
   });
 });
+
+describe('Agent — yazıcının adresi değişince (DHCP) ağda yeniden bulma', () => {
+  const OLD = '192.168.178.20';
+  const NEW = '192.168.178.31';
+
+  function setup(findResult: string | null) {
+    const api = fakeApi([job('a')]);
+    api.settings.mockResolvedValue({ ...settings, host: OLD });
+    const printer = {
+      status: vi.fn(async (s: { host: string }) => {
+        if (s.host === OLD) throw new PrinterError('offline', 'connect timeout');
+        return okState;
+      }),
+      print: vi.fn<(s: { host: string }, bytes: Uint8Array) => Promise<{ before: typeof okState; after: typeof okState }>>(
+        async () => ({ before: okState, after: okState }),
+      ),
+    };
+    let fakeMs = 1_000_000;
+    const rediscovery = { learn: vi.fn(async () => {}), find: vi.fn(async () => findResult) };
+    const onHostChanged = vi.fn();
+    const agent = new Agent(
+      api,
+      { printer, log, now: () => new Date(fakeMs), rediscovery, onHostChanged },
+      { rediscoverAfterMs: 60000, rediscoverRetryMs: 120000 },
+    );
+    return { api, printer, rediscovery, onHostChanged, agent, advance: (ms: number) => { fakeMs += ms; } };
+  }
+
+  it('60 sn dolmadan aramaz; dolunca arar, yeni adrese geçer, adresi kaydeder ve bekleyen işi yeni adrese basar', async () => {
+    const t = setup(NEW);
+    await t.agent.checkPrinter();
+    t.advance(30000);
+    await t.agent.checkPrinter();
+    expect(await t.agent.rediscoverIfDue()).toBeNull();
+    expect(t.rediscovery.find).not.toHaveBeenCalled();
+
+    t.advance(31000);
+    await t.agent.checkPrinter();
+    await vi.waitFor(() => expect(t.onHostChanged).toHaveBeenCalledWith(NEW));
+    await t.agent.rediscoverIfDue(); // sürmekte olan arama varsa bitmesini bekler
+
+    expect(t.rediscovery.find).toHaveBeenCalledTimes(1);
+    expect(await t.agent.drain()).toBe(1);
+    expect(t.printer.print).toHaveBeenCalledWith(expect.objectContaining({ host: NEW }), expect.any(Uint8Array));
+  });
+
+  it('bulunamazsa adres değişmez; yeni arama en erken 120 sn sonra yapılır', async () => {
+    const t = setup(null);
+    await t.agent.checkPrinter();
+    t.advance(61000);
+    await t.agent.checkPrinter();
+    await vi.waitFor(() => expect(t.rediscovery.find).toHaveBeenCalledTimes(1));
+    await t.agent.rediscoverIfDue();
+
+    t.advance(60000);
+    await t.agent.checkPrinter();
+    expect(await t.agent.rediscoverIfDue()).toBeNull();
+    expect(t.rediscovery.find).toHaveBeenCalledTimes(1);
+
+    t.advance(61000);
+    await t.agent.checkPrinter();
+    await vi.waitFor(() => expect(t.rediscovery.find).toHaveBeenCalledTimes(2));
+    expect(t.onHostChanged).not.toHaveBeenCalled();
+    expect(t.printer.status).toHaveBeenLastCalledWith(expect.objectContaining({ host: OLD }));
+  });
+
+  it('ayarlar yeniden yüklense de (onSettings) bulunan adres korunur — eski adrese geri dönülmez', async () => {
+    const t = setup(NEW);
+    await t.agent.start();
+    t.advance(61000);
+    await t.agent.checkPrinter();
+    await vi.waitFor(() => expect(t.onHostChanged).toHaveBeenCalledWith(NEW));
+    await t.agent.rediscoverIfDue();
+
+    const cb = t.api.onSettings.mock.calls[0]![0] as (s: typeof settings) => void;
+    t.printer.status.mockClear();
+    cb({ ...settings, host: OLD });
+    await vi.waitFor(() => expect(t.printer.status).toHaveBeenCalled());
+    expect(t.printer.status).toHaveBeenLastCalledWith(expect.objectContaining({ host: NEW }));
+    await t.agent.stop();
+  });
+
+  it('yazıcıya ulaşılınca MAC öğrenmek için adresi bildirir', async () => {
+    const t = setup(null);
+    t.api.settings.mockResolvedValue({ ...settings, host: NEW });
+    await t.agent.checkPrinter();
+    await vi.waitFor(() => expect(t.rediscovery.learn).toHaveBeenCalledWith(NEW));
+  });
+});

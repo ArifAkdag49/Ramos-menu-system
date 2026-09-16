@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, defaultLogDir, findEnvFile, readConfig } from './config';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { ConfigError, defaultLogDir, findEnvFile, normalizeMac, readConfig, updateEnvFile } from './config';
 
 describe('readConfig', () => {
   const full = {
@@ -84,5 +87,39 @@ describe('findEnvFile', () => {
   it('argv[1] klasöründe .env varsa onu bulur (yoksa null döner)', () => {
     // Ne argv1 klasöründe ne de cwd'de gerçek bir .env dosyası olmayan bir yol veriyoruz.
     expect(findEnvFile('/nonexistent/dir/cli.js', '/also/nonexistent')).toBeNull();
+  });
+});
+
+describe('PRINTER_MAC', () => {
+  const full = {
+    SUPABASE_URL: 'https://x.supabase.co',
+    SUPABASE_ANON_KEY: 'anon',
+    AGENT_EMAIL: 'drucker@staff.example.com',
+    AGENT_PASSWORD: 'secret1234',
+    AGENT_ID: 'ramos-pc-1',
+  };
+
+  it('Windows (-) ve Linux (:) biçimini aa:bb:cc:dd:ee:ff olarak okur; boşsa alan eklenmez', () => {
+    expect(readConfig({ ...full, PRINTER_MAC: '02-B0-3E-F5-25-DE' }).PRINTER_MAC).toBe('02:b0:3e:f5:25:de');
+    expect(readConfig({ ...full, PRINTER_MAC: ' 02:b0:3e:f5:25:de ' }).PRINTER_MAC).toBe('02:b0:3e:f5:25:de');
+    expect(readConfig({ ...full, PRINTER_MAC: '' })).not.toHaveProperty('PRINTER_MAC');
+  });
+
+  it('geçersiz, boş (00…) ya da yayın (ff…) adresi reddeder', () => {
+    expect(() => readConfig({ ...full, PRINTER_MAC: '02:b0:3e' })).toThrowError(/PRINTER_MAC geçersiz/);
+    expect(normalizeMac('00-00-00-00-00-00')).toBeNull();
+    expect(normalizeMac('ff:ff:ff:ff:ff:ff')).toBeNull();
+  });
+});
+
+describe('updateEnvFile', () => {
+  it('var olan anahtarı değiştirir, olmayanı sona ekler, diğer satırlara ve yorumlara dokunmaz', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ramos-env-'));
+    const file = path.join(dir, '.env');
+    fs.writeFileSync(file, '\uFEFF# not\r\nAGENT_ID=ramos-pc\r\nPRINTER_HOST=192.168.178.20\r\n', 'utf8');
+    updateEnvFile(file, { PRINTER_HOST: '192.168.178.31', PRINTER_MAC: '02:b0:3e:f5:25:de' });
+    expect(fs.readFileSync(file, 'utf8')).toBe('# not\nAGENT_ID=ramos-pc\nPRINTER_HOST=192.168.178.31\nPRINTER_MAC=02:b0:3e:f5:25:de\n');
+    expect(fs.existsSync(`${file}.tmp`)).toBe(false);
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });

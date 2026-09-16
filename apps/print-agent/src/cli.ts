@@ -1,20 +1,21 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { linesToText, type TicketPayload, type Database } from '@ramos/shared';
+import { linesToText, type Line, type TicketPayload, type Database } from '@ramos/shared';
 import { createClient } from '@supabase/supabase-js';
 import CodepageEncoder, { type Codepage } from '@point-of-sale/codepage-encoder';
 import { Agent, type AgentApi, type PrinterPort } from './agent';
 import { renderTicketForPrinter } from './ascii';
 import { AGENT_VERSION, createSupabaseApi } from './api';
-import { loadConfig, type AgentEnv } from './config';
+import { findEnvFile, loadConfig, updateEnvFile, type AgentEnv } from './config';
 import { startFakePrinter } from './fake-printer';
-import { discoverPrinters, localNetworks } from './discover';
+import { discoverPrinters, localNetworks, looksLikeEscPos, probePort } from './discover';
 import { encodeLines } from './escpos';
 import { createLogger, type Logger } from './log';
 import { defaultProcIo, isSameAgentProcess, probeProcess } from './proc';
 import { createShutdownHandler } from './shutdown';
-import { printWithChecks, queryStatus } from './transport';
+import { PrinterRediscovery } from './rediscover';
+import { printWithChecks, queryStatus, sendBytes } from './transport';
 
 const [cmd = 'run', ...rest] = process.argv.slice(2);
 const arg = (name: string): string | undefined => {
@@ -133,12 +134,14 @@ function acquireLock(dir: string, log: Logger): () => void {
 // Zamanlanmış Görev'in kendi yeniden başlatma sayacına (999) bağımlı kalmaz.
 const STARTUP_BACKOFF_MS = [1000, 2000, 5000, 10000, 30000, 60000];
 
-async function startAgentWithRetry(cfg: AgentEnv, log: Logger): Promise<{ api: AgentApi; agent: Agent }> {
+type AgentExtras = Pick<ConstructorParameters<typeof Agent>[1], 'rediscovery' | 'onHostChanged'>;
+
+async function startAgentWithRetry(cfg: AgentEnv, log: Logger, extras: AgentExtras = {}): Promise<{ api: AgentApi; agent: Agent }> {
   for (let attempt = 0; ; attempt++) {
     let api: AgentApi | undefined;
     try {
       api = await createSupabaseApi(cfg, log);
-      const agent = new Agent(api, { printer: tcpPrinter, log });
+      const agent = new Agent(api, { printer: tcpPrinter, log, ...extras });
       await agent.start();
       return { api, agent };
     } catch (e) {
@@ -171,7 +174,32 @@ async function cmdRun(): Promise<void> {
   // throw e; }` bu yüzden hiçbir zaman tetiklenmeyen, yanıltıcı ölü kod hâline gelmişti —
   // kaldırıldı. Kilit yalnız `shutdown()`'da (SIGINT/SIGTERM) serbest bırakılır.
   log.info('ajan başlıyor', { version: AGENT_VERSION, agentId: cfg.AGENT_ID });
-  const { api, agent } = await startAgentWithRetry(cfg, log);
+
+  // Yazıcının adresi değişirse (DHCP) ajan onu ağda yeniden bulur; bulunan adres ve öğrenilen MAC
+  // bu PC'nin .env'ine yazılır ki yeniden başlatmadan sonra da geçerli olsun. `cfg` aynı nesne
+  // olarak `createSupabaseApi`'ye verildiği için `api.settings()` da yeni adresi görür.
+  const envFile = findEnvFile(process.argv[1], process.cwd());
+  const persist = (updates: Record<string, string>): void => {
+    if (!envFile) return;
+    try {
+      updateEnvFile(envFile, updates);
+    } catch (e) {
+      log.warn('.env güncellenemedi', { envFile, e: e instanceof Error ? e.message : String(e) });
+    }
+  };
+  const rediscovery = new PrinterRediscovery({
+    log,
+    knownMac: cfg.PRINTER_MAC ?? null,
+    onMacLearned: (mac) => {
+      cfg.PRINTER_MAC = mac;
+      persist({ PRINTER_MAC: mac });
+    },
+  });
+  const onHostChanged = (host: string): void => {
+    cfg.PRINTER_HOST = host;
+    persist({ PRINTER_HOST: host });
+  };
+  const { api, agent } = await startAgentWithRetry(cfg, log, { rediscovery, onHostChanged });
   const settings = await api.settings().catch(() => null);
   log.info('ajan çalışıyor', {
     host: settings?.host ?? null,
@@ -402,6 +430,44 @@ async function cmdFindPrinter(): Promise<void> {
   }
 }
 
+// ---------- probe / probe-print (kurulum sihirbazı) ----------
+
+// Tek bir adresi yoklar (giriş gerektirmez): port açık mı, durum sorusuna ESC/POS cevabı veriyor mu.
+// Durum sorusuna cevap vermeyen yazıcılar (bazı Star / ucuz modeller) `open: true, escpos: false`
+// döner — sihirbaz onları `probe-print` ile deneme fişi basıp kullanıcıya sorarak doğrular.
+async function cmdProbe(): Promise<void> {
+  const host = arg('host');
+  if (!host) throw new Error('Kullanım: probe --host <ip> [--port 9100]');
+  const port = Number(arg('port') ?? DEFAULT_PRINTER_PORT);
+  const open = await probePort(host, port, 1500);
+  const state = open ? await queryStatus(host, port, { connectMs: 1500, replyMs: 1200 }).catch(() => null) : null;
+  console.log(JSON.stringify({ host, port, open, escpos: state ? looksLikeEscPos(state) : false, raw: state?.raw ?? '' }));
+}
+
+/** Deneme fişinin satırları — yalnız ASCII: hangi karakter tablosu seçili olursa olsun okunur. */
+function probeTicketLines(host: string): Line[] {
+  return [
+    { kind: 'text', text: "RAMO'S KURULUM / SETUP", align: 'center', bold: true },
+    { kind: 'rule' },
+    { kind: 'text', text: 'Bu fis cikiyorsa yazici bulundu.' },
+    { kind: 'text', text: 'Drucker gefunden.' },
+    { kind: 'text', text: `Adres / Adresse: ${host}` },
+    { kind: 'text', text: 'Kurulum ekraninda E ile onaylayin.' },
+    { kind: 'text', text: 'Im Setup mit E bestaetigen.' },
+    { kind: 'feed', lines: 3 },
+  ];
+}
+
+// Durum sorusu sormadan kısa bir deneme fişi gönderir (tablo 0 / cp437, yalnız ASCII metin).
+async function cmdProbePrint(): Promise<void> {
+  const host = arg('host');
+  if (!host) throw new Error('Kullanım: probe-print --host <ip> [--port 9100]');
+  const port = Number(arg('port') ?? DEFAULT_PRINTER_PORT);
+  const bytes = encodeLines(probeTicketLines(host), { codepage: 'cp437', codepageNumber: 0 });
+  await sendBytes(host, port, bytes);
+  console.log(JSON.stringify({ host, port, sent: bytes.length }));
+}
+
 // ---------- site-status (kurulum sihirbazı) ----------
 
 // Ajan hesabıyla giriş yapılabildiğini doğrular ve sitenin gördüğü son ajanı döner — sihirbaz
@@ -459,8 +525,14 @@ async function main(): Promise<void> {
     case 'site-status':
       await cmdSiteStatus();
       break;
+    case 'probe':
+      await cmdProbe();
+      break;
+    case 'probe-print':
+      await cmdProbePrint();
+      break;
     default:
-      console.error(`Bilinmeyen komut: ${cmd}. Kullanım: run | status | test-print | dry-run | fake-printer | find-printer | site-status`);
+      console.error(`Bilinmeyen komut: ${cmd}. Kullanım: run | status | test-print | dry-run | fake-printer | find-printer | site-status | probe | probe-print`);
       process.exit(1);
   }
 }
