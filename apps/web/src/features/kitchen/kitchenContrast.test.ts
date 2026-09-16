@@ -159,3 +159,24 @@ describe('R1 — KDS rozetleri HER kart zemininde okunur', () => {
     expect(orderCardSrc).toContain('KDS_BADGE_CLASS[ELAPSED_TONE[tone]]');
   });
 });
+
+/**
+ * Kapı 3. turu R3 — eylem satırı kart içinde yapışkan (`sticky bottom-0`). Bu bir yerleşim
+ * düzeltmesi ama kontrast sonucu var: yapışkan satırın ALTINDAN kalem satırları kayıyor, zemini
+ * opak olmazsa metin metnin üstüne biner ve düğmenin etiketi okunmaz olur. Burada ölçülen şey
+ * kartın zemin paletinin opak kaldığı (yarı saydam bir zemin geri gelirse test kırılır).
+ */
+describe('R3 — yapışkan eylem satırı opak kart zemini taşır', () => {
+  it('eylem satırı `sticky bottom-0` ve kartın zemin eşlemesini kullanır', () => {
+    expect(orderCardSrc).toMatch(/sticky bottom-0[^']*',\s*CARD_SURFACE\[tone\]/);
+  });
+
+  it('kart zemin paletinde yarı saydam değer yok — altından metin geçmez', () => {
+    const map = /const CARD_SURFACE: Record<KitchenTone, string> = \{([^}]*)\}/.exec(orderCardSrc);
+    if (!map?.[1]) throw new Error('CARD_SURFACE eşlemesi bulunamadı');
+    expect(map[1]).not.toMatch(/bg-[a-z0-9-]+\/\d+/);
+    for (const surface of ['surface', 'surface-late', 'surface-warn']) {
+      expect(map[1]).toContain(`bg-${surface}`);
+    }
+  });
+});

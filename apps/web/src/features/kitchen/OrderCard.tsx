@@ -17,11 +17,22 @@ import { canUndo, cardElapsed, itemLines, visibleItems, type KitchenTone } from 
  * 38 dk bekleyen kart ile 14 dk bekleyen kart 1–2 m'den ayırt edilemiyordu. Artık kenarlık VE
  * zemin değişiyor (zemin opak bir token, blok opaklık değil — Y2'nin sebebi oydu).
  */
-const CARD_TONE: Record<KitchenTone, string> = {
-  ok: 'border-border bg-surface',
-  warn: 'border-warning/70 bg-surface-warn',
-  late: 'border-danger bg-surface-late',
-  ready: 'border-gold/40 bg-surface',
+const CARD_BORDER: Record<KitchenTone, string> = {
+  ok: 'border-border',
+  warn: 'border-warning/70',
+  late: 'border-danger',
+  ready: 'border-gold/40',
+};
+
+/**
+ * Kart zemini ayrı durur, çünkü **eylem satırı da aynı zemini taşımak zorunda** (R3): yapışkan
+ * eylem satırının altından kalem satırları kayıyor, zemin opak olmazsa metin metnin üstüne biner.
+ */
+const CARD_SURFACE: Record<KitchenTone, string> = {
+  ok: 'bg-surface',
+  warn: 'bg-surface-warn',
+  late: 'bg-surface-late',
+  ready: 'bg-surface',
 };
 
 /** Süre kutusunun tonu. KDS'nin opak rozet paleti kullanılır: kart zemini ne olursa olsun sabit. */
@@ -77,7 +88,12 @@ export function OrderCard({
   return (
     <li
       data-tone={tone}
-      className={clsx('flex flex-col gap-2 rounded-card border-2', CARD_TONE[tone], compact ? 'p-3' : 'p-4')}
+      className={clsx(
+        'flex flex-col gap-2 rounded-card border-2',
+        CARD_BORDER[tone],
+        CARD_SURFACE[tone],
+        compact ? 'p-3' : 'p-4',
+      )}
     >
       {/* R3 — süre kutusu KENDİ satırından çıkarılıp başlığın karşısına alındı ve ikincil
           kontroller (EK SİPARİŞ rozeti, "⋯") zaten 64 px olan eylem satırına indi: kart
@@ -109,7 +125,14 @@ export function OrderCard({
         ))}
       </ul>
 
-      <div className="flex items-center gap-2">
+      {/* R3 — eylem satırı kartın İÇİNDE yapışkan. Kartı kısaltmak yetmiyordu: 7 kalemli, 5
+          seçenekli, iki turlu bir sipariş 968 px'e çıkıyor ve hiçbir kroma indirimi onu 800 px'lik
+          tablete sığdırmıyor. Kalem bilgisini saklamak yerine EYLEMİ kurtarıyoruz — kart ne kadar
+          uzun olursa olsun HAZIR (ve "⋯", EK SİPARİŞ rozeti) görünür alanda kalır, aşçı düğmeye
+          ulaşmak için kaydırmaz. Kaydırma kabı `KitchenPage`'in sütunu; yapışkan öğe kendi
+          kartının sınırlarıyla kısıtlı, yani düğme başka bir kartın üstüne taşmaz.
+          Zemin `CARD_SURFACE`: altından kayan kalem satırları düğmenin arkasından geçmez. */}
+      <div className={clsx('sticky bottom-0 flex items-center gap-2', CARD_SURFACE[tone])}>
         {order.round_no > 1 ? <KdsBadge tone="warning">{t('kitchen.badge.nachbestellung')}</KdsBadge> : null}
         {order.status === 'in_kitchen' ? (
           <Button
