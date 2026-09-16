@@ -21,6 +21,19 @@ const okState = { known: true, offline: false, cover_open: false, paper_end: fal
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
 describe('Agent', () => {
+  it('sade harf modunda (ascii) fiş baytlarında ASCII dışı karakter kalmaz', async () => {
+    const api = fakeApi([job('a')]);
+    api.settings.mockResolvedValue({ ...settings, ascii: true } as never);
+    const printed: string[] = [];
+    const printer = { status: vi.fn(async () => okState),
+      print: vi.fn(async (_s: unknown, bytes: Uint8Array) => { printed.push(Buffer.from(bytes).toString('latin1')); return { before: okState, after: okState }; }) };
+    const agent = new Agent(api, { printer, log });
+    await agent.checkPrinter();
+    expect(await agent.drain()).toBe(1);
+    expect(printed[0]).toContain('Drehspiess Sandwich');
+    expect(printed[0]).not.toContain('Drehspieá'); // cp857'de ß = 0xE1
+  });
+
   it('bekleyen işleri sırayla basar ve başarıyla kapatır', async () => {
     const api = fakeApi([job('a', 'Tisch 1'), job('b', 'Tisch 2')]);
     const printed: string[] = [];

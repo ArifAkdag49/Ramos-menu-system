@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { linesToText, renderTicket, type TicketPayload, type Database } from '@ramos/shared';
+import { linesToText, type TicketPayload, type Database } from '@ramos/shared';
 import { createClient } from '@supabase/supabase-js';
 import CodepageEncoder, { type Codepage } from '@point-of-sale/codepage-encoder';
 import { Agent, type AgentApi, type PrinterPort } from './agent';
+import { renderTicketForPrinter } from './ascii';
 import { AGENT_VERSION, createSupabaseApi } from './api';
 import { loadConfig, type AgentEnv } from './config';
 import { startFakePrinter } from './fake-printer';
@@ -279,11 +280,13 @@ async function cmdTestPrint(): Promise<void> {
 
     const host = hostArg ?? cfg.PRINTER_HOST ?? data.printer_host;
     const port = portArg ? Number(portArg) : (cfg.PRINTER_PORT ?? data.printer_port);
-    const payload = testPrintPayload(data);
-    const lines = renderTicket(payload, { transliterate: data.printer_transliterate });
+    const ascii = cfg.PRINTER_ASCII ?? false;
+    // Fişteki "Transliteration: an/aus" satırı sade harf modunu da yansıtsın.
+    const payload = testPrintPayload({ ...data, printer_transliterate: data.printer_transliterate || ascii });
+    const lines = renderTicketForPrinter(payload, { transliterate: data.printer_transliterate, ascii });
     const bytes = encodeLines(lines, { codepage: data.printer_codepage, codepageNumber: data.printer_codepage_number });
 
-    console.log(`Test baskısı gönderiliyor: ${host}:${port}`);
+    console.log(`Test baskısı gönderiliyor: ${host}:${port}${ascii ? ' (sade harf)' : ''}`);
     const result = await printWithChecks(host, port, bytes);
     console.log(JSON.stringify(result, null, 2));
   } finally {
@@ -312,7 +315,7 @@ async function cmdDryRun(): Promise<void> {
 
     for (const row of data ?? []) {
       console.log(`--- ${row.id} · ${row.type} · ${row.status} · ${row.created_at} ---`);
-      console.log(linesToText(renderTicket(row.payload as unknown as TicketPayload, { transliterate: settingsRow.printer_transliterate })));
+      console.log(linesToText(renderTicketForPrinter(row.payload as unknown as TicketPayload, { transliterate: settingsRow.printer_transliterate, ascii: cfg.PRINTER_ASCII ?? false })));
       console.log('');
     }
     if (!data || data.length === 0) console.log('Kuyrukta iş yok.');

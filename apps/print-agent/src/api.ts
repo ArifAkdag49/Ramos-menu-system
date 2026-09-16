@@ -197,6 +197,7 @@ export async function createSupabaseApi(
         codepage: data.printer_codepage,
         codepageNumber: data.printer_codepage_number,
         transliterate: data.printer_transliterate,
+        ascii: env.PRINTER_ASCII ?? false,
       };
     },
 

@@ -9,12 +9,12 @@
       2) Bu PC'de çalışan eski ajan durdurulur, ajan hesabıyla siteye giriş denenir,
          başka bir bilgisayarda çalışan ajan varsa uyarılır
       3) Ağ taranır (TCP 9100 + ESC/POS durum cevabı)
-      4) Bulunamazsa: yazıcının ayar fişindeki adres sorulur; bilgisayara (yönetici izniyle)
-         yazıcının ağından ikinci bir adres eklenip yazıcıya kablo üzerinden ulaşılır ve adresi
-         bu ağa uygun hâle getirilir. Yazıcı adres komutunu kabul etmezse ek adres kalıcı kalır
-         (köprü modu). Bu da olmazsa ve yazıcı USB ile bağlıysa adres USB'den yazılır.
+      4) Bulunamazsa (markadan bağımsız): tek yönetici izniyle bilgisayara markaların fabrika
+         ağlarından geçici adresler eklenip yazıcı aranır; bulunursa o ağın adresi kalıcı kalır
+         ("köprü"), yazıcının kendi adresine dokunulmaz. Olmazsa ayar fişindeki adres sorulur.
+         Son çare: yazıcı USB ile bağlıysa adres USB'den yazılır (Xprinter ve uyumluları).
       5) Adres bu PC'nin ajan ayarına (.env → PRINTER_HOST) yazılır
-      6) Test fişi
+      6) Test fişi; özel harfler (ä ö ü ß ş ğ ı) bozuksa bu PC için sade harf modu (PRINTER_ASCII=1)
       7) Prize takılıyken uyku / hazırda bekletme / kapak kapanınca uyku kapatılır (onayla)
       8) Ajan Zamanlanmış Görev olarak kurulur ve siteye bağlandığı doğrulanır
 
@@ -31,7 +31,7 @@
     Otomatik seçim yerine yazıcıya bu adresi yazar (ağ ya da USB yolu; ileri düzey).
 
 .PARAMETER KnownPrinterIp
-    Yazıcı ağda bulunamazsa sorulan "ayar fişindeki IP" için varsayılan (Enter).
+    Otomatik arama bulamazsa "ayar fişindeki IP" sorusu yerine bu adres kullanılır.
 
 .PARAMETER Yes
     Soruları "evet" sayar (gözetimsiz çalıştırma / test).
@@ -46,7 +46,7 @@ param(
     [string]$PrinterHost,
     [switch]$ForceUsb,
     [string]$UsbIp,
-    [string]$KnownPrinterIp = '192.168.1.100',
+    [string]$KnownPrinterIp,
     [switch]$SkipTestPrint,
     [switch]$Yes,
     [switch]$DryRun
@@ -274,6 +274,13 @@ function Write-SleepManualHelp {
 
 # ---- Ağ yardımcıları (4. adım) ----
 
+# Markaların fabrika çıkışı sabit adres ağları. Yazıcı bunlardan birinde kalmışsa bilgisayara o
+# ağlardan geçici adresler eklenip taranır: 192.168.1.x (SNRO/POS-80 .100, Rongta/HPRT .87),
+# 192.168.123.x (Xprinter .100), 192.168.192.x (Epson TM .168), 192.168.0.x, 192.168.2.x,
+# 192.168.10.x. Yazıcının adresi değiştirilmez (bu markaya özel olurdu); bulunan ağın adresi
+# bilgisayarda kalıcı kalır ("köprü").
+$FactoryNetworks = @('192.168.1', '192.168.123', '192.168.192', '192.168.0', '192.168.2', '192.168.10')
+
 # Varsayılan ağ geçidi (modem) olan arayüz: adres, önek, ağ geçidi ve bağdaştırıcı numarası.
 function Get-MainNetwork($networks) {
     $gwConfigs = @(Get-NetIPConfiguration -ErrorAction SilentlyContinue | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' })
@@ -301,21 +308,17 @@ function Test-Ipv4Text([string]$text) {
     return [Net.IPAddress]::TryParse($text, [ref]$parsed)
 }
 
-# Yazıcının ayar fişindeki adresi sorar (Enter = -KnownPrinterIp).
+# Yazıcının ayar fişindeki adresi sorar (Enter = atla). -KnownPrinterIp verilmişse onu kullanır.
 function Read-PrinterIp {
-    $default = $KnownPrinterIp
-    if ($Yes) {
-        if ($default) { Write-Info "Yazıcının adresi: $default (-Yes)" }
-        return $default
+    if ($KnownPrinterIp) {
+        Write-Info "Yazıcının adresi: $KnownPrinterIp (-KnownPrinterIp)"
+        return $KnownPrinterIp
     }
-    $hint = if ($default) { "Enter = $default" } else { 'Enter = atla' }
+    if ($Yes) { return $null }
     for ($i = 0; $i -lt 3; $i++) {
-        try { $a = Read-Host "  Ayar fişindeki 'IP Address' ($hint)" } catch { return $null }
+        try { $a = Read-Host "  Ayar fişindeki 'IP Address' (Enter = atla)" } catch { return $null }
         $a = "$a".Trim()
-        if ($a -eq '') {
-            if ($default) { return $default }
-            return $null
-        }
+        if ($a -eq '') { return $null }
         if (Test-Ipv4Text $a) { return $a }
         Write-Warn 'Geçersiz adres. Örnek: 192.168.1.100'
     }
@@ -329,20 +332,24 @@ function Get-BridgeIp([string]$printerIp) {
     return "$($o[0]).$($o[1]).$($o[2]).$last"
 }
 
-# Yardımcıyı (ag-kopru.ps1) yönetici olarak çalıştırır; Windows izin penceresi açılır.
-function Invoke-NetworkBridge([string]$islem, [int]$ifIndex, [string]$ip) {
+# ag-kopru.ps1'i yönetici olarak çalıştırır (Windows izin penceresi). Tek çağrıda:
+# -Gecici (yeniden başlatınca kaybolan), -Kalici ve -Kaldir adres listeleri.
+function Invoke-NetworkBridge([int]$ifIndex, [string[]]$Gecici = @(), [string[]]$Kalici = @(), [string[]]$Kaldir = @()) {
     $helper = Join-Path $PSScriptRoot 'ag-kopru.ps1'
     $logFile = Join-Path $env:TEMP 'ramos-ag-kopru.log'
     Remove-Item $logFile -ErrorAction SilentlyContinue
-    $argLine = "-NoProfile -ExecutionPolicy Bypass -File `"$helper`" -Islem $islem -InterfaceIndex $ifIndex -Ip $ip -PrefixLength 24 -LogFile `"$logFile`""
+    $argLine = "-NoProfile -ExecutionPolicy Bypass -File `"$helper`" -InterfaceIndex $ifIndex -LogFile `"$logFile`""
+    if ($Gecici.Count -gt 0) { $argLine += " -Gecici $($Gecici -join ',')" }
+    if ($Kalici.Count -gt 0) { $argLine += " -Kalici $($Kalici -join ',')" }
+    if ($Kaldir.Count -gt 0) { $argLine += " -Kaldir $($Kaldir -join ',')" }
     try {
         $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argLine -Verb RunAs -WindowStyle Hidden -Wait -PassThru
     } catch {
         Write-Warn 'Yönetici izni verilmedi.'
         return $false
     }
-    if (Test-Path $logFile) {
-        Get-Content $logFile -Encoding UTF8 | Select-Object -Last 3 | ForEach-Object { Write-Info "  $_" }
+    if ($proc.ExitCode -ne 0 -and (Test-Path $logFile)) {
+        Get-Content $logFile -Encoding UTF8 | Select-Object -Last 4 | ForEach-Object { Write-Info "  $_" }
     }
     return ($proc.ExitCode -eq 0)
 }
@@ -357,26 +364,10 @@ function Select-FreeIp($net) {
     return $null
 }
 
-# Xprinter ailesinin (XP-80 / XP-Q80A ve uyumlu yazıcılar) adres komutu: 1F 1B 1F 91 00 49 50 + 4 bayt.
-# Hem USB (winspool RAW) hem ağ (TCP 9100) üzerinden gönderilebilir.
+# Xprinter ailesinin adres komutu (yalnız USB yolunda): 1F 1B 1F 91 00 49 50 + 4 bayt adres.
 function Get-PrinterIpCommand([string]$ip) {
     $octets = ([Net.IPAddress]::Parse($ip)).GetAddressBytes()
     return [byte[]](@(0x1F, 0x1B, 0x1F, 0x91, 0x00, 0x49, 0x50) + $octets)
-}
-
-function Send-TcpBytes([string]$ip, [int]$port, [byte[]]$bytes) {
-    $client = New-Object System.Net.Sockets.TcpClient
-    try {
-        $iar = $client.BeginConnect($ip, $port, $null, $null)
-        if (-not $iar.AsyncWaitHandle.WaitOne(3000)) { throw 'bağlantı zaman aşımı' }
-        $client.EndConnect($iar)
-        $stream = $client.GetStream()
-        $stream.Write($bytes, 0, $bytes.Length)
-        $stream.Flush()
-        Start-Sleep -Milliseconds 500
-    } finally {
-        $client.Close()
-    }
 }
 
 function Wait-NewPrinterIp([string]$newIp) {
@@ -530,93 +521,99 @@ if (-not $chosenHost -and -not $ForceUsb) {
 }
 
 # ------------------------------------------------------------------------------------------
-Write-Step 4 'Yazıcı adresi bu ağa uygun mu'
+Write-Step 4 'Yazıcı başka bir ağda mı'
 
-$bridge = $null   # köprü modu: bilgisayara yazıcının ağından eklenen adres (@{ IfIndex; Ip })
+$bridge = $null   # köprü: bilgisayara yazıcının ağından eklenen kalıcı adres (@{ IfIndex; Ip })
 
 if ($chosenHost) {
-    Write-Ok "Değişiklik gerekmiyor, yazıcı zaten bu ağda: $chosenHost"
+    Write-Ok "Gerek yok, yazıcı bu ağda: $chosenHost"
 } else {
     $net = Get-MainNetwork $networks
-    if ($net.Prefix -lt 24) {
-        Write-Warn "Ağ /$($net.Prefix): yazıcının alt ağ maskesi genelde 255.255.255.0 olduğu için yazıcıya yalnız $($net.Address) ile aynı /24'teki cihazlar erişebilir."
-    }
+    $canBridge = [bool]$net.IfIndex
+    if (-not $canBridge) { Write-Warn 'Ağ bağdaştırıcısı belirlenemedi; başka ağlarda arama yapılamıyor.' }
 
-    # --- 4a) Ağ üzerinden: yazıcının şu anki adresine köprüyle ulaş ----------------------
-    $oldIp = $null
-    if (-not $ForceUsb) {
+    # --- 4a) Fabrika ağlarında otomatik arama ---------------------------------------------
+    if ($canBridge -and -not $ForceUsb) {
+        $factory = @($FactoryNetworks | Where-Object { -not (Test-SameSubnet "$_.1" $net.Address 24) })
+        $temps = @($factory | ForEach-Object { "$_.249" })
         Write-Host ''
-        Write-Host '  Yazıcı bu ağda görünmüyor. Adresi büyük ihtimalle başka bir ağa ait.' -ForegroundColor White
-        Write-Host '  Yazıcının ayar fişinde "IP Address" satırı yazar. Ayar fişi için: yazıcıyı kapatın,'
-        Write-Host '  FEED tuşuna basılı tutarak açın, fiş çıkınca bırakın.'
-        $oldIp = Read-PrinterIp
-    }
-
-    if ($oldIp -and $net.IfIndex -and (Test-SameSubnet $oldIp $net.Address $net.Prefix)) {
-        Write-Info "$oldIp bu ağın adresi, doğrudan deneniyor..."
-        if (Wait-PrinterAt $oldIp 8) {
-            $chosenHost = $oldIp
-            Write-Ok "Yazıcı bulundu: $chosenHost"
-        } else {
-            Write-Warn "$oldIp adresinde yazıcı cevap vermedi. Yazıcı açık ve ethernet kablosu modeme takılı mı?"
-        }
-    } elseif ($oldIp -and $net.IfIndex) {
-        $bridgeIp = Get-BridgeIp $oldIp
-        Write-Host ''
-        Write-Host "  Yazıcıya ulaşmak için bu bilgisayara $bridgeIp adresi eklenecek (yazıcının ağından)." -ForegroundColor White
-        Write-Info "Bilgisayarın kendi adresi ($($net.Address)) ve internet bağlantısı olduğu gibi kalır."
+        Write-Host '  Yazıcı bu ağda görünmüyor; adresi büyük ihtimalle fabrika ayarında kalmış.' -ForegroundColor White
+        Write-Info ('Yazıcı markaların fabrika ağlarında aranacak: ' + (($factory | ForEach-Object { "$_.x" }) -join ', '))
+        Write-Info "Bunun için bilgisayara geçici adresler eklenir; bilgisayarın kendi adresi ($($net.Address)) ve interneti değişmez."
         Write-Info 'Windows yönetici izni isteyecek: "Evet" (Almanca Windows: "Ja") deyin.'
         if ($DryRun) {
-            Write-Info 'Deneme modu: adres eklenmedi, yazıcıya bağlanılmadı.'
-            $chosenHost = $oldIp
-        } elseif (Confirm-Yes 'Devam edilsin mi?') {
-            if (Invoke-NetworkBridge 'ekle' $net.IfIndex $bridgeIp) {
-                $bridge = @{ IfIndex = $net.IfIndex; Ip = $bridgeIp }
-                Write-Ok "Bilgisayara $bridgeIp eklendi."
-                Write-Info "Yazıcıya $oldIp üzerinden ulaşılıyor..."
-                if (Wait-PrinterAt $oldIp 20) {
-                    Write-Ok "Yazıcıya ulaşıldı: $oldIp"
-                    $newIp = Select-FreeIp $net
-                    if ($newIp) {
-                        Write-Host "  Yazıcının adresi bu ağa uygun hâle getirilecek: $oldIp -> $newIp" -ForegroundColor White
-                        if (Confirm-Yes 'Devam edilsin mi?') {
-                            try {
-                                Send-TcpBytes $oldIp 9100 (Get-PrinterIpCommand $newIp)
-                                Write-Ok 'Adres komutu gönderildi. Yazıcı bip sesi verebilir.'
-                            } catch {
-                                Write-Warn "Adres komutu gönderilemedi: $($_.Exception.Message)"
-                            }
-                            if (Wait-NewPrinterIp $newIp) {
-                                $chosenHost = $newIp
-                                Write-Ok "Yazıcı artık bu ağda: $newIp"
-                                if (Invoke-NetworkBridge 'kaldir' $bridge.IfIndex $bridge.Ip) { Write-Info "Geçici adres ($($bridge.Ip)) kaldırıldı." }
-                                else { Write-Info "Geçici adres ($($bridge.Ip)) kaldırılamadı; zararsızdır." }
-                                $bridge = $null
-                            }
-                        }
-                    }
-                    if (-not $chosenHost) {
-                        # Bu yazıcı adres komutunu kabul etmedi: eklenen adres kalıcı kalır.
-                        Write-Info "Yazıcının adresi değiştirilemedi; eski adresi ($oldIp) kontrol ediliyor..."
-                        if (Wait-PrinterAt $oldIp 30) {
-                            $chosenHost = $oldIp
-                            Write-Ok "KÖPRÜ MODU: yazıcı $oldIp adresinde kalıyor, bu bilgisayar ona kalıcı olarak $($bridge.Ip) üzerinden ulaşacak."
+            Write-Info 'Deneme modu: adres eklenmedi, aranmadı.'
+        } elseif (Confirm-Yes 'Aransın mı?') {
+            if (Invoke-NetworkBridge $net.IfIndex -Gecici $temps) {
+                Write-Info 'Aranıyor (yarım dakikayı bulabilir)...'
+                $scan2 = ConvertFrom-AgentJson (Invoke-Agent @('find-printer', '--json'))
+                $hits = @()
+                if ($scan2) { $hits = @($scan2.printers | Where-Object { $_.escpos -and -not (Test-SameSubnet $_.host $net.Address $net.Prefix) }) }
+                $pickHost = $null
+                if ($hits.Count -eq 1 -or ($hits.Count -gt 1 -and $Yes)) {
+                    $pickHost = $hits[0].host
+                } elseif ($hits.Count -gt 1) {
+                    Write-Info 'Birden fazla fiş yazıcısı bulundu:'
+                    for ($i = 0; $i -lt $hits.Count; $i++) { Write-Host "    $($i + 1)) $($hits[$i].host)" }
+                    $pick = Read-Host '  Mutfak yazıcısının numarası'
+                    if ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $hits.Count) { $pickHost = $hits[[int]$pick - 1].host }
+                }
+                if ($pickHost) {
+                    Write-Ok "Yazıcı bulundu: $pickHost"
+                    $keep = Get-BridgeIp $pickHost
+                    $others = @($temps | Where-Object { $_ -ne $keep })
+                    Write-Info "Yazıcıya kalıcı olarak ulaşmak için $keep adresi bırakılıyor, diğer geçici adresler kaldırılıyor (yönetici izni)."
+                    if (Invoke-NetworkBridge $net.IfIndex -Kalici @($keep) -Kaldir $others) {
+                        if (Wait-PrinterAt $pickHost 15) {
+                            $chosenHost = $pickHost
+                            $bridge = @{ IfIndex = $net.IfIndex; Ip = $keep }
+                            Write-Ok "Köprü kuruldu: bu bilgisayar yazıcıya ($pickHost) $keep üzerinden ulaşıyor."
                         } else {
-                            Write-Warn "Yazıcı ne yeni adreste ne $oldIp adresinde cevap veriyor."
+                            Write-Warn "$pickHost adresindeki yazıcı cevap vermeyi bıraktı."
+                            [void](Invoke-NetworkBridge $net.IfIndex -Kaldir @($keep))
                         }
+                    } else {
+                        Write-Warn 'Adres kalıcı yapılamadı.'
                     }
                 } else {
-                    Write-Warn "$oldIp adresinde yazıcı cevap vermedi. Ayar fişindeki adres doğru mu, ethernet kablosu modeme takılı mı?"
-                    if (Invoke-NetworkBridge 'kaldir' $bridge.IfIndex $bridge.Ip) { Write-Info "Eklenen adres ($($bridge.Ip)) geri alındı." }
-                    $bridge = $null
+                    Write-Warn 'Fabrika ağlarında da fiş yazıcısı bulunamadı; geçici adresler kaldırılıyor (yönetici izni).'
+                    [void](Invoke-NetworkBridge $net.IfIndex -Kaldir $temps)
                 }
             } else {
-                Write-Warn 'Bilgisayara adres eklenemedi.'
+                Write-Warn 'Geçici adresler eklenemedi.'
             }
         }
     }
 
-    # --- 4b) USB ile (ağ üzerinden olmadıysa) ----------------------------------------------
+    # --- 4b) Ayar fişindeki adresle -----------------------------------------------------
+    if (-not $chosenHost -and $canBridge -and -not $ForceUsb -and -not $DryRun) {
+        Write-Host ''
+        Write-Host '  Yazıcının ayar fişini basın: yazıcıyı kapatın, FEED tuşuna basılı tutarak açın, fiş çıkınca bırakın.' -ForegroundColor White
+        $manualIp = Read-PrinterIp
+        if ($manualIp -and (Test-SameSubnet $manualIp $net.Address $net.Prefix)) {
+            if (Wait-PrinterAt $manualIp 8) {
+                $chosenHost = $manualIp
+                Write-Ok "Yazıcı bulundu: $chosenHost"
+            } else {
+                Write-Warn "$manualIp adresinde yazıcı cevap vermedi. Yazıcı açık, ethernet kablosu modeme takılı mı?"
+            }
+        } elseif ($manualIp) {
+            $keep = Get-BridgeIp $manualIp
+            Write-Info "Bilgisayara $keep adresi eklenecek (yönetici izni)."
+            if (Invoke-NetworkBridge $net.IfIndex -Kalici @($keep)) {
+                if (Wait-PrinterAt $manualIp 20) {
+                    $chosenHost = $manualIp
+                    $bridge = @{ IfIndex = $net.IfIndex; Ip = $keep }
+                    Write-Ok "Köprü kuruldu: bu bilgisayar yazıcıya ($manualIp) $keep üzerinden ulaşıyor."
+                } else {
+                    Write-Warn "$manualIp adresinde yazıcı cevap vermedi; eklenen adres geri alınıyor."
+                    [void](Invoke-NetworkBridge $net.IfIndex -Kaldir @($keep))
+                }
+            }
+        }
+    }
+
+    # --- 4c) Son çare: USB ile adres yazmak (Xprinter ve uyumlu modeller) ------------------
     if (-not $chosenHost) {
         $usb = @(Get-Printer -ErrorAction SilentlyContinue | Where-Object { $_.PortName -match '^USB' })
         $usbPreferred = @($usb | Where-Object { $_.Name -match 'XP|Xprinter|POS|Receipt|Thermal|80' -or $_.DriverName -match 'XP|Xprinter|POS|Receipt|Thermal|80' })
@@ -625,9 +622,9 @@ if ($chosenHost) {
         if ($usb.Count -eq 0) {
             Write-Host ''
             Write-Host '  Şunları kontrol edin:' -ForegroundColor White
-            Write-Host '   1) Yazıcı açık mı, ethernet kablosu MODEME takılı mı (ışıkları yanıyor mu)?'
-            Write-Host '   2) Ayar fişindeki "IP Address" doğru girildi mi? Kurulum.cmd dosyasını tekrar çalıştırın.'
-            Write-Host '   3) Olmazsa yazıcıyı USB kablosuyla bu bilgisayara takıp tekrar deneyin.'
+            Write-Host '   1) Yazıcı açık mı, ethernet kablosu bilgisayarın bağlı olduğu MODEME takılı mı (ışıkları yanıyor mu)?'
+            Write-Host '   2) Bilgisayar misafir Wi-Fi ağına değil, modemin ana ağına bağlı mı?'
+            Write-Host '   3) Ayar fişindeki "IP Address" değerini not alıp Kurulum.cmd dosyasını tekrar çalıştırın.'
             Stop-Wizard 'Yazıcıya ulaşılamadı.'
         }
 
@@ -659,10 +656,9 @@ if ($chosenHost) {
                 Stop-Wizard "USB ile gönderilemedi: $($_.Exception.Message)"
             }
             if (-not (Wait-NewPrinterIp $newIp)) {
-                Write-Warn 'Yazıcı yeni adreste cevap vermedi.'
+                Write-Warn 'Yazıcı yeni adreste cevap vermedi (bu model USB adres komutunu desteklemiyor olabilir).'
                 Write-Host '   - Ethernet kablosu modeme takılı mı?'
-                Write-Host '   - Yazıcı kapalıyken FEED tuşuna basılı tutup açarak ayar fişi basın; fişteki IP adresi'
-                Write-Host "     $newIp mi? Değilse Kurulum.cmd dosyasını tekrar çalıştırın."
+                Write-Host '   - Yazıcının ayar fişini basıp "IP Address" değerini not alın ve Kurulum.cmd dosyasını tekrar çalıştırın.'
                 Stop-Wizard 'Yazıcı adresi doğrulanamadı.'
             }
             $chosenHost = $newIp
@@ -676,10 +672,10 @@ Write-Step 5 'Adres bu bilgisayarın ajan ayarına yazılıyor'
 
 $envTarget = Join-Path $InstallDir '.env'
 if ($existingEnv.Count -gt 0) {
-    $lines = @($existingEnv | Where-Object { $_ -notmatch '^\s*(PRINTER_HOST|PRINTER_PORT)\s*=' })
+    $lines = @($existingEnv | Where-Object { $_ -notmatch '^\s*(PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII)\s*=' })
     if (-not (Get-EnvValue $lines 'AGENT_ID')) { $lines += "AGENT_ID=$agentId" }
 } else {
-    $lines = @(Read-EnvLines $PackageEnv | Where-Object { $_ -notmatch '^\s*(AGENT_ID|LOG_DIR|PRINTER_HOST|PRINTER_PORT)\s*=' })
+    $lines = @(Read-EnvLines $PackageEnv | Where-Object { $_ -notmatch '^\s*(AGENT_ID|LOG_DIR|PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII)\s*=' })
     $lines += "AGENT_ID=$agentId"
 }
 # Paketteki hesap bilgileri eski kurulumdakinin yerine geçer (ör. parola sonradan değiştiyse).
@@ -692,6 +688,10 @@ foreach ($key in @('SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AGENT_EMAIL', 'AGENT_PA
     }
 }
 $lines += "PRINTER_HOST=$chosenHost"
+# Sade harf modu 6. adımdaki test fişine göre belirlenir: test yapılmayacaksa eski karar korunur.
+$previousAscii = Get-EnvValue $existingEnv 'PRINTER_ASCII'
+$asciiValue = if (($SkipTestPrint -or $Yes) -and $previousAscii) { $previousAscii } else { '0' }
+$lines += "PRINTER_ASCII=$asciiValue"
 
 if ($DryRun) {
     Write-Info "Deneme modu: $envTarget yazılmadı (PRINTER_HOST=$chosenHost, AGENT_ID=$(Get-EnvValue $lines 'AGENT_ID'))."
@@ -702,8 +702,9 @@ if ($DryRun) {
 }
 
 # ------------------------------------------------------------------------------------------
-Write-Step 6 'Test fişi'
+Write-Step 6 'Test fişi ve harfler'
 
+$asciiMode = ($asciiValue -eq '1')
 if ($DryRun -or $SkipTestPrint) {
     Write-Info 'Atlandı.'
 } else {
@@ -715,9 +716,28 @@ if ($DryRun -or $SkipTestPrint) {
     } else {
         Write-Ok 'Test fişi gönderildi.'
         if (-not $Yes) {
-            if (-not (Confirm-Yes 'Yazıcıdan "TESTDRUCK" fişi çıktı mı ve Türkçe/Almanca harfler düzgün mü?')) {
+            if (-not (Confirm-Yes 'Yazıcıdan "TESTDRUCK" fişi çıktı mı?')) {
                 Write-Warn 'Fiş boş çıktıysa kağıt ters takılmış olabilir (termal yüz dışa bakmalı). Kapak kapalı mı?'
                 if (-not (Confirm-Yes 'Yine de kuruluma devam edilsin mi?')) { Stop-Wizard 'Test fişi sorunu giderilince tekrar çalıştırın.' }
+            } else {
+                Write-Host ''
+                Write-Host '  Fişte "Drehspieß Sandwich", "Kuzu Şiş" ve "ÄÖÜ äöü ß  Şş Ğğ İı Çç" yazan yerlere bakın.' -ForegroundColor White
+                if (-not (Confirm-Yes 'Bu özel harfler düzgün basılmış mı?')) {
+                    $lines = @($lines | Where-Object { $_ -notmatch '^\s*PRINTER_ASCII\s*=' }) + 'PRINTER_ASCII=1'
+                    Set-RamosTextFile -Path $envTarget -Lines $lines
+                    $asciiMode = $true
+                    Write-Ok 'Bu bilgisayar için sade harf moduna geçildi (ä -> ae, ß -> ss, ş -> s gibi).'
+                    $tp2 = Invoke-Agent @('test-print') $InstallDir
+                    if ($tp2.Code -eq 0) {
+                        Write-Ok 'Sade harfli ikinci test fişi gönderildi.'
+                        if (-not (Confirm-Yes 'Şimdi fişteki yazılar okunaklı mı? ("Drehspiess Sandwich", "Kuzu Sis" gibi)')) {
+                            Write-Warn 'Yazıcı standart fiş komutlarını (ESC/POS) desteklemiyor olabilir. Kurulum sürüyor; sorun devam ederse yazıcının modelini bildirin.'
+                        }
+                    } else {
+                        Write-Host $tp2.Text -ForegroundColor Red
+                        Write-Warn 'Sade harfli test fişi gönderilemedi.'
+                    }
+                }
             }
         }
     }
@@ -812,7 +832,11 @@ if ($connected -and $a.printer_reachable) {
     Write-Host "  Yazıcı adresi : $chosenHost" -ForegroundColor Green
     Write-Host "  Bu bilgisayar : $env:COMPUTERNAME (siteye bağlı, yazıcıya erişiyor)" -ForegroundColor Green
     if ($bridge) {
-        Write-Host "  Köprü modu    : bu bilgisayara $($bridge.Ip) eklendi, yazıcıya bu yolla ulaşılıyor" -ForegroundColor Green
+        Write-Host "  Köprü         : bu bilgisayara $($bridge.Ip) eklendi, yazıcıya bu yolla ulaşılıyor" -ForegroundColor Green
+        Write-Host '                  (bilgisayar Wi-Fi ile kablo arasında geçiş yaparsa Kurulum.cmd tekrar çalıştırılmalı)' -ForegroundColor Green
+    }
+    if ($asciiMode) {
+        Write-Host '  Harfler       : sade (ä -> ae, ß -> ss, ş -> s)' -ForegroundColor Green
     }
     Write-Host '  Bilgisayar açıldığında ajan kendiliğinden başlar.' -ForegroundColor Green
     Write-Host '  Kaldırmak için: Kaldir.cmd' -ForegroundColor Green

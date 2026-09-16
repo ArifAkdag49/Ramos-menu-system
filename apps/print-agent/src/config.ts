@@ -17,6 +17,12 @@ export interface AgentEnv {
   PRINTER_HOST?: string;
   /** `PRINTER_HOST` ile birlikte isteğe bağlı port (boşsa site ayarı). */
   PRINTER_PORT?: number;
+  /**
+   * Sade harf modu (kurulum sihirbazı, test fişinde harfler bozuk çıkınca): fişteki ASCII dışı
+   * her harf düz karşılığına çevrilir (ä→ae, ß→ss, ş→s …), yazıcının karakter tablosundan
+   * bağımsız okunur fiş. Yoksa kapalı.
+   */
+  PRINTER_ASCII?: boolean;
 }
 
 const REQUIRED = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'AGENT_EMAIL', 'AGENT_PASSWORD', 'AGENT_ID'] as const;
@@ -70,6 +76,13 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
   if (printerPort !== undefined && !(Number.isInteger(printerPort) && printerPort >= 1 && printerPort <= 65535)) {
     throw new ConfigError(`PRINTER_PORT geçersiz: "${printerPortRaw}". 1–65535 arası bir sayı olmalı (yazıcı için genelde 9100).`);
   }
+  const asciiRaw = env.PRINTER_ASCII?.trim().toLowerCase() ?? '';
+  let printerAscii: boolean | undefined;
+  if (['1', 'true', 'ja', 'evet'].includes(asciiRaw)) printerAscii = true;
+  else if (['0', 'false', 'nein', 'hayir', 'hayır'].includes(asciiRaw)) printerAscii = false;
+  else if (asciiRaw !== '') {
+    throw new ConfigError(`PRINTER_ASCII geçersiz: "${env.PRINTER_ASCII}". 1 (sade harf) ya da 0 olmalı.`);
+  }
   return {
     SUPABASE_URL: env.SUPABASE_URL!,
     SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY!,
@@ -79,6 +92,7 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
     LOG_DIR: logDir,
     ...(printerHost !== '' ? { PRINTER_HOST: printerHost } : {}),
     ...(printerPort !== undefined ? { PRINTER_PORT: printerPort } : {}),
+    ...(printerAscii !== undefined ? { PRINTER_ASCII: printerAscii } : {}),
   };
 }
 

@@ -127,8 +127,10 @@ const UNKNOWN_STATE: PrinterState = {
 
 export async function discoverPrinters(opts: DiscoverOptions = {}): Promise<FoundPrinter[]> {
   const port = opts.port ?? PRINTER_PORT;
-  const connectMs = opts.connectMs ?? 500;
-  const concurrency = opts.concurrency ?? 64;
+  // Wi-Fi'da ilk ARP + bağlantı 500 ms'yi aşabiliyor (sahada kaçırılan yazıcı riski); tarama
+  // birden fazla ağı kapsayabildiği için eşzamanlılık da artırıldı.
+  const connectMs = opts.connectMs ?? 800;
+  const concurrency = opts.concurrency ?? 128;
   const probe = opts.probe ?? probePort;
   const status = opts.status ?? queryStatus;
   const networks = opts.networks ?? localNetworks();

@@ -53,6 +53,14 @@ describe('readConfig', () => {
     expect(cfg.PRINTER_PORT).toBe(9100);
   });
 
+  it('PRINTER_ASCII: 1/true açık, 0/false kapalı, boşsa alan yok, başka değer ConfigError', () => {
+    expect(readConfig({ ...full, PRINTER_ASCII: '1' }).PRINTER_ASCII).toBe(true);
+    expect(readConfig({ ...full, PRINTER_ASCII: 'true' }).PRINTER_ASCII).toBe(true);
+    expect(readConfig({ ...full, PRINTER_ASCII: '0' }).PRINTER_ASCII).toBe(false);
+    expect(readConfig({ ...full, PRINTER_ASCII: '' })).not.toHaveProperty('PRINTER_ASCII');
+    expect(() => readConfig({ ...full, PRINTER_ASCII: 'belki' })).toThrowError(/PRINTER_ASCII geçersiz/);
+  });
+
   it('geçersiz PRINTER_HOST ya da PRINTER_PORT Türkçe mesajla ConfigError fırlatır', () => {
     expect(() => readConfig({ ...full, PRINTER_HOST: '192.168.1.250:9100' })).toThrowError(/PRINTER_HOST geçersiz/);
     expect(() => readConfig({ ...full, PRINTER_HOST: 'yazıcı adı' })).toThrow(ConfigError);

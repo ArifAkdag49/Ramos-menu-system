@@ -1,9 +1,10 @@
-import { renderTicket, type TicketPayload } from '@ramos/shared';
+import { type TicketPayload } from '@ramos/shared';
+import { renderTicketForPrinter } from './ascii';
 import { encodeLines } from './escpos';
 import { blockingProblem, type PrinterState } from './status';
 import { PrinterError } from './transport';
 
-export interface AgentSettings { host: string; port: number; codepage: string; codepageNumber: number; transliterate: boolean }
+export interface AgentSettings { host: string; port: number; codepage: string; codepageNumber: number; transliterate: boolean; ascii?: boolean }
 export interface Job { id: string; type: string; payload: TicketPayload; attempts: number }
 export interface Heartbeat { reachable: boolean; state: PrinterState | null; error: string | null }
 export interface AgentApi {
@@ -379,7 +380,7 @@ export class Agent {
           let bytes: Uint8Array;
           try {
             bytes = encodeLines(
-              renderTicket(job.payload, { transliterate: s.transliterate }),
+              renderTicketForPrinter(job.payload, s),
               { codepage: s.codepage, codepageNumber: s.codepageNumber },
             );
           } catch (e) {

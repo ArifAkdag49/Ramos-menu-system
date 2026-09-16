@@ -316,6 +316,13 @@ describe('createSupabaseApi — kurulum sihirbazı: yerel PRINTER_HOST site ayar
       codepage: 'cp857',
       codepageNumber: 61,
       transliterate: false,
+      ascii: false,
     });
+  });
+
+  it('PRINTER_ASCII=1 ise ayarlarda sade harf modu açık gelir (sitede böyle bir alan yok)', async () => {
+    const api = await createSupabaseApi({ ...env, PRINTER_ASCII: true }, log);
+    stubSettings();
+    expect(await api.settings()).toMatchObject({ ascii: true, transliterate: false });
   });
 });
