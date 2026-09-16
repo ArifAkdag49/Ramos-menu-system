@@ -109,11 +109,15 @@ export function KitchenPage() {
       <ConnectionBanners topics={['orders', 'menu', 'printer-status', 'settings']} />
 
       <div className="flex flex-1 gap-4 overflow-hidden p-4">
-        <section className="flex-1 overflow-y-auto">
+        <section className="flex flex-1 flex-col gap-3 overflow-y-auto">
+          {/* O15 — iki sütun simetrik başlıklı. `kitchen.columns.active` tanımlıydı ama hiç
+              kullanılmıyordu; başlıksız sütun "bu liste ne?" sorusunu açık bırakıyordu. */}
+          <h2 className="text-lg font-semibold text-muted">{t('kitchen.columns.active')}</h2>
           {active.length === 0 ? (
             <p className="py-12 text-center text-lg text-muted">{t('kitchen.empty.active')}</p>
           ) : (
-            <ul className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+            // O14 — `items-start`: kısa kart, uzun kartın yanında satır yüksekliğine gerilmesin.
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] items-start gap-4">
               {active.map((order) => (
                 <OrderCard
                   key={order.id}

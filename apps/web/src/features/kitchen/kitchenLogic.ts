@@ -27,6 +27,39 @@ export function elapsedTone(createdAt: string, now: Date): 'ok' | 'warn' | 'late
   return m <= 10 ? 'ok' : m <= 20 ? 'warn' : 'late';
 }
 
+/**
+ * Kart tonu. Süre eşiklerine `ready` eklenir: hazır olmuş bir sipariş geciken sipariş değildir —
+ * iş bitmiştir, bekleyen şey garsonun alması (O12).
+ */
+export type KitchenTone = 'ok' | 'warn' | 'late' | 'ready';
+
+/**
+ * Kartın göstereceği sayaç ve tonu (O12). Mutfaktaki sipariş için "kaç dakikadır bekliyor"
+ * (`created_at`); hazır sipariş için "kaç dakikadır tezgâhta" (`ready_at`) — yemek soğurken
+ * anlamlı olan sayaç budur ve kırmızı ton yanlış bilgi verir. `ready_at` boşsa (eski kayıt,
+ * yarım kalmış geçiş) sayaç kaybolmaz, `created_at`'e düşer.
+ */
+export function cardElapsed(
+  order: Pick<OrderView, 'status' | 'created_at' | 'ready_at'>,
+  now: Date,
+): { since: string; tone: KitchenTone } {
+  if (order.status === 'ready' && order.ready_at) return { since: order.ready_at, tone: 'ready' };
+  return { since: order.created_at, tone: elapsedTone(order.created_at, now) };
+}
+
+/**
+ * Kalemlerin GÖRÜNÜM sırası (Y8): iptal edilmiş kalemler listenin sonuna iner. Kartın en değerli
+ * satırı (ilk satır) yapılmayacak işe gitmez. Sunucu sırası (`sort`) her grubun kendi içinde
+ * korunur — `Array.prototype.sort` kararlıdır. Girdi dizisi değiştirilmez.
+ */
+export function visibleItems<T extends { status: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => Number(a.status === 'cancelled') - Number(b.status === 'cancelled'));
+}
+
+/** Tükendi işaretli ürün sayısı — KDS başlığındaki "Tükendi" düğmesinin sayacı (O10). */
+export const soldOutCount = (products: { is_sold_out: boolean }[]): number =>
+  products.reduce((n, p) => n + (p.is_sold_out ? 1 : 0), 0);
+
 /** HAZIR'ı geri alma penceresi: en fazla 30 sn (global-constraints). */
 export const canUndo = (o: Pick<OrderView, 'status' | 'ready_at'>, now: Date): boolean =>
   o.status === 'ready' && !!o.ready_at && now.getTime() - Date.parse(o.ready_at) <= 30_000;

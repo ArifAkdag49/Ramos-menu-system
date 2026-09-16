@@ -100,3 +100,18 @@ describe('KitchenPage', () => {
     }
   });
 });
+
+/** M4 tasarım kapısı O15 / O14 — iki sütun simetrik başlıklı, kartlar satıra gerilmez. */
+describe('KitchenPage — sütun başlıkları ve ızgara', () => {
+  it('O15: aktif sütunun başlığı görünür (kitchen.columns.active artık kullanılıyor)', () => {
+    render(<KitchenPage />);
+    expect(screen.getByRole('heading', { name: 'Mutfakta' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Hazır' })).toBeInTheDocument();
+  });
+
+  it('O14: kart ızgarası `items-start` — kısa kart uzun kartın boyuna gerilmez', () => {
+    const { container } = render(<KitchenPage />);
+    const grid = container.querySelector('ul.grid');
+    expect(grid?.className).toContain('items-start');
+  });
+});

@@ -22,11 +22,28 @@
      kendi /15 tinti üzerinde 4,45:1'de kalıyordu (AA sınırının altı) — DESIGN.md §2.1. */
   --color-danger-ink: #ff7b7f;
 
+  /* M4 tasarım kapısı Y6 — gecikmiş/uyarı veren KDS kartının ZEMİNİ. `--color-danger`ın %20,
+     `--color-warning`ın %12 opaklıkla `--color-surface` üzerine bindirilmiş SABİT karşılığı.
+     Oranlar neden farklı: kırmızı koyu, amber parlak; aynı alfa çok farklı bir zemin veriyor.
+     Zeminin kendisi `--color-surface`'ten ayırt edilebilmeli (≥ 1,2:1) ama üstündeki İPTAL
+     rozetinin %15 tinti hâlâ AA geçmeli — iki ucu birden tutan değerler bunlar.
+     Neden sabit/opak: zemin için `opacity` ya da alfa kullanılsaydı üstündeki metin de sönerdi
+     (Y2'nin tam sebebi). Opak değer kontrastı hesaplanabilir tutar — bütün oranlar
+     `features/kitchen/kitchenContrast.test.ts`'te tokenlardan hesaplanır. */
+  --color-surface-late: #3e1e1f;
+  --color-surface-warn: #2f2516;
+
   --font-sans: 'Montserrat Variable', ui-sans-serif, system-ui, sans-serif;
 
   --radius-card: 14px;
   --radius-control: 12px;
   --radius-sheet: 20px;
+
+  /* DESIGN.md §3 `display` rolü (marka, KDS masa adı): 40 / 1.05 / 700. M4 kapısı O2 — rol
+     tanımlıydı ama tokena hiç bağlanmamıştı; KDS masa adı `text-3xl` (30 px) ile 22 px'lik kalem
+     satırlarının yanında yeterli hiyerarşi kurmuyordu. */
+  --text-display: 40px;
+  --text-display--line-height: 1.05;
 
   --text-kds: 22px;
   --text-kds--line-height: 1.35;
@@ -82,6 +99,26 @@ body {
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* M4 tasarım kapısı O6 — "Hazır" nabzı. Tailwind'in `animate-pulse`'ı opaklığı 1 ↔ 0,5 arasında
+   gezdirdiği için rozetin metni periyodik olarak AA'nın (4,5:1) altına iniyordu; axe bunu
+   `tables` ekranında yakaladı. Bu nabız yalnız DIŞ halkayı (box-shadow) hareket ettirir: metin,
+   zemin ve kenarlık renkleri hiç değişmez, dolayısıyla kontrast her karede sabit kalır.
+   0,5 Hz — nöbet eşiğinin (3 Hz) çok altında. Aşağıdaki `prefers-reduced-motion` kuralı bunu da
+   durdurur. Kullanımı: `animate-pulse` yerine `pulse-ring`. */
+@keyframes ramos-pulse-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentcolor 50%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, currentcolor 0%, transparent);
+  }
+}
+
+.pulse-ring {
+  animation: ramos-pulse-ring 2s ease-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

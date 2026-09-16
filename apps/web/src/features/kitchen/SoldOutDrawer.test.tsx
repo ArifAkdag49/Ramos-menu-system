@@ -42,3 +42,26 @@ describe('SoldOutDrawer', () => {
     expect(mutate).toHaveBeenCalledWith({ productId: 'p1', soldOut: true });
   });
 });
+
+/** M4 tasarım kapısı O10 — panel tüm mutfak ekranını kapatıyordu, sayaç ve süzgeç yoktu. */
+describe('SoldOutDrawer — M4 tasarım kapısı', () => {
+  it('"Yalnız tükendiler" süzgeci yalnız tükendi ürünleri bırakır', async () => {
+    render(<SoldOutDrawer open onClose={() => {}} />);
+    await userEvent.click(screen.getByRole('button', { name: /Yalnız tükendiler/ }));
+    expect(screen.getByText(/Pizza Mix/)).toBeInTheDocument();
+    expect(screen.queryByText(/Drehspieß Sandwich/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Cola/)).not.toBeInTheDocument();
+  });
+
+  it('panelde tükendi sayacı var', () => {
+    render(<SoldOutDrawer open onClose={() => {}} />);
+    expect(screen.getByText('1 ürün tükendi')).toBeInTheDocument();
+  });
+
+  it('ürün listesi kendi yüksekliği sınırlı kutuda kaydırılır — panel ekranı kaplamaz', () => {
+    render(<SoldOutDrawer open onClose={() => {}} />);
+    const list = screen.getByTestId('sold-out-list');
+    expect(list.className).toMatch(/max-h-\[\d+dvh\]/);
+    expect(list.className).toContain('overflow-y-auto');
+  });
+});

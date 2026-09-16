@@ -164,6 +164,12 @@
     },
     "columns": { "active": "In der Küche", "ready": "Fertig" },
     "empty": { "active": "Keine Bestellung in der Küche", "ready": "Kein fertiges Essen wartet" },
+    "elapsed": {
+      "warn": "WARTET",
+      "late": "VERSPÄTET",
+      "sinceOrder": "Seit Bestellung",
+      "sinceReady": "Wartet auf der Theke"
+    },
     "actions": {
       "ready": "FERTIG",
       "undo": "Rückgängig (30 s)",
@@ -180,7 +186,9 @@
       "title": "Ausverkauft",
       "button": "Ausverkauft",
       "search": "Gericht suchen",
-      "empty": "Kein Gericht gefunden"
+      "empty": "Kein Gericht gefunden",
+      "count": "{{count}} Gerichte ausverkauft",
+      "onlySoldOut": "Nur ausverkaufte"
     }
   },
   "admin": {

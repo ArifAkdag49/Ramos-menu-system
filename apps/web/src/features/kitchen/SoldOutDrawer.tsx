@@ -5,26 +5,35 @@ import { useMenu } from '../../data/menu';
 import { useSetSoldOut } from '../../data/orders';
 import { Chip } from '../../ui/Chip';
 import { Sheet } from '../../ui/Sheet';
+import { soldOutCount } from './kitchenLogic';
 
 /**
  * "Tükendi" paneli: ürünler kategoriye göre gruplanır, aramayla filtrelenir, her ürün tek
  * dokunuşla tükendi/satışta arasında geçer (`useSetSoldOut`, Görev 12). Mutfaktan (kirli
  * ellerle) hızlı erişim için büyük dokunma hedefleri.
+ *
+ * M4 kapısı O10 — panel tüm mutfak ekranını kapatıyordu ve 107 ürün tek liste hâlindeydi.
+ * Liste kendi yüksekliği sınırlı kaydırma kutusunda durur (panel içeriğiyle büyüdüğü için
+ * yükseklik böylece makul bir orana iner), üstünde "yalnız tükendiler" süzgeci ve sayaç var.
  */
 export function SoldOutDrawer({ open, onClose, locale = 'tr' }: { open: boolean; onClose: () => void; locale?: Locale }) {
   const { t } = useTranslation();
   const searchId = useId();
   const [query, setQuery] = useState('');
+  const [onlySoldOut, setOnlySoldOut] = useState(false);
   const { categories, products } = useMenu();
   const setSoldOut = useSetSoldOut();
 
+  const count = soldOutCount(products);
   const q = query.trim().toLowerCase();
   const filtered = useMemo(
     () =>
       products.filter(
-        (p) => !q || p.name.toLowerCase().includes(q) || (p.code ?? '').toLowerCase().includes(q),
+        (p) =>
+          (!onlySoldOut || p.is_sold_out) &&
+          (!q || p.name.toLowerCase().includes(q) || (p.code ?? '').toLowerCase().includes(q)),
       ),
-    [products, q],
+    [products, q, onlySoldOut],
   );
 
   const byCategory = [...categories]
@@ -48,28 +57,39 @@ export function SoldOutDrawer({ open, onClose, locale = 'tr' }: { open: boolean;
           />
         </div>
 
-        {byCategory.length === 0 ? (
-          <p className="py-6 text-center text-base text-muted">{t('kitchen.soldOut.empty')}</p>
-        ) : (
-          byCategory.map(({ category, items }) => (
-            <div key={category.id} className="flex flex-col gap-2">
-              <h3 className="text-sm font-semibold text-muted">{localName(category, locale)}</h3>
-              <div className="flex flex-wrap gap-2">
-                {items.map((p) => (
-                  <Chip
-                    key={p.id}
-                    selected={p.is_sold_out}
-                    removed={p.is_sold_out}
-                    onClick={() => setSoldOut.mutate({ productId: p.id, soldOut: !p.is_sold_out })}
-                  >
-                    {p.code ? `${p.code} ` : ''}
-                    {p.name}
-                  </Chip>
-                ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <Chip selected={onlySoldOut} onClick={() => setOnlySoldOut((v) => !v)}>
+            {t('kitchen.soldOut.onlySoldOut')}
+          </Chip>
+          <p className="text-base text-muted">{t('kitchen.soldOut.count', { count })}</p>
+        </div>
+
+        {/* Kaydırma kutusu paneli dizginler: `Sheet` yüksekliği içerikten gelir, 107 ürün onu
+            ekranın tamamına çıkarıyordu ve aşçı siparişleri kaybediyordu. */}
+        <div className="flex max-h-[40dvh] flex-col gap-4 overflow-y-auto" data-testid="sold-out-list">
+          {byCategory.length === 0 ? (
+            <p className="py-6 text-center text-base text-muted">{t('kitchen.soldOut.empty')}</p>
+          ) : (
+            byCategory.map(({ category, items }) => (
+              <div key={category.id} className="flex flex-col gap-2">
+                <h3 className="text-base font-semibold text-muted">{localName(category, locale)}</h3>
+                <div className="flex flex-wrap gap-2">
+                  {items.map((p) => (
+                    <Chip
+                      key={p.id}
+                      selected={p.is_sold_out}
+                      removed={p.is_sold_out}
+                      onClick={() => setSoldOut.mutate({ productId: p.id, soldOut: !p.is_sold_out })}
+                    >
+                      {p.code ? `${p.code} ` : ''}
+                      {p.name}
+                    </Chip>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </div>
     </Sheet>
   );

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { canUndo, elapsedTone, itemLines, kitchenColumns, newOrderIds } from './kitchenLogic';
+import {
+  canUndo,
+  cardElapsed,
+  elapsedTone,
+  itemLines,
+  kitchenColumns,
+  newOrderIds,
+  soldOutCount,
+  visibleItems,
+} from './kitchenLogic';
 
 const now = new Date('2026-09-15T18:00:00Z');
 const o = (id: string, status: string, created: string, ready_at: string | null = null) =>
@@ -76,4 +85,66 @@ describe('kitchenLogic', () => {
       note: 'Soße extra',
     });
   });
+});
+
+/** Y8 — kartın ilk satırı yapılacak işe ayrılır; iptal edilmiş kalem en sona iner. */
+describe('visibleItems — iptal edilmiş kalemler listenin SONUNDA', () => {
+  const item = (id: string, status: string) => ({ id, status }) as never;
+
+  it('iptal edilmiş kalem, aktiflerin arkasına geçer', () => {
+    const out = visibleItems([
+      item('c1', 'cancelled'),
+      item('a1', 'active'),
+      item('c2', 'cancelled'),
+      item('a2', 'active'),
+    ]);
+    expect(out.map((i: { id: string }) => i.id)).toEqual(['a1', 'a2', 'c1', 'c2']);
+  });
+
+  it('kendi grubunun içinde sunucu sırası korunur (kararlı sıralama)', () => {
+    const out = visibleItems([item('a1', 'active'), item('a2', 'active'), item('a3', 'active')]);
+    expect(out.map((i: { id: string }) => i.id)).toEqual(['a1', 'a2', 'a3']);
+  });
+
+  it('girdiyi yerinde değiştirmez', () => {
+    const input = [item('c1', 'cancelled'), item('a1', 'active')];
+    visibleItems(input);
+    expect(input.map((i: { id: string }) => i.id)).toEqual(['c1', 'a1']);
+  });
+});
+
+/** O12 — hazır sipariş için anlamlı sayaç "kaç dakikadır tezgâhta", ve ton asla `late` değil. */
+describe('cardElapsed — hangi zamandan sayılır, hangi tonda', () => {
+  it('mutfaktaki sipariş: created_at, tonu süre eşiklerinden', () => {
+    expect(cardElapsed({ status: 'in_kitchen', created_at: '2026-09-15T17:20:00Z', ready_at: null } as never, now)).toEqual(
+      { since: '2026-09-15T17:20:00Z', tone: 'late' },
+    );
+    expect(cardElapsed({ status: 'in_kitchen', created_at: '2026-09-15T17:55:00Z', ready_at: null } as never, now)).toEqual(
+      { since: '2026-09-15T17:55:00Z', tone: 'ok' },
+    );
+  });
+
+  it('hazır sipariş: ready_at, 38 dk önce verilmiş olsa bile ton `late` DEĞİL', () => {
+    expect(
+      cardElapsed(
+        { status: 'ready', created_at: '2026-09-15T17:22:00Z', ready_at: '2026-09-15T17:58:00Z' } as never,
+        now,
+      ),
+    ).toEqual({ since: '2026-09-15T17:58:00Z', tone: 'ready' });
+  });
+
+  it('ready_at yoksa created_at`e düşer (veri eksikse sayaç kaybolmaz)', () => {
+    expect(cardElapsed({ status: 'ready', created_at: '2026-09-15T17:55:00Z', ready_at: null } as never, now)).toEqual({
+      since: '2026-09-15T17:55:00Z',
+      tone: 'ok',
+    });
+  });
+});
+
+/** O10 — "Tükendi" düğmesindeki sayaç. */
+describe('soldOutCount', () => {
+  it('yalnız tükendi işaretli ürünleri sayar', () => {
+    expect(soldOutCount([{ is_sold_out: true }, { is_sold_out: false }, { is_sold_out: true }])).toBe(2);
+  });
+  it('boş menüde 0', () => expect(soldOutCount([])).toBe(0));
 });

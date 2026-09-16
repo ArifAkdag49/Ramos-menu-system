@@ -164,6 +164,12 @@
     },
     "columns": { "active": "Mutfakta", "ready": "Hazır" },
     "empty": { "active": "Mutfakta bekleyen sipariş yok", "ready": "Hazır bekleyen sipariş yok" },
+    "elapsed": {
+      "warn": "BEKLİYOR",
+      "late": "GECİKTİ",
+      "sinceOrder": "Sipariş verileli",
+      "sinceReady": "Tezgâhta bekliyor"
+    },
     "actions": {
       "ready": "HAZIR",
       "undo": "Geri al (30 sn)",
@@ -180,7 +186,9 @@
       "title": "Tükendi",
       "button": "Tükendi",
       "search": "Ürün ara",
-      "empty": "Ürün bulunamadı"
+      "empty": "Ürün bulunamadı",
+      "count": "{{count}} ürün tükendi",
+      "onlySoldOut": "Yalnız tükendiler"
     }
   },
   "admin": {
