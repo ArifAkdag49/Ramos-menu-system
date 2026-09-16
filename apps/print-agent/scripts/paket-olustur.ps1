@@ -97,7 +97,7 @@ New-Item -ItemType Directory -Force (Join-Path $pkg 'dist') | Out-Null
 New-Item -ItemType Directory -Force (Join-Path $pkg 'scripts') | Out-Null
 
 Copy-Item (Join-Path $agentRoot 'dist\ramos-agent.mjs') (Join-Path $pkg 'dist')
-foreach ($f in @('agent-common.ps1', 'install-agent.ps1', 'uninstall-agent.ps1', 'run-agent.cmd', 'kurulum.ps1')) {
+foreach ($f in @('agent-common.ps1', 'install-agent.ps1', 'uninstall-agent.ps1', 'run-agent.cmd', 'kurulum.ps1', 'ag-kopru.ps1')) {
     Copy-Item (Join-Path $PSScriptRoot $f) (Join-Path $pkg 'scripts')
 }
 foreach ($f in @('Kurulum.cmd', 'Kaldir.cmd', 'OKU-BENI.txt')) {

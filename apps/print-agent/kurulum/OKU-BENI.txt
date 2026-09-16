@@ -14,8 +14,10 @@ KURULUM
 Sihirbaz şunları kendisi yapar:
   - Node.js yoksa kurar (Windows izin isterse "Evet" deyin)
   - Yazıcıyı ağda bulur
-  - Yazıcı başka bir ağın adresinde kalmışsa ve USB ile bağlıysa, yazıcıya bu ağdan
-    boş bir adres yazar (bir kez USB kablosu takmanız yeterli)
+  - Yazıcı başka bir ağın adresinde kalmışsa (ör. 192.168.1.100) ayar fişindeki adresi
+    sorar, Windows'tan yönetici izni alır ve yazıcıya kablo üzerinden ulaşıp adresini bu
+    ağa uygun hâle getirir. USB kablosu gerekmez. Yazıcı adres değişikliğini kabul etmezse
+    bilgisayar yazıcıya kalıcı olarak ek bir adres üzerinden ulaşır ("köprü modu").
   - Bir test fişi basar
   - Sorarak, prize takılıyken bilgisayarın uykuya geçmesini kapatır (dizüstünde kapak
     kapanınca uyumasını da). Uykudaki bilgisayar fiş basamaz.
@@ -40,10 +42,11 @@ kalmalı (pildeyken uyku ayarı değiştirilmez). Ekranın kapanması sorun değ
 
 YAZICI BULUNAMAZSA
 ------------------
-- Yazıcı açık mı, ethernet ışıkları yanıyor mu?
-- Yazıcıyı USB kablosuyla bu bilgisayara takıp Kurulum.cmd'yi tekrar çalıştırın.
-- Yazıcının ayar fişini basmak için: yazıcı kapalıyken FEED tuşuna basılı tutun,
-  yazıcıyı açın, fiş çıkınca bırakın. Fişte yazıcının IP adresi yazar.
+- Yazıcı açık mı, ethernet kablosu MODEME takılı mı, ışıkları yanıyor mu?
+- Yazıcının ayar fişini basın: yazıcı kapalıyken FEED tuşuna basılı tutun, yazıcıyı açın,
+  fiş çıkınca bırakın. Sihirbaz sorduğunda fişteki "IP Address" değerini yazın.
+- Windows izin penceresine "Evet" (Almanca Windows'ta "Ja") deyin.
+- Hâlâ olmazsa yazıcıyı USB kablosuyla bu bilgisayara takıp Kurulum.cmd'yi tekrar çalıştırın.
 - Fiş boş çıkıyorsa kağıt rulosu ters takılmıştır (termal yüz dışa bakmalı).
 
 
