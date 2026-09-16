@@ -131,3 +131,20 @@ describe('OrderPage — kategori şeridi (O7)', () => {
     expect(screen.getByRole('group', { name: 'Kategoriler' })).toBeInTheDocument();
   });
 });
+
+/** Satıra dokunmak ürün kartını açar; "Ekle" ise kart açmadan doğrudan sepete ekler. */
+describe('OrderPage — satır ürün kartını açar', () => {
+  it('satıra dokununca kart (dialog) açılır', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    show();
+    await user.click(within(row('Drehspieß Sandwich')).getByRole('button', { name: /ürün kartını aç/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('"Ekle" kart açmaz', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    show();
+    await user.click(within(row('Drehspieß Teller')).getByRole('button', { name: /^Ekle$/ }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});

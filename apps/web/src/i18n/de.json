@@ -99,6 +99,7 @@
     },
     "order": {
       "title": "Bestellung aufnehmen",
+      "openProduct": "Produktkarte {{name}} öffnen",
       "searchPlaceholder": "Nummer oder Name",
       "categoriesLabel": "Kategorien",
       "soldOut": "Ausverkauft",

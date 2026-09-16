@@ -99,6 +99,7 @@
     },
     "order": {
       "title": "Sipariş al",
+      "openProduct": "{{name}} ürün kartını aç",
       "searchPlaceholder": "Ürün no veya adı",
       "categoriesLabel": "Kategoriler",
       "soldOut": "Tükendi",

@@ -110,7 +110,13 @@ export function OrderPage() {
     setSheet({
       product,
       key: line.key,
-      initial: { variantId: line.variantId, optionIds: line.optionIds, removedIngredientIds: line.removedIngredientIds, quantity: line.quantity, note: line.note },
+      initial: {
+        variantId: line.variantId,
+        optionIds: line.optionIds,
+        removedIngredientIds: line.removedIngredientIds,
+        quantity: line.quantity,
+        note: line.note,
+      },
     });
   };
 
@@ -129,11 +135,19 @@ export function OrderPage() {
   const cartTotal = cartTotalCents(lines, byId);
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    // `overflow-x-clip`: telefonda sayfa asla yatay kaymaz. `hidden` değil `clip` — `hidden` bir kaydırma
+    // kabı kurup üstteki `sticky` başlığı bozardı.
+    <div className="flex min-h-dvh flex-col overflow-x-clip">
       <div className="sticky top-0 z-10 bg-surface">
         <header className="flex h-[var(--header-h)] items-center gap-3 border-b border-border px-4">
-          <IconButton label={t('common.back')} icon={<ArrowLeft aria-hidden size={22} />} onClick={() => navigate(`/waiter/table/${id}`)} />
-          <h1 className="min-w-0 flex-1 truncate text-xl font-semibold">{table ? localTableName(table.name, locale) : t('waiter.order.title')}</h1>
+          <IconButton
+            label={t('common.back')}
+            icon={<ArrowLeft aria-hidden size={22} />}
+            onClick={() => navigate(`/waiter/table/${id}`)}
+          />
+          <h1 className="min-w-0 flex-1 truncate text-xl font-semibold">
+            {table ? localTableName(table.name, locale) : t('waiter.order.title')}
+          </h1>
           <button
             type="button"
             onClick={() => setCartOpen(true)}
@@ -161,7 +175,11 @@ export function OrderPage() {
             {t('common.search')}
           </label>
           <div className="relative">
-            <Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <Search
+              aria-hidden
+              size={18}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+            />
             <input
               id="order-search"
               type="text"
@@ -180,10 +198,15 @@ export function OrderPage() {
           <div
             role="group"
             aria-label={t('waiter.order.categoriesLabel')}
-            className="flex gap-2 overflow-x-auto px-4 pb-3"
+            className="flex gap-2 overflow-x-auto overscroll-x-contain px-4 pb-3 [scrollbar-width:none]"
           >
             {categories.map((c) => (
-              <Chip key={c.id} selected={activeCategoryId === c.id} onClick={() => scrollToCategory(c.id)}>
+              <Chip
+                key={c.id}
+                selected={activeCategoryId === c.id}
+                className="shrink-0 whitespace-nowrap"
+                onClick={() => scrollToCategory(c.id)}
+              >
                 {localName(c, locale)}
               </Chip>
             ))}
@@ -196,7 +219,13 @@ export function OrderPage() {
           <MenuSkeleton />
         ) : searching ? (
           filtered.map((p) => (
-            <ProductRow key={p.id} product={p} t={t} onAdd={quickAdd} onOpenSheet={openSheetForAdd} />
+            <ProductRow
+              key={p.id}
+              product={p}
+              t={t}
+              onAdd={quickAdd}
+              onOpenSheet={openSheetForAdd}
+            />
           ))
         ) : (
           categories.map((c) => (
@@ -217,7 +246,13 @@ export function OrderPage() {
       </div>
 
       {sheet ? (
-        <ProductSheet product={sheet.product} open onClose={() => setSheet(null)} onSubmit={handleSheetSubmit} initial={sheet.initial} />
+        <ProductSheet
+          product={sheet.product}
+          open
+          onClose={() => setSheet(null)}
+          onSubmit={handleSheetSubmit}
+          initial={sheet.initial}
+        />
       ) : null}
 
       <CartDrawer
@@ -279,7 +314,9 @@ function ProductRow({
   onOpenSheet: (p: MenuProduct) => void;
 }) {
   const soldOut = product.is_sold_out;
-  const cheapestVariant = product.variants.length ? Math.min(...product.variants.map((v) => v.price_cents)) : null;
+  const cheapestVariant = product.variants.length
+    ? Math.min(...product.variants.map((v) => v.price_cents))
+    : null;
   // Y3: tükendi bilgisi artık rozette; fiyat gizlenmez — garson "bu ürün kaç para" sorusunu
   // tükenmiş üründe de cevaplayabilmeli (müşteri sorar, ürün akşam geri gelir).
   const priceLabel =
@@ -288,7 +325,24 @@ function ProductRow({
       : formatEuro(product.base_price_cents ?? 0);
 
   return (
-    <li className="flex items-start gap-3 border-b border-border py-3">
+    <li className="relative flex items-start gap-3 border-b border-border py-3">
+      {/*
+        Satırın tamamı ürün kartını açar (büyük görsel, malzeme çıkar/ekle, mutfağa not). Düğme satırı
+        kaplayan bir katmandır: `<li>` içinde iç içe buton olmaz ve "Ekle" (`z-[1]`) üstte kalıp
+        doğrudan sepete eklemeye devam eder. Tükenen ürünün kartı açılmaz — eklenemez.
+      */}
+      {soldOut ? null : (
+        <button
+          type="button"
+          aria-label={t('waiter.order.openProduct', { name: product.name })}
+          onClick={() => onOpenSheet(product)}
+          className={clsx(
+            'absolute inset-0 cursor-pointer rounded-control transition-colors duration-150 ease-out',
+            'active:bg-surface-2/60 hover:bg-surface-2/30',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lime',
+          )}
+        />
+      )}
       <ProductImage path={product.image_path} size="thumb" code={product.code} />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         {/*
@@ -300,7 +354,9 @@ function ProductRow({
           STORNO + yeniden basım). DESIGN.md §3: kısaltma yerine sarma.
         */}
         <p className="flex items-baseline gap-2">
-          {product.code ? <span className="tabular shrink-0 text-base text-muted">{product.code}</span> : null}
+          {product.code ? (
+            <span className="tabular shrink-0 text-base text-muted">{product.code}</span>
+          ) : null}
           <span
             className={clsx(
               // `min-w-0`: tek parçalı uzun Almanca bileşik adlar (Drehspießfleisch) esnek
@@ -322,7 +378,7 @@ function ProductRow({
             <Button
               size="md"
               variant="secondary"
-              className="shrink-0"
+              className="relative z-[1] shrink-0"
               icon={<Plus aria-hidden size={18} />}
               onClick={() => (needsSheet(product) ? onOpenSheet(product) : onAdd(product))}
             >
