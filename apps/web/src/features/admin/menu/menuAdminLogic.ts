@@ -1,4 +1,4 @@
-import type { MenuProduct, Selection, TicketPayload } from '@ramos/shared';
+import { unitPriceCents, type MenuProduct, type Selection, type TicketPayload } from '@ramos/shared';
 
 export type GroupErrorKey = 'min_gt_max' | 'min_gt_options' | 'max_gt_options';
 
@@ -109,6 +109,7 @@ export function previewPayloadFor(
         without,
         groups,
         note: null,
+        priceCents: unitPriceCents(product, sel) * qty,
       },
     ],
   };

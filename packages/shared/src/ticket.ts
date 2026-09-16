@@ -1,4 +1,4 @@
-import { formatOrderNo } from './money';
+import { formatEuro, formatOrderNo } from './money';
 
 export interface TicketPayload {
   kind: 'order' | 'addition' | 'storno' | 'table_move' | 'reprint' | 'test';
@@ -27,6 +27,8 @@ export interface TicketPayload {
     without: string[];
     groups: { label: string; format: 'label_values' | 'values_only' | 'plus_each'; values: string[] }[];
     note: string | null;
+    /** Satır toplamı (adet × birim fiyat, kuruş). Eski işlerde ve STORNO'da yoktur → fiyat sütunu basılmaz. */
+    priceCents?: number;
   }[];
 }
 
@@ -104,22 +106,10 @@ function pushText(lines: Line[], text: string, style: TextStyle = {}): void {
   lines.push({ kind: 'text', text, ...style });
 }
 
-// Flush-left first line, hanging `indent` on continuation lines — for item main lines
-// and top-level closing lines (Hinweis/Grund/Offene Bestellungen/footer).
+// Flush-left first line, hanging `indent` on continuation lines — for top-level lines
+// (meta, Hinweis/Grund/Offene Bestellungen/footer).
 function pushWrapped(lines: Line[], text: string, columns: number, indent: number, style: TextStyle = {}): void {
   for (const part of wrap(text, columns, indent)) pushText(lines, part, style);
-}
-
-// Sub-lines under an item sit at a base indent of 3 spaces; a wrapped continuation
-// hangs at 6. wrap() itself never indents its first line, so the budget is reserved
-// up front (columns - 3) and the 3-space base is prepended to every returned part —
-// wrap's own (hang - base) indent then lands the continuation at 3 + 3 = 6 total.
-function pushSubLine(lines: Line[], text: string, columns: number, style: TextStyle = {}): void {
-  const base = 3;
-  const hang = 6;
-  for (const part of wrap(text, columns - base, hang - base)) {
-    pushText(lines, `${' '.repeat(base)}${part}`, style);
-  }
 }
 
 // A width:2 (double-width) line only has columns/2 usable print columns (R46).
@@ -129,35 +119,114 @@ function pushDoubleWidth(lines: Line[], text: string, style: TextStyle = {}): vo
   for (const part of wrap(text, DOUBLE_WIDTH_BUDGET, 0)) pushText(lines, part, { ...style, width: 2 });
 }
 
-function renderItem(lines: Line[], item: TicketItem, columns: number, clean: (s: string) => string): void {
-  const codePart = item.code ? `${clean(item.code)} ` : '';
-  const mainText = `${item.qty}x ${codePart}${clean(item.name)}`;
-  pushWrapped(lines, mainText, columns, 3, { bold: true, height: 2 });
+// Çift genişlikte ortalı yazı. `linesToText` ve ESC/POS kodlayıcısı width:2 satırı kendiliğinden
+// ortalamaz (yarım kolon hesabı yanlış olurdu); boşluk 24 kolonluk bütçeye göre elle eklenir.
+const centerWide = (text: string): string =>
+  `${' '.repeat(Math.max(0, Math.floor((DOUBLE_WIDTH_BUDGET - text.length) / 2)))}${text}`;
 
-  if (item.variant) pushSubLine(lines, clean(item.variant), columns);
-  if (item.without.length > 0) {
-    pushSubLine(lines, `OHNE: ${item.without.map(clean).join(', ')}`, columns, { invert: true, bold: true });
-  }
+// Fiş düzeni (sahibin onayladığı örnek): "Nr." sütunu 5 kolon, fiyat sağa yaslı tek sütun.
+const QTY_COL = 5;
+const PRICE_COL = 11; // "1.234,50 €" (10) + bir boşluk
+const SUB_INDENT = QTY_COL + 3;
+
+// Intl, "8,50 €" içine bölünmez boşluk (U+00A0) koyar; yazıcının kod sayfasında ayrı bir
+// karakterdir ve bazı Xprinter'larda boşluk yerine sembol basar — düz boşluğa çevrilir.
+const money = (cents: number): string => formatEuro(cents).replace(/\u00a0/g, ' ');
+
+const hasPrices = (items: TicketItem[]): boolean => items.some((i) => typeof i.priceCents === 'number');
+
+// Satır = sabit genişlikli sütun öneki ("2x   ", "Nr.  ") + metin + sağa yaslı değer. Önek
+// `wrap`'e girmez: `wrap` boşlukları tek boşluğa indirir ve sütun hizası kaybolurdu. Metin fiyat
+// sütununa taşmadan sarılır, devam satırları önek genişliğinde girintilenir; değer ilk satırda
+// kalır. `right === null` → fiyat sütunu yok, metin satırın tamamını kullanır.
+function pushColumns(
+  lines: Line[],
+  prefix: string,
+  body: string,
+  right: string | null,
+  columns: number,
+  style: TextStyle = {},
+): void {
+  const budget = (right === null ? columns : columns - PRICE_COL) - prefix.length;
+  wrap(body, budget, 0).forEach((part, i) => {
+    const left = `${i === 0 ? prefix : ' '.repeat(prefix.length)}${part}`;
+    pushText(lines, i === 0 && right ? `${left.padEnd(columns - right.length)}${right}` : left, style);
+  });
+}
+
+// Alt satırlar ("ohne …", "Soße: …", "+ Extra …") ürün adının altına hizalanır.
+function pushSubLine(lines: Line[], text: string, columns: number, withPrice: boolean): void {
+  const budget = columns - SUB_INDENT - (withPrice ? PRICE_COL : 0);
+  for (const part of wrap(text, budget, 3)) pushText(lines, `${' '.repeat(SUB_INDENT)}${part}`);
+}
+
+// "+--------+ / | TISCH 61 | / +--------+" — kâğıtta çerçeve komutu yok; ASCII çizgi her kod
+// sayfasında (cp857, WPC1254) aynı basılır. Uzun masa adı kutunun içinde sarılır (R46).
+function pushBoxed(lines: Line[], text: string): void {
+  const inner = wrap(text, DOUBLE_WIDTH_BUDGET - 4, 0);
+  const w = Math.max(...inner.map((l) => l.length)) + 4;
+  const pad = ' '.repeat(Math.max(0, Math.floor((DOUBLE_WIDTH_BUDGET - w) / 2)));
+  const edge = `${pad}+${'-'.repeat(w - 2)}+`;
+  pushText(lines, edge, { width: 2, bold: true });
+  for (const l of inner) pushText(lines, `${pad}| ${l.padEnd(w - 4)} |`, { width: 2, height: 2, bold: true });
+  pushText(lines, edge, { width: 2, bold: true });
+}
+
+function renderItem(lines: Line[], item: TicketItem, columns: number, clean: (s: string) => string, withPrice: boolean): void {
+  const qty = `${item.qty}x`.padEnd(QTY_COL);
+  const codePart = item.code ? `${clean(item.code)} ` : '';
+  const price = typeof item.priceCents === 'number' ? money(item.priceCents) : '';
+  pushColumns(lines, qty, `${codePart}${clean(item.name)}`, withPrice ? price : null, columns, {
+    bold: true,
+    height: 2,
+  });
+
+  if (item.variant) pushSubLine(lines, clean(item.variant), columns, withPrice);
+  if (item.without.length > 0) pushSubLine(lines, `ohne ${item.without.map(clean).join(', ')}`, columns, withPrice);
   for (const group of item.groups) {
     if (group.format === 'plus_each') {
-      for (const value of group.values) pushSubLine(lines, `+ ${clean(value)}`, columns);
+      for (const value of group.values) pushSubLine(lines, `+ ${clean(value)}`, columns, withPrice);
     } else if (group.format === 'label_values') {
-      pushSubLine(lines, `${clean(group.label)}: ${group.values.map(clean).join(' + ')}`, columns);
+      pushSubLine(lines, `${clean(group.label)}: ${group.values.map(clean).join(' + ')}`, columns, withPrice);
     } else {
-      pushSubLine(lines, group.values.map(clean).join(', '), columns);
+      pushSubLine(lines, group.values.map(clean).join(', '), columns, withPrice);
     }
   }
-  if (item.note) pushSubLine(lines, `Hinweis: ${clean(item.note)}`, columns);
+  if (item.note) pushSubLine(lines, `Hinweis: ${clean(item.note)}`, columns, withPrice);
 }
 
 function renderItems(lines: Line[], items: TicketItem[], columns: number, clean: (s: string) => string): void {
+  const withPrice = hasPrices(items);
+  pushColumns(lines, 'Nr.'.padEnd(QTY_COL), 'Artikel', withPrice ? 'Preis' : null, columns, { bold: true });
+  lines.push({ kind: 'feed', lines: 1 });
+
   const food = items.filter((i) => !i.isBeverage);
   const drinks = items.filter((i) => i.isBeverage);
-  for (const item of food) renderItem(lines, item, columns, clean);
+  food.forEach((item, i) => {
+    if (i > 0) lines.push({ kind: 'feed', lines: 1 });
+    renderItem(lines, item, columns, clean, withPrice);
+  });
   if (drinks.length > 0) {
-    lines.push({ kind: 'rule' });
+    if (food.length > 0) lines.push({ kind: 'feed', lines: 1 });
     pushText(lines, 'GETRÄNKE', { bold: true });
-    for (const item of drinks) renderItem(lines, item, columns, clean);
+    drinks.forEach((item, i) => {
+      if (i > 0) lines.push({ kind: 'feed', lines: 1 });
+      renderItem(lines, item, columns, clean, withPrice);
+    });
+  }
+}
+
+// "Gesamtbetrag      35,90 €" — çift genişlik ve yükseklik, 24 kolonluk bütçede sağa yaslı.
+function pushTotal(lines: Line[], items: TicketItem[]): void {
+  if (!hasPrices(items)) return;
+  const total = money(items.reduce((sum, i) => sum + (i.priceCents ?? 0), 0));
+  const label = 'Gesamtbetrag';
+  const gap = DOUBLE_WIDTH_BUDGET - label.length - total.length;
+  if (gap >= 1) {
+    pushText(lines, `${label}${' '.repeat(gap)}${total}`, { width: 2, height: 2, bold: true });
+  } else {
+    pushText(lines, label, { width: 2, height: 2, bold: true });
+    pushText(lines, total.padStart(DOUBLE_WIDTH_BUDGET), { width: 2, height: 2, bold: true });
   }
 }
 
@@ -167,29 +236,33 @@ function closeTicket(lines: Line[], p: TicketPayload, columns: number, clean: (s
 }
 
 function renderOrderBody(lines: Line[], p: TicketPayload, columns: number, clean: (s: string) => string): void {
-  pushDoubleWidth(lines, clean(p.table).toLocaleUpperCase('de-DE'), { height: 2, bold: true });
+  pushBoxed(lines, clean(p.table).toLocaleUpperCase('de-DE'));
 
-  // Meta: STORNO gets "zu Bestellung #NNN" instead of "Bestellung #NNN · Runde N", but
-  // every kind on this path (order/addition/storno/reprint) still gets the date + waiter
-  // line (R47) — the kitchen benefits from knowing when a cancellation was issued too.
+  // Meta tek ortalı satır: mutfak fişi KDS'deki sipariş numarasıyla eşleştirebilsin. STORNO
+  // "zu Bestellung #NNN" der; her tür tarih + garson taşır (R47).
+  const parts: string[] = [];
   if (p.kind === 'storno') {
-    if (p.refOrderNo != null) pushWrapped(lines, `zu Bestellung ${formatOrderNo(p.refOrderNo)}`, columns, 0);
+    if (p.refOrderNo != null) parts.push(`zu Bestellung ${formatOrderNo(p.refOrderNo)}`);
   } else if (p.orderNo != null) {
     const round = p.round ?? 1;
-    pushWrapped(lines, `Bestellung ${formatOrderNo(p.orderNo)}${round > 1 ? ` · Runde ${round}` : ''}`, columns, 0);
+    parts.push(`Bestellung ${formatOrderNo(p.orderNo)}${round > 1 ? ` · Runde ${round}` : ''}`);
   }
-  const kellner = p.waiter ? ` · Kellner: ${clean(p.waiter)}` : '';
-  pushWrapped(lines, `${fmt(p.createdAt)}${kellner}`, columns, 0);
+  parts.push(`${fmt(p.createdAt)}${p.waiter ? ` · Kellner: ${clean(p.waiter)}` : ''}`);
+  for (const part of parts) pushWrapped(lines, part, columns, 0, { align: 'center' });
+  lines.push({ kind: 'feed', lines: 1 });
 
-  // Spec §9.3: a rule separates the meta block from the item list.
-  lines.push({ kind: 'rule' });
   renderItems(lines, p.items, columns, clean);
 
-  lines.push({ kind: 'rule' });
   if (p.kind === 'storno') {
+    lines.push({ kind: 'rule' });
     if (p.reason) pushWrapped(lines, `Grund: ${clean(p.reason)}`, columns, 0, { bold: true });
-  } else if (p.note) {
-    pushWrapped(lines, `Hinweis: ${clean(p.note)}`, columns, 0, { bold: true });
+  } else {
+    if (p.note) {
+      lines.push({ kind: 'feed', lines: 1 });
+      pushWrapped(lines, `Hinweis: ${clean(p.note)}`, columns, 0, { bold: true });
+    }
+    lines.push({ kind: 'rule' });
+    pushTotal(lines, p.items);
   }
   closeTicket(lines, p, columns, clean);
 }
@@ -215,7 +288,10 @@ function renderTestBody(lines: Line[], p: TicketPayload, columns: number, clean:
     pushWrapped(lines, `Transliteration: ${s.transliterate ? 'an' : 'aus'}`, columns, 0);
   }
   if (p.sampleLine) pushWrapped(lines, clean(p.sampleLine), columns, 0);
+  lines.push({ kind: 'feed', lines: 1 });
   renderItems(lines, p.items, columns, clean);
+  lines.push({ kind: 'rule' });
+  pushTotal(lines, p.items);
   closeTicket(lines, p, columns, clean);
 }
 
@@ -225,10 +301,14 @@ export function renderTicket(p: TicketPayload, opts: { columns?: number; transli
   const clean = (s: string): string => (doTransliterate ? transliterate(sanitize(s)) : sanitize(s));
 
   const lines: Line[] = [];
-  pushText(lines, clean(p.header), { align: 'center', bold: true });
+  // Başlık ("RAMO'S") büyük basılır; 24 kolonluk çift genişliğe sığmıyorsa normal boyda ortalanır.
+  const header = clean(p.header);
+  if (header.length <= DOUBLE_WIDTH_BUDGET) pushText(lines, centerWide(header), { width: 2, height: 2, bold: true });
+  else pushText(lines, header, { align: 'center', bold: true });
 
   const banner = bannerFor(p);
   if (banner) pushText(lines, banner, { align: 'center', bold: true, invert: true, height: 2 });
+  lines.push({ kind: 'feed', lines: 1 });
 
   if (p.kind === 'table_move') renderTableMoveBody(lines, p, columns, clean);
   else if (p.kind === 'test') renderTestBody(lines, p, columns, clean);

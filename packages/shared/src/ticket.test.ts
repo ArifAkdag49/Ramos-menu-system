@@ -20,36 +20,64 @@ describe('renderTicket', () => {
   const lines = renderTicket(order);
   const texts = lines.flatMap((l) => (l.kind === 'text' ? [l.text] : l.kind === 'rule' ? ['---'] : []));
 
-  it('başlık, ek sipariş bandı, masa ve meta', () => {
-    expect(lines[0]).toMatchObject({ kind: 'text', text: "RAMO'S · KÜCHE", align: 'center', bold: true });
+  it('başlık büyük ve ortalı, ek sipariş bandı, kutulu masa ve meta', () => {
+    expect(lines[0]).toMatchObject({ kind: 'text', text: "     RAMO'S · KÜCHE", width: 2, height: 2, bold: true });
     expect(lines[1]).toMatchObject({ text: 'NACHBESTELLUNG', invert: true, height: 2 });
-    expect(lines[2]).toMatchObject({ text: 'TISCH 12', height: 2, width: 2, bold: true });
+    expect(texts).toEqual(expect.arrayContaining(['      +----------+', '      | TISCH 12 |']));
+    expect(lines.find((l) => l.kind === 'text' && l.text.includes('| TISCH 12 |')))
+      .toMatchObject({ width: 2, height: 2, bold: true });
     expect(texts).toContain('Bestellung #047 · Runde 2');
     expect(texts).toContain('15.09.2026 19:42 · Kellner: Ahmet');   // 17:42Z = 19:42 Berlin (CEST)
   });
 
-  it('meta ile kalem listesi arasında ayraç (rule) var (spec §9.3)', () => {
-    const idx = lines.findIndex((l) => l.kind === 'text' && l.text === '15.09.2026 19:42 · Kellner: Ahmet');
-    expect(idx).toBeGreaterThan(0);
-    expect(lines[idx + 1]).toEqual({ kind: 'rule' });
+  it('meta satırlarından sonra "Nr. / Artikel" sütun başlığı gelir', () => {
+    const iMeta = texts.indexOf('15.09.2026 19:42 · Kellner: Ahmet');
+    const iHead = texts.indexOf('Nr.  Artikel');
+    expect(iMeta).toBeGreaterThan(0);
+    expect(iHead).toBeGreaterThan(iMeta);
   });
 
-  it('yiyecek önce, içecek GETRÄNKE altında; OHNE ters renk', () => {
-    const iFood = texts.indexOf('2x 05 Drehspieß Sandwich');
+  it('yiyecek önce, içecek GETRÄNKE altında; alt satırlar ada hizalı ("ohne …")', () => {
+    const iFood = texts.indexOf('2x   05 Drehspieß Sandwich');
     const iBev = texts.indexOf('GETRÄNKE');
     expect(iFood).toBeGreaterThan(0);
     expect(iBev).toBeGreaterThan(iFood);
-    expect(texts[iBev + 1]).toBe('3x Cola 0,33 l');
-    expect(lines.find((l) => l.kind === 'text' && l.text === '   OHNE: Zwiebeln, Tomaten'))
-      .toMatchObject({ invert: true, bold: true });
+    expect(texts[iBev + 1]).toBe('3x   Cola 0,33 l');
     expect(texts).toEqual(expect.arrayContaining([
-      '   Kalb', '   Soße: Knoblauch + Kräuter', '   scharf (Chili)', '   + Extra Weichkäse', '   Hinweis: Soße extra',
-      'Hinweis: Kinderstuhl']));
+      '        Kalb', '        ohne Zwiebeln, Tomaten', '        Soße: Knoblauch + Kräuter', '        scharf (Chili)',
+      '        + Extra Weichkäse', '        Hinweis: Soße extra', 'Hinweis: Kinderstuhl']));
     expect(lines.at(-1)).toEqual({ kind: 'feed', lines: 3 });
   });
 
+  it('fiyatlı kalemde tek fiyat sütunu (satır toplamı) ve Gesamtbetrag', () => {
+    const priced: TicketPayload = {
+      ...order,
+      items: [
+        { ...order.items[1]!, priceCents: 1700 },
+        { qty: 1, code: '59', name: 'Kuzu Şiş', isBeverage: false, variant: null, without: [],
+          groups: [{ label: 'Beilage', format: 'values_only', values: ['Reis'] }], note: null, priceCents: 1890 },
+      ],
+    };
+    const out = linesToText(renderTicket(priced)).split('\n');
+    expect(out).toContain(`${'Nr.  Artikel'.padEnd(43)}Preis`);
+    expect(out).toContain(`${'2x   05 Drehspieß Sandwich'.padEnd(41)}17,00 €`);
+    expect(out).toContain(`${'1x   59 Kuzu Şiş'.padEnd(41)}18,90 €`);
+    expect(out.join('\n')).not.toContain('\u00a0');
+    expect(renderTicket(priced).find((l) => l.kind === 'text' && l.text.startsWith('Gesamtbetrag')))
+      .toMatchObject({ text: 'Gesamtbetrag     35,90 €', width: 2, height: 2, bold: true });
+  });
+
+  it('fiyatsız eski işte ve STORNO\'da fiyat sütunu ve toplam basılmaz', () => {
+    const out = linesToText(renderTicket(order));
+    expect(out).not.toContain('Preis');
+    expect(out).not.toContain('Gesamtbetrag');
+    const st = linesToText(renderTicket({ ...order, kind: 'storno', refOrderNo: 47, reason: 'x',
+      items: [{ ...order.items[1]!, priceCents: 1700 }] }));
+    expect(st).not.toContain('Gesamtbetrag');
+  });
+
   it('ilk turda bant yok; STORNO ve TISCHWECHSEL bantları', () => {
-    expect(renderTicket({ ...order, round: 1 })[1]).toMatchObject({ text: 'TISCH 12' });
+    expect(linesToText(renderTicket({ ...order, round: 1 }))).not.toContain('NACHBESTELLUNG');
     const st = renderTicket({ ...order, kind: 'storno', refOrderNo: 47, reason: 'Gast hat storniert' });
     expect(st[1]).toMatchObject({ text: '*** STORNO ***' });
     expect(linesToText(st)).toContain('zu Bestellung #047');
@@ -69,7 +97,7 @@ describe('renderTicket', () => {
   it('transliterasyon Türkçe harfleri ASCII yapar, Almanca harflere dokunmaz', () => {
     expect(transliterate('Kuzu Şiş · İşkembe · Yoğurtlu · Kräuter')).toBe('Kuzu Sis · Iskembe · Yogurtlu · Kräuter');
     expect(linesToText(renderTicket({ ...order, items: [{ ...order.items[1]!, name: 'Kuzu Şiş' }] }, { transliterate: true })))
-      .toContain('2x 05 Kuzu Sis');
+      .toContain('2x   05 Kuzu Sis');
   });
 
   it('NACHBESTELLUNG (addition) ve NACHDRUCK (reprint) bantları', () => {
@@ -91,7 +119,7 @@ describe('renderTicket', () => {
     expect(tTexts).toContain('Drucker: 192.168.123.100:9100');
     expect(tTexts).toContain('Zeichensatz: PC857 (61)');
     expect(tTexts).toContain('Transliteration: aus');
-    expect(tTexts).toContain('1x Testkalem');
+    expect(tTexts).toContain('1x   Testkalem');
     expect(t.at(-1)).toEqual({ kind: 'feed', lines: 3 });
   });
 
@@ -99,8 +127,8 @@ describe('renderTicket', () => {
     const p: TicketPayload = { ...order, table: 'Terrasse Tisch 12 am Fenster ganz hinten' };
     const result = renderTicket(p);
     for (const l of result) if (isText(l)) expect(l.text.length * (l.width ?? 1)).toBeLessThanOrEqual(48);
-    const tableLines = result.filter((l): l is TextLine => isText(l) && l.width === 2);
-    expect(tableLines.length).toBeGreaterThan(1); // uzun ad gerçekten sarmalanmış
+    const tableLines = result.filter((l): l is TextLine => isText(l) && l.width === 2 && l.text.trimStart().startsWith('|'));
+    expect(tableLines.length).toBeGreaterThan(1); // uzun ad kutunun içinde gerçekten sarmalanmış
   });
 
   it('R46: uzun TISCH x -> TISCH y satırı da 24 kolon bütçesinde kaydırılır', () => {
@@ -111,7 +139,7 @@ describe('renderTicket', () => {
     for (const l of mv) if (isText(l)) expect(l.text.length * (l.width ?? 1)).toBeLessThanOrEqual(48);
   });
 
-  it('renderTicket içinde: uzun kalem adı 3 boşluklu, uzun OHNE listesi 6 boşluklu devamla kaydırılır (48 kolon bütçesi her satırda geçerli)', () => {
+  it('renderTicket içinde: uzun kalem adı 5 boşluklu, uzun "ohne" listesi 11 boşluklu devamla kaydırılır (48 kolon bütçesi her satırda geçerli)', () => {
     const longName = 'Gegrilltes Schweinefilet mit gerösteten Röstzwiebeln und Kräuterbutter Sauce Extra Scharf Bitte';
     const longWithout = ['Zwiebeln', 'Tomaten', 'Gurken', 'Peperoni', 'Oliven', 'Mais', 'Röstzwiebeln', 'Extra Käse', 'Sauce Hollandaise'];
     const p: TicketPayload = {
@@ -124,15 +152,16 @@ describe('renderTicket', () => {
     const mainLines = result.filter((l): l is TextLine => isText(l) && l.height === 2 && l.bold === true && !l.invert && l.width !== 2);
     expect(mainLines.length).toBeGreaterThan(1);
     expect(mainLines[0]!.text.startsWith(' ')).toBe(false); // ilk parça sola dayalı
-    expect(mainLines[1]!.text.startsWith('   ')).toBe(true); // devam: tam 3 boşluk
-    expect(mainLines[1]!.text.startsWith('    ')).toBe(false);
+    expect(mainLines[1]!.text.startsWith('     ')).toBe(true); // devam: tam 5 boşluk ("Nr." sütunu)
+    expect(mainLines[1]!.text.startsWith('      ')).toBe(false);
 
-    const oheLines = result.filter((l): l is TextLine => isText(l) && l.invert === true && l.bold === true && !l.height);
-    expect(oheLines.length).toBeGreaterThan(1);
-    expect(oheLines[0]!.text.startsWith('   ')).toBe(true); // ilk alt satır: 3 boşluk
-    expect(oheLines[0]!.text.startsWith('      ')).toBe(false);
-    expect(oheLines[1]!.text.startsWith('      ')).toBe(true); // devam: 3 + 3 = 6 boşluk
-    expect(oheLines[1]!.text.startsWith('       ')).toBe(false);
+    const oheStart = result.findIndex((l) => isText(l) && l.text.startsWith('        ohne '));
+    const oheLines = result.slice(oheStart).filter((l): l is TextLine => isText(l) && !l.bold).slice(0, 2);
+    expect(oheStart).toBeGreaterThan(0);
+    expect(oheLines[0]!.text.startsWith('        ')).toBe(true); // ilk alt satır: 8 boşluk
+    expect(oheLines[0]!.text.startsWith('         ')).toBe(false);
+    expect(oheLines[1]!.text.startsWith('           ')).toBe(true); // devam: 8 + 3 = 11 boşluk
+    expect(oheLines[1]!.text.startsWith('            ')).toBe(false);
   });
 });
 

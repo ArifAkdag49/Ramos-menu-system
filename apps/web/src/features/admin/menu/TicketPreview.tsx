@@ -122,6 +122,8 @@ export function TicketPreview({ product, isBeverage }: { product: MenuProduct; i
                   'block',
                   isText && line.bold && 'font-bold',
                   isText && line.height === 2 && 'text-sm',
+                  // Çift genişlik: tek aralıklı yazıda harf başına 1ch ek aralık = kâğıttaki 2 kolon.
+                  isText && line.width === 2 && 'tracking-[1ch]',
                   isText && line.invert && 'bg-[#0A0A0A] text-[#F5F5F0]',
                 )}
               >

@@ -36,12 +36,20 @@ describe('encodeLines (Xprinter)', () => {
     expect(out.includes(Buffer.concat([ascii('Kr'), Buffer.from([0x84]), ascii('uter')]))).toBe(true); // "Kräuter"
   });
 
-  it('OHNE satırı 3 boşluk girintiliyle ters renkte basılır (Critical 1 + GS B 1 … GS B 0)', () => {
-    const needle = ascii('   OHNE: Zwiebeln'); // leading 3-space indent must survive verbatim
-    const i = out.indexOf(needle);
+  it('"ohne" alt satırı 8 boşluk girintisiyle olduğu gibi basılır (Critical 1)', () => {
+    expect(out.includes(ascii('        ohne Zwiebeln'))).toBe(true); // leading 8-space indent must survive verbatim
+    expect(out.includes(ascii('Nr.  Artikel'))).toBe(true); // sütun boşlukları da korunur
+  });
+
+  it('bant ters renkte basılır (GS B 1 … GS B 0)', () => {
+    const banner = renderTicket({
+      kind: 'storno', header: 'KÜCHE', table: 'Tisch 1', refOrderNo: 1, createdAt: '2026-09-15T17:00:00Z', items: [],
+    });
+    const buf = Buffer.from(encodeLines(banner, { codepage: 'cp857', codepageNumber: 61 }));
+    const i = buf.indexOf(ascii('*** STORNO ***'));
     expect(i).toBeGreaterThan(-1);
-    expect(out.lastIndexOf(Buffer.from([0x1d, 0x42, 0x01]), i)).toBeGreaterThan(-1);
-    expect(out.indexOf(Buffer.from([0x1d, 0x42, 0x00]), i)).toBeGreaterThan(i);
+    expect(buf.lastIndexOf(Buffer.from([0x1d, 0x42, 0x01]), i)).toBeGreaterThan(-1);
+    expect(buf.indexOf(Buffer.from([0x1d, 0x42, 0x00]), i)).toBeGreaterThan(i);
   });
 
   it('kısmi kesimle biter: GS V 66 0', () => {
