@@ -84,8 +84,13 @@ export class Agent {
   private stopPromise: Promise<void> | null = null;
   /** M5 (review fix round 4): şu an sürmekte olan bir onay yeniden denemesi
    *  `STALE_CONFIRMATION_WARN_MS`'i aştıysa bu, o denemenin başlangıç zamanıdır (yoksa `null`).
-   *  `sendHeartbeat`'in hata alanına yansıtılır — aksi hâlde ajan sessizce sonsuza dek yeniden
-   *  dener ve operatör hiçbir yerde bunu göremez (heartbeat sağlıklı görünmeye devam eder). */
+   *  `sendHeartbeat`'in hata alanına yansıtılır — bu yalnız DB'ye yazılan `agent_heartbeat.error`
+   *  alanıdır; operatörün bunu bir ekranda GÖRMESİ Görev 21'e bağlıdır (bkz. R79, round-5 notu,
+   *  task-19-report.md). M-f (round 5): TEK alanlı ve `completeSuccessWithRetry`'nin `finally`
+   *  bloğunda KOŞULSUZ temizlenir — bugün güvenlidir çünkü `drain()` tek-uçuşludur (aynı anda
+   *  yalnız BİR `completeSuccessWithRetry` çalışır); ileride birden çok işin PARALEL basılması
+   *  eklenirse (bugün YOK) bu alan bir işin işaretini bir diğerininkiyle EZEBİLİR — o zaman
+   *  `Map<jobId, number>` gibi iş-başına bir yapıya geçirilmesi gerekir. */
   private stuckConfirmationSince: number | null = null;
 
   constructor(
@@ -127,6 +132,13 @@ export class Agent {
   }
 
   async start() {
+    // M-b (review fix round 5): ÖNCEKİ bir `stop()` hâlâ sürüyorsa (`this.stopPromise` henüz
+    // çözülmediyse) burada bayrakları sıfırlayıp devam etmek bir yarış açardı — eski
+    // `stopInternal()` sonradan (kendi bekleme döngüsü bitince) `api.close()`'u çağırıp bu
+    // `start()`'ın az önce kurduğu YENİ kanalları da siler ve `signOut` yapar: ajan "çalışıyor"
+    // görünür ama Realtime ölür, geriye yalnız `pollMs`'lik (5 sn) yoklama kalır. Önce ESKİ
+    // kapanışın TAMAMEN bitmesi beklenir, ancak ondan SONRA yeni bir döngü başlatılır.
+    if (this.stopPromise) await this.stopPromise;
     // M2 (review fix round 4): `stop()` sonrası aynı `Agent` örneği yeniden `start()` edilebilir
     // olsun diye kapanış bayrakları burada sıfırlanır — aksi hâlde `stopping` kalıcı olarak
     // true kalır ve `drain()` bir daha ASLA iş sahiplenmez (cli.ts her süreçte yeni bir `Agent`
@@ -243,14 +255,20 @@ export class Agent {
     await this.checkPrinter();
   }
 
-  // M5 (review fix round 4): `completeSuccessWithRetry` kalıcı bir hatayı (ör. `job_not_found`,
-  // bir rol/izin regresyonu) geçici bir ağ kesintisinden AYIRMIYOR — böyle bir durum olursa
-  // (olasılığı düşük) yeniden deneme SESSİZCE sonsuza dek sürer ve heartbeat bu süre boyunca
-  // (yazıcı sorunsuzsa) sağlıklı durum bildirmeye devam eder: operatör için görünmez bir fiş
-  // kaybı riski. Ucuz bir kısmi önlem: 60 sn eşiğini aşan bir onay `stuckConfirmationSince` ile
-  // işaretlenir, heartbeat'in hata alanına (yazıcı durumunu EZMEDEN, yanına eklenerek) yansır —
-  // KDS/admin ekranında görünür olur. Kalıcı/geçici hata ayrımının kendisi bu turun kapsamı
-  // dışında bırakıldı (aşağıdaki `Karar` satırına bkz.).
+  // M5 (review fix round 4), düzeltildi R79 (round 5 — yanlış iddia): `completeSuccessWithRetry`
+  // kalıcı bir hatayı (ör. `job_not_found`, bir rol/izin regresyonu) geçici bir ağ kesintisinden
+  // AYIRMIYOR — böyle bir durum olursa (olasılığı düşük) yeniden deneme SESSİZCE sonsuza dek
+  // sürer ve heartbeat bu süre boyunca (yazıcı sorunsuzsa) sağlıklı durum bildirmeye devam eder:
+  // operatör için görünmez bir fiş kaybı riski. Ucuz bir kısmi önlem: 60 sn eşiğini aşan bir onay
+  // `stuckConfirmationSince` ile işaretlenir, heartbeat'in hata alanına (yazıcı durumunu
+  // EZMEDEN, yanına eklenerek) yansır — YALNIZ `agent_heartbeat.error` DB SÜTUNUNA yazılır.
+  // R79 (round-5 re-review düzeltmesi): round-4 raporu bunun "KDS/admin ekranında görünür olur"
+  // dediği YANLIŞTI — incelemeci doğruladı: `apps/web`'de `printer_status.last_error`'ı okuyup
+  // render eden HİÇBİR yer yok (`derivePrinterProblem()` bu alanı hiç okumuyor). Operatör
+  // görünürlüğü Görev 21'e (admin canlı durum, spec §8.4) TAŞINDI — kontrolör bunu o görevin
+  // gereksinimlerine ekledi. Bu turda tek görünürlük hâlâ ajan LOG'udur (`STALE_CONFIRMATION_WARN_MS`
+  // uyarısı) — DB alanı yazılıyor ama şu an kimse okumuyor. Kalıcı/geçici hata ayrımının kendisi
+  // bu turun kapsamı dışında bırakıldı (aşağıdaki `Karar` satırına bkz.).
   private heartbeatError(): string | null {
     if (this.stuckConfirmationSince === null) return this.lastError;
     const stuckSeconds = Math.max(0, Math.round((this.now() - this.stuckConfirmationSince) / 1000));

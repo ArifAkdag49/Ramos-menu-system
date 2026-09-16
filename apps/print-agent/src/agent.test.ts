@@ -699,3 +699,39 @@ describe('Agent — M5 (round-4 re-review): 60 sn\'yi aşan takılı bir onay he
     expect(clearedCall.error ?? '').not.toContain('complete_stuck'); // doğrulandı — temizlendi
   });
 });
+
+// ---------- Review fix round 5 ----------
+
+describe('Agent — M-b (round-4 re-review): start() önceki stop() bitmeden yeni bir döngü başlatmaz', () => {
+  it('stop() sürerken (api.close() hâlâ asılı) çağrılan start(), eski kapanış TAMAMEN bitmeden devam etmez', async () => {
+    const api = fakeApi([]);
+    const printer = { status: vi.fn(async () => okState), print: vi.fn() };
+    const agent = new Agent(api, { printer, log: freshLog() });
+    await agent.start();
+    await tick();
+
+    let resolveClose: (() => void) | undefined;
+    api.close = vi.fn(() => new Promise<void>((resolve) => { resolveClose = resolve; }));
+
+    const stopPromise = agent.stop(); // draining/pendingConfirmations zaten 0 — hemen api.close()'u bekliyor (ASILI)
+    await tick();
+
+    const settingsCallsBeforeSecondStart = (api.settings as ReturnType<typeof vi.fn>).mock.calls.length;
+    const startPromise = agent.start(); // M-b: önceki stop()'un api.close()'u bitmeden İLERLEMEMELİ
+    await tick();
+    await tick();
+
+    // Eski (kusurlu) koddaysa start() hemen devam edip api.settings()'i tekrar çağırırdı — henüz
+    // stop()'un api.close()'u çözülmedi, dolayısıyla start() da henüz ilerlememiş olmalı.
+    expect((api.settings as ReturnType<typeof vi.fn>).mock.calls.length).toBe(settingsCallsBeforeSecondStart);
+
+    resolveClose!();
+    api.close = vi.fn(async () => {}); // testin geri kalanı (final stop()) için normal, çözülen mock'a dön
+    await stopPromise;
+    await startPromise;
+
+    expect((api.settings as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(settingsCallsBeforeSecondStart);
+
+    await agent.stop();
+  });
+});

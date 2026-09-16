@@ -6,10 +6,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // sahte bir istemciyle değiştirilir — gerçek ağ/DB'ye hiç bağlanılmaz.
 
 type RpcResult = { data: unknown; error: { message: string } | null; status: number };
-type RpcCall = { fn: string; args: Record<string, unknown> };
+type RpcCall = { fn: string; args: Record<string, unknown>; signal?: AbortSignal };
 
 const rpcCalls: RpcCall[] = [];
 let rpcHandler: (fn: string, args: Record<string, unknown>) => RpcResult;
+
+// R78 (round 5): postgrest-js'in gerçek `.rpc()` dönüşü thenable BİR builder'dır ve
+// `.abortSignal(signal)` metodu `this`'i döndürüp await edilmeden ÖNCE zincirlenebilir (bkz.
+// `PostgrestTransformBuilder.abortSignal`). Sahte istemci bunu birebir taklit eder — `api.ts`
+// içindeki `rpc()` yardımcısının `builder.abortSignal(...)` çağırıp await ETTİĞİ gerçek akışı
+// (yalnız `complete_print_job` için, R78) doğru sınayabilelim diye.
+function makeRpcBuilder(fn: string, args: Record<string, unknown>) {
+  let signal: AbortSignal | undefined;
+  const builder = {
+    abortSignal: (s: AbortSignal) => {
+      signal = s;
+      return builder;
+    },
+    then: (
+      onFulfilled: (v: RpcResult) => unknown,
+      onRejected?: (e: unknown) => unknown,
+    ) => {
+      rpcCalls.push({ fn, args, signal });
+      return Promise.resolve(rpcHandler(fn, args)).then(onFulfilled, onRejected);
+    },
+  };
+  return builder;
+}
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({
@@ -18,10 +41,7 @@ vi.mock('@supabase/supabase-js', () => ({
       signOut: vi.fn(async () => ({ error: null })),
     },
     realtime: { setAuth: vi.fn(async () => {}) },
-    rpc: vi.fn((fn: string, args: Record<string, unknown>) => {
-      rpcCalls.push({ fn, args });
-      return Promise.resolve(rpcHandler(fn, args));
-    }),
+    rpc: vi.fn((fn: string, args: Record<string, unknown>) => makeRpcBuilder(fn, args)),
     channel: vi.fn(() => {
       const chain = { on: vi.fn(() => chain), subscribe: vi.fn(() => chain) };
       return chain;
@@ -31,7 +51,7 @@ vi.mock('@supabase/supabase-js', () => ({
   })),
 }));
 
-const { createSupabaseApi, createTimeoutFetch, DEFAULT_RPC_TIMEOUT_MS } = await import('./api');
+const { createSupabaseApi, createTimeoutFetch, DEFAULT_RPC_TIMEOUT_MS, DEFAULT_COMPLETE_TIMEOUT_MS } = await import('./api');
 const { createClient } = await import('@supabase/supabase-js');
 
 const env = {
@@ -170,8 +190,12 @@ describe('createTimeoutFetch — R71: her deneme istemci tarafı zaman aşımıy
     expect(await res.text()).toBe('ok');
   });
 
-  it('varsayılan zaman aşımı 10 sn (~claim_print_job\'ın 60 sn\'lik reclaim penceresinden kısa)', () => {
-    expect(DEFAULT_RPC_TIMEOUT_MS).toBe(10000);
+  it('R78: varsayılan genel zaman aşımı 25 sn — claim/heartbeat/settings/signIn (60 sn\'lik reclaim penceresinden kısa, ama livelock\'a yol açmayacak kadar uzun)', () => {
+    expect(DEFAULT_RPC_TIMEOUT_MS).toBe(25000);
+  });
+
+  it('R78: varsayılan complete zaman aşımı 10 sn — YALNIZ complete_print_job (bayt zaten gitti, erken vazgeçip yeniden denemeye geçmeli)', () => {
+    expect(DEFAULT_COMPLETE_TIMEOUT_MS).toBe(10000);
   });
 });
 
@@ -190,5 +214,74 @@ describe('createSupabaseApi — R71: istemci global.fetch AbortSignal.timeout il
     const options = call[2] as { global?: { fetch?: typeof fetch } };
     expect(typeof options.global?.fetch).toBe('function');
     await expect(options.global!.fetch!('https://x.example/rpc', {})).rejects.toThrow();
+  });
+});
+
+// ---------- Review fix round 5 (R78/M-a) ----------
+//
+// I-A/R78 bulgusu: round-4'ün TEK sabit zaman aşımı değeri (10 sn, `claim_print_job`'a da
+// uygulanıyordu) yeni bir LIVELOCK riski açtı — `claim_print_job` sunucuda önce işi `printing`
+// yapıp `claimed_at = now()` damgalıyor, sonra döndürüyor; istemci 10 sn'de iptal ederse
+// `claimed_at` sürekli `now()`'a çekilip fiş ASLA basılmaz. Çözüm: zaman aşımı çağrı başına —
+// yalnız `complete_print_job` kısa (10 sn) alır, `claim`/`heartbeat`/`settings`/`signIn` genel
+// (25 sn) varsayılanı kullanır. M-a: `createTimeoutFetch` artık çağıranın kendi `init.signal`'ını
+// (postgrest'in `.abortSignal()`'ı) `AbortSignal.any()` ile birleştiriyor — bu birleşim, `complete`
+// için genel (25 sn) ve özel (10 sn) sinyallerin AYNI ANDA etkili olmasını (kısa olanın kazanmasını)
+// sağlıyor.
+
+describe('createSupabaseApi — R78: zaman aşımı ÇAĞRI BAŞINA — complete kısa, claim/heartbeat uzun', () => {
+  it('complete_print_job çağrısına .abortSignal() ile AYRI, kısa bir sinyal takılır; claim_print_job/agent_heartbeat\'e TAKILMAZ (genel global.fetch varsayılanını kullanırlar)', async () => {
+    rpcHandler = (fn) => (fn === 'claim_print_job' ? ok([]) : ok());
+    const api = await createSupabaseApi(env, log);
+    await api.claim();
+    await api.complete('job-1', true, undefined);
+    await api.heartbeat({ reachable: true, state: null, error: null });
+
+    const claimCall = rpcCalls.find((c) => c.fn === 'claim_print_job')!;
+    const completeCall = rpcCalls.find((c) => c.fn === 'complete_print_job')!;
+    const heartbeatCall = rpcCalls.find((c) => c.fn === 'agent_heartbeat')!;
+
+    // R78'in ASIL sabitlediği regresyon: claim_print_job'a ÇAĞRIYA ÖZGÜ kısa bir sinyal
+    // TAKILMAMALI — yalnız global.fetch'in genel (25 sn) varsayılanına tabidir.
+    expect(claimCall.signal).toBeUndefined();
+    expect(heartbeatCall.signal).toBeUndefined();
+    expect(completeCall.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('complete_print_job\'a takılan sinyal opts.completeTimeoutMs\'e göre kurulur (varsayılan 10 sn) ve bu süre içinde gerçekten dolar', async () => {
+    const api = await createSupabaseApi(env, log, { completeTimeoutMs: 20 }); // testte hızlı olsun diye 20 ms
+    await api.complete('job-1', true, undefined);
+    const completeCall = rpcCalls.find((c) => c.fn === 'complete_print_job')!;
+    expect(completeCall.signal?.aborted).toBe(false); // henüz dolmadı (çağrı anında)
+    await new Promise((r) => setTimeout(r, 60));
+    expect(completeCall.signal?.aborted).toBe(true); // 20 ms sonra doldu
+  });
+});
+
+describe('createTimeoutFetch — M-a: çağıranın kendi signal\'ı sessizce atılmaz, birleştirilir', () => {
+  it('çağıranın KISA signal\'ı sarmalayıcının UZUN varsayılanından önce reddeder (AbortSignal.any birleşimi)', async () => {
+    const hangingFetch = vi.fn(
+      (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('iptal'), { name: 'AbortError' })));
+        }),
+    ) as unknown as typeof fetch;
+    const timeoutFetch = createTimeoutFetch(5000, hangingFetch); // sarmalayıcının kendi süresi UZUN (5 sn)
+    const callerSignal = AbortSignal.timeout(20); // çağırana özgü, ÇOK daha kısa
+
+    const startedAt = Date.now();
+    await expect(timeoutFetch('https://x.example/rpc', { signal: callerSignal })).rejects.toThrow();
+    expect(Date.now() - startedAt).toBeLessThan(1000); // 5 sn'yi değil, çağıranın ~20 ms'sini bekledi
+  });
+
+  it('çağıranın signal\'ı yoksa yalnızca sarmalayıcının kendi zaman aşımı uygulanır (regresyon: önceki davranış korunur)', async () => {
+    const hangingFetch = vi.fn(
+      (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('iptal'), { name: 'AbortError' })));
+        }),
+    ) as unknown as typeof fetch;
+    const timeoutFetch = createTimeoutFetch(20, hangingFetch);
+    await expect(timeoutFetch('https://x.example/rpc', {})).rejects.toThrow();
   });
 });
