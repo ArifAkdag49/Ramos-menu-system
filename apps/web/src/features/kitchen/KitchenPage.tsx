@@ -10,8 +10,9 @@ import {
   useUndoReady,
   type OrderView,
 } from '../../data/orders';
-import { useBroadcastInvalidation } from '../../lib/realtime';
+import { RpcError } from '../../lib/rpc';
 import { Button } from '../../ui/Button';
+import { Toast } from '../../ui/Toast';
 import { ConnectionBanners } from '../common/ConnectionBanners';
 import { KitchenHeader } from './KitchenHeader';
 import { kitchenColumns, newOrderIds } from './kitchenLogic';
@@ -21,24 +22,33 @@ import { useSoundAlert } from './useSoundAlert';
 import { useWakeLock } from './useWakeLock';
 
 const TICK_MS = 15_000;
+const ERROR_TOAST_MS = 4_000;
 
 /**
  * Mutfak ekranı (KDS). Tüm vardiya boyunca açık kalan 1280×800 tablet: büyük kartlar, tek ana
  * eylem (HAZIR), sesli uyarı ve ekran kilidi kullanıcı dokunuşuyla açılır (BUILD-PROMPT §6 —
- * otomatik oynatma tarayıcıda engellidir). Realtime `useBroadcastInvalidation` zaten Görev
- * 12'de yazıldı; burada yalnız tüketilir, ikinci bir yoklama eklenmez.
+ * otomatik oynatma tarayıcıda engellidir). Realtime abonelik burada **açılmaz** — `<ConnectionBanners>`
+ * zaten `useBroadcastInvalidation`'ı çağırıyor (Görev 12/13); burada ikinci kez çağırmak aynı 4
+ * kanalı iki kere açar (mutfak tableti vardiya boyunca 8 kanal tutar, Free plan'da paylaşılan
+ * bağlantı bütçesini boşuna tüketir — reviewer I1). `<ConnectionBanners>` tek gerçek kaynak.
  */
 export function KitchenPage() {
   const { t, i18n } = useTranslation();
   const locale: Locale = i18n.language === 'de' ? 'de' : 'tr';
 
-  useBroadcastInvalidation(['orders', 'menu', 'printer-status', 'settings']);
   const orders = useKitchenOrders();
   const markReady = useMarkReady();
   const undoReady = useUndoReady();
   const retryJob = useRetryJob();
   const reprint = useReprint();
   const { unlock, beep } = useSoundAlert();
+
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const showError = (err: unknown) => {
+    const key = err instanceof RpcError ? err.key : 'unknown';
+    setErrorMessage(t(`errors.${key}`));
+    window.setTimeout(() => setErrorMessage(null), ERROR_TOAST_MS);
+  };
 
   const [started, setStarted] = useState(false);
   const [soldOutOpen, setSoldOutOpen] = useState(false);
@@ -84,7 +94,9 @@ export function KitchenPage() {
   };
 
   const retryFor = (order: OrderView) =>
-    order.print?.status === 'failed' ? () => retryJob.mutate(order.print!.job_id) : undefined;
+    order.print?.status === 'failed'
+      ? () => retryJob.mutate(order.print!.job_id, { onError: showError })
+      : undefined;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -102,10 +114,10 @@ export function KitchenPage() {
                   key={order.id}
                   order={order}
                   locale={locale}
-                  onReady={(id) => markReady.mutate(id)}
-                  onUndo={(id) => undoReady.mutate(id)}
+                  onReady={(id) => markReady.mutate(id, { onError: showError })}
+                  onUndo={(id) => undoReady.mutate(id, { onError: showError })}
                   onRetry={retryFor(order)}
-                  onReprint={() => reprint.mutate(order.id)}
+                  onReprint={() => reprint.mutate(order.id, { onError: showError })}
                 />
               ))}
             </ul>
@@ -124,10 +136,10 @@ export function KitchenPage() {
                   order={order}
                   locale={locale}
                   compact
-                  onReady={(id) => markReady.mutate(id)}
-                  onUndo={(id) => undoReady.mutate(id)}
+                  onReady={(id) => markReady.mutate(id, { onError: showError })}
+                  onUndo={(id) => undoReady.mutate(id, { onError: showError })}
                   onRetry={retryFor(order)}
-                  onReprint={() => reprint.mutate(order.id)}
+                  onReprint={() => reprint.mutate(order.id, { onError: showError })}
                 />
               ))}
             </ul>
@@ -136,6 +148,8 @@ export function KitchenPage() {
       </div>
 
       <SoldOutDrawer open={soldOutOpen} onClose={() => setSoldOutOpen(false)} locale={locale} />
+
+      <Toast tone="danger">{errorMessage}</Toast>
 
       {!started ? (
         <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-bg px-6 text-center">

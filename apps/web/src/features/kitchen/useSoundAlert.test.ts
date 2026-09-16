@@ -51,6 +51,12 @@ describe('useSoundAlert', () => {
     result.current.beep();
 
     expect(ctx.createOscillator).toHaveBeenCalledTimes(2);
+    const oscillators = ctx.createOscillator.mock.results.map((r) => r.value as FakeOscillator);
+    expect(oscillators).toHaveLength(2);
+    for (const osc of oscillators) {
+      expect(osc.frequency.value).toBe(880);
+      expect(osc.type).toBe('sine');
+    }
   });
 
   it('AudioContext yoksa (tarayıcı desteklemiyor) hata fırlatmaz', () => {

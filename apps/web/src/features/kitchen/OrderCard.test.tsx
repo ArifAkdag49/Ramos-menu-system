@@ -3,6 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { OrderView } from '../../data/orders';
 import i18n from '../../i18n';
+
+// Reviewer I2: geçen süre Görev 13'ün paylaşılan `Elapsed` bileşeniyle gösterilmeli, ikinci bir
+// dakika-sayacı yazılmamalı. Bu sahte, `OrderCard`'ın gerçekten bu bileşeni çağırdığını kanıtlar.
+vi.mock('../common/Elapsed', () => ({
+  Elapsed: ({ since, className }: { since: string; className?: string }) => (
+    <span data-testid="elapsed-stub" data-since={since} className={className} />
+  ),
+}));
+
 import { OrderCard } from './OrderCard';
 
 const baseOrder: OrderView = {
@@ -108,5 +117,11 @@ describe('OrderCard', () => {
       <OrderCard order={{ ...baseOrder, round_no: 2 }} locale="tr" onReady={noop} onUndo={noop} onReprint={noop} />,
     );
     expect(screen.getByText('EK SİPARİŞ')).toBeInTheDocument();
+  });
+
+  it('geçen süre ortak Elapsed bileşeniyle gösterilir (ikinci bir kopya yazılmaz)', () => {
+    void i18n.changeLanguage('de');
+    render(<OrderCard order={baseOrder} locale="de" onReady={noop} onUndo={noop} onReprint={noop} />);
+    expect(screen.getByTestId('elapsed-stub')).toHaveAttribute('data-since', baseOrder.created_at);
   });
 });

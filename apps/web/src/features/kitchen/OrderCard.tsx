@@ -1,13 +1,14 @@
 import { formatOrderNo, type Locale } from '@ramos/shared';
 import { clsx } from 'clsx';
 import { Check, MoreHorizontal, Printer, RotateCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OrderItemView, OrderView } from '../../data/orders';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { IconButton } from '../../ui/IconButton';
 import { Sheet } from '../../ui/Sheet';
+import { Elapsed } from '../common/Elapsed';
 import { canUndo, elapsedTone, itemLines } from './kitchenLogic';
 
 const TONE_TEXT: Record<'ok' | 'warn' | 'late', string> = {
@@ -15,15 +16,6 @@ const TONE_TEXT: Record<'ok' | 'warn' | 'late', string> = {
   warn: 'text-warning',
   late: 'text-danger-ink',
 };
-
-/** Bileşen dakikada bir yeniden çizilsin diye kullanılan hafif tetikleyici (iş mantığı taşımaz). */
-function useTick(ms: number) {
-  const [, force] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => force((n) => n + 1), ms);
-    return () => clearInterval(id);
-  }, [ms]);
-}
 
 /**
  * Mutfak sipariş kartı. 1–2 m'den okunabilirlik için büyük harf masa adı, ≥ 22 px kalem satırı
@@ -51,11 +43,12 @@ export function OrderCard({
 }) {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
-  useTick(15_000);
 
+  // `tone`/`undoable`, ebeveynin (KitchenPage) 15 sn'lik tetikleyicisiyle yeniden hesaplanır —
+  // burada ikinci bir zamanlayıcı açılmaz. Süre METNİ ise paylaşılan `Elapsed` bileşeninden gelir
+  // (Görev 13, `TablesPage`'de de kullanılan aynı bileşen) — ikinci bir dakika sayacı yazılmaz.
   const now = new Date();
   const tone = elapsedTone(order.created_at, now);
-  const minutes = Math.max(0, Math.floor((now.getTime() - Date.parse(order.created_at)) / 60_000));
   const undoable = canUndo(order, now);
 
   return (
@@ -81,9 +74,7 @@ export function OrderCard({
             <span aria-hidden>·</span>
             <span>{order.waiter_name}</span>
             <span aria-hidden>·</span>
-            <span className={clsx('tabular font-semibold', TONE_TEXT[tone])}>
-              {t('common.elapsedMinutes', { count: minutes })}
-            </span>
+            <Elapsed since={order.created_at} className={clsx('tabular font-semibold', TONE_TEXT[tone])} />
           </div>
         </div>
         <div className="flex items-center gap-2">
