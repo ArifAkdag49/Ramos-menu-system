@@ -5,6 +5,7 @@ import {
   ArrowRightLeft,
   Ban,
   Check,
+  ChefHat,
   DoorClosed,
   MoreHorizontal,
   Plus,
@@ -60,9 +61,10 @@ type Panel = 'bill' | 'move' | 'close' | null;
  * Masa detayı: oturum yoksa boş durum + "Sipariş al"; varsa siparişler tur tur listelenir ve
  * altta masa işlemleri çubuğu durur (+ Sipariş ekle · Hesap · Taşı · Kapat — spec §8.2).
  *
- * Masa kilidi, teslim edilmiş siparişte iptal koruması ve "mutfakta açık sipariş var" kuralı
- * sunucudadır (R40/R41/R42): bu ekran kuralı yeniden türetmez, yalnız dönen hata anahtarını
- * `errors.<key>` ile (masa kapatmada ayrıca ne yapılacağını söyleyen açıklamayla) gösterir.
+ * Masa kilidi ve teslim edilmiş siparişte iptal koruması sunucudadır (R40/R41/R42): bu ekran
+ * kuralı yeniden türetmez, yalnız dönen hata anahtarını `errors.<key>` ile gösterir.
+ * Mutfakta hazırlanan sipariş masa kapatmayı engellemez (0008): sipariş mutfakta kalır, kapatma
+ * penceresi bunu yalnız bilgi olarak söyler.
  */
 export function TableDetailPage() {
   const { tableId } = useParams();
@@ -90,6 +92,7 @@ export function TableDetailPage() {
   const [closeProblem, setCloseProblem] = useState<string | null>(null);
 
   const tableName = table ? localTableName(table.name, locale) : '';
+  const ordersInKitchen = orders.filter((o) => o.status === 'in_kitchen').length;
 
   const confirmClose = async () => {
     if (!session) return;
@@ -100,8 +103,7 @@ export function TableDetailPage() {
       toast(t('waiter.close.done'), 'empty');
       navigate('/waiter');
     } catch (e) {
-      const key = errorKey(e);
-      setCloseProblem(key === 'open_orders_in_kitchen' ? t('waiter.close.blocked') : t(`errors.${key}`));
+      setCloseProblem(t(`errors.${errorKey(e)}`));
     }
   };
 
@@ -230,7 +232,14 @@ export function TableDetailPage() {
               </div>
             }
           >
-            <p className="text-base">{t('waiter.close.question', { table: tableName })}</p>
+            <div className="flex flex-col gap-3">
+              <p className="text-base">{t('waiter.close.question', { table: tableName })}</p>
+              {ordersInKitchen > 0 ? (
+                <Banner tone="info" icon={<ChefHat aria-hidden size={20} />}>
+                  {t('waiter.close.kitchenNote', { count: ordersInKitchen })}
+                </Banner>
+              ) : null}
+            </div>
           </Sheet>
         </>
       )}

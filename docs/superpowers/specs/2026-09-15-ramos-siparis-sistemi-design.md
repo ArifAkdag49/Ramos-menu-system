@@ -370,7 +370,7 @@ Hepsi `security definer`, `stable` (uygun olanlarda) ve `set search_path = ''`.
 | `cancel_order_item(p_item_id, p_reason)` | admin, waiter | Kalemi iptal eder, STORNO işi ekler. Tüm kalemler iptalse sipariş `cancelled` olur |
 | `mark_order_ready(p_order_id)` / `undo_order_ready(p_order_id)` | admin, kitchen | `in_kitchen` → `ready` (bildirim tetiklenir) / en fazla 30 sn içinde geri alma |
 | `mark_order_served(p_order_id)` | admin, waiter | `ready` → `served` |
-| `close_table_session(p_session_id)` | admin, waiter | `in_kitchen` sipariş varsa `open_orders_in_kitchen` hatası verir. `ready` olanları otomatik `served` yapar, oturumu `closed` yapar |
+| `close_table_session(p_session_id)` | admin, waiter | `ready` olanları otomatik `served` yapar, oturumu `closed` yapar. `in_kitchen` siparişler kapatmayı engellemez ve olduğu gibi mutfakta kalır (0008, 17.09.2026 işletme talebi) |
 | `move_table_session(p_session_id, p_target_table_id)` | admin, waiter | Hedef masa aktif ve boş olmalı. TISCHWECHSEL işi ekler |
 | `set_product_sold_out(p_product_id, p_sold_out)` | admin, kitchen | Tükendi anahtarı |
 | `reprint_order(p_order_id)` | admin, waiter, kitchen | Orijinal payload'ı `reprint` türünde (NACHDRUCK başlıklı) tekrar kuyruğa koyar |
@@ -537,7 +537,7 @@ Alt menüde üç sekme var: **Masalar · Hazır (rozetli) · Profil**.
   - Arka plandaysa veya ekran kilitliyse: Web Push. Başlık kullanıcının dilinde: "Masa 12 · #047 hazır" / "Tisch 12 · #047 fertig".
 - **Hesap özeti:** Aktif kalemler gruplanır (adet × birim = tutar) ve genel toplam gösterilir. Kasaya giriş içindir, fiş basılmaz.
 - **Masayı taşı:** Boş masalardan biri seçilir, mutfağa TISCHWECHSEL fişi basılır.
-- **Masayı kapat:** Onay istenir. Mutfakta bekleyen sipariş varsa engellenir ve açıklama gösterilir.
+- **Masayı kapat:** Onay istenir. Mutfakta hazırlanan sipariş varsa kapatma engellenmez; pencere siparişin mutfak ekranında kalacağını ve hazır olunca Hazır listesine düşeceğini bilgi olarak gösterir (0008).
 - **Profil:** Dil (TR/DE), mesai anahtarı, bildirim durumu / tekrar izin, çıkış.
 
 ### 8.3 Mutfak (`/kitchen`) — yatay tablet, 1–2 m'den okunur

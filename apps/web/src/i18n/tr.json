@@ -97,7 +97,8 @@
       "question": "{{table}} kapatılsın mı? Ödeme kasada alınır.",
       "confirm": "Evet, kapat",
       "done": "Masa kapatıldı",
-      "blocked": "Mutfakta hazırlanan sipariş var: önce hazır/teslim edilmeli ya da iptal edilmeli"
+      "kitchenNote_one": "Mutfakta hazırlanan {{count}} sipariş var. Masa kapansa da mutfak ekranında kalır; hazır olunca Hazır listesine düşer.",
+      "kitchenNote_other": "Mutfakta hazırlanan {{count}} sipariş var. Masa kapansa da mutfak ekranında kalır; hazır olunca Hazır listesine düşer."
     },
     "order": {
       "title": "Sipariş al",

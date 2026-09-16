@@ -139,16 +139,24 @@ describe('masa kapatma ve taşıma', () => {
     expect(elapsed).toBeGreaterThan(2000);
   });
 
-  it('mutfakta sipariş varken kapanmaz; hazır olanlar kapanışta teslim sayılır', async () => {
+  it('mutfakta sipariş varken de kapanır; sipariş mutfakta kalır, hazır olunca teslim edilebilir (0008)', async () => {
     const o = await order();
-    expect((await waiter.rpc('close_table_session', { p_session_id: o.session_id })).error?.message)
-      .toBe('open_orders_in_kitchen');
-    await kitchen.rpc('mark_order_ready', { p_order_id: o.order_id });
     expect((await waiter.rpc('close_table_session', { p_session_id: o.session_id })).error).toBeNull();
-    expect(await statusOf(o.order_id)).toBe('served');
+    expect(await statusOf(o.order_id)).toBe('in_kitchen');
     const { data } = await waiter.rpc('table_overview');
     const row = (data as { name: string; session_id: string | null }[]).find((r) => r.name === 'Test-Tisch');
     expect(row?.session_id).toBeNull();
+    // Kapalı masanın siparişini mutfak hazırlar, garson Hazır listesinden teslim eder.
+    expect((await kitchen.rpc('mark_order_ready', { p_order_id: o.order_id })).error).toBeNull();
+    expect((await waiter.rpc('mark_order_served', { p_order_id: o.order_id })).error).toBeNull();
+    expect(await statusOf(o.order_id)).toBe('served');
+  });
+
+  it('hazır olan siparişler kapanışta teslim sayılır', async () => {
+    const o = await order();
+    expect((await kitchen.rpc('mark_order_ready', { p_order_id: o.order_id })).error).toBeNull();
+    expect((await waiter.rpc('close_table_session', { p_session_id: o.session_id })).error).toBeNull();
+    expect(await statusOf(o.order_id)).toBe('served');
   });
 
   it('oturum boş masaya taşınır ve TISCHWECHSEL fişi basılır; dolu masaya taşınamaz', async () => {

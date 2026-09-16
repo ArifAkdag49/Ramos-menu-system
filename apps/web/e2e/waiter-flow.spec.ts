@@ -143,20 +143,13 @@ test('garson uçtan uca: sepet → gönder → hesap → iptal → taşı → ka
     await moveSheet.getByRole('button', { name: /masasına taşı/i }).click();
     await expect(page.getByRole('heading', { name: 'Test-Tisch-2' })).toBeVisible();
 
-    // 6 — kapatma önce engellenir (mutfakta sipariş var), sonra teslim edilince geçer
+    // 6 — mutfakta sipariş varken de kapanır (0008): pencere yalnız bilgi verir, sipariş mutfakta kalır
     const closeTable = page.getByRole('button', { name: 'Masayı kapat', exact: true });
     await closeTable.click();
     const closeSheet = page.getByRole('dialog');
+    await expect(closeSheet.getByText(/mutfak ekranında kalır/i)).toBeVisible();
+    await page.screenshot({ path: SHOT('close-kitchen-note') });
     await closeSheet.getByRole('button', { name: /evet, kapat/i }).click();
-    await expect(closeSheet.getByText(/mutfakta hazırlanan sipariş var/i)).toBeVisible();
-    await page.screenshot({ path: SHOT('close-blocked') });
-    await closeSheet.getByRole('button', { name: 'Kapat', exact: true }).click();
-
-    await page.getByRole('button', { name: /diğer işlemler/i }).click();
-    await page.getByRole('dialog').getByRole('button', { name: /teslim edildi \(içecek\)/i }).click();
-
-    await closeTable.click();
-    await page.getByRole('dialog').getByRole('button', { name: /evet, kapat/i }).click();
     await expect(page).toHaveURL(/\/waiter$/);
     await expect(page.getByText(/masa kapatıldı/i)).toBeVisible();
 

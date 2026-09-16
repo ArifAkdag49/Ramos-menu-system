@@ -97,7 +97,8 @@
       "question": "{{table}} schließen? Bezahlt wird an der Kasse.",
       "confirm": "Ja, schließen",
       "done": "Tisch geschlossen",
-      "blocked": "In der Küche wird noch eine Bestellung zubereitet: erst fertig/serviert oder storniert"
+      "kitchenNote_one": "In der Küche wird noch {{count}} Bestellung zubereitet. Sie bleibt nach dem Schließen auf dem Küchenbildschirm und erscheint fertig in der Liste „Fertig“.",
+      "kitchenNote_other": "In der Küche werden noch {{count}} Bestellungen zubereitet. Sie bleiben nach dem Schließen auf dem Küchenbildschirm und erscheinen fertig in der Liste „Fertig“."
     },
     "order": {
       "title": "Bestellung aufnehmen",
