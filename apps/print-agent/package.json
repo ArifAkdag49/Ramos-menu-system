@@ -16,6 +16,7 @@
   "dependencies": {
     "@ramos/shared": "*",
     "@supabase/supabase-js": "^2",
+    "@point-of-sale/codepage-encoder": "^3",
     "@point-of-sale/receipt-printer-encoder": "^3"
   },
   "devDependencies": {
