@@ -7,7 +7,8 @@ export const supabase = createClient<Database>(
   {
     auth: { persistSession: true, autoRefreshToken: true, storageKey: 'ramos-auth' },
     realtime: {
-      worker: true,
+      // jsdom'da `Worker` yok; gerçek tarayıcıda true, testte otomatik false.
+      worker: typeof Worker !== 'undefined',
       heartbeatCallback: (status: string) => {
         if (status === 'disconnected') supabase.realtime.connect();
       },
