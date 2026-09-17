@@ -70,10 +70,13 @@ export function useKitchenOrders(): OrderView[] {
   return mapOrders(rows, staffNames);
 }
 
-/** Hazır (`ready`) siparişleri okur. */
-export function useReadyOrders(): OrderView[] {
+/**
+ * Hazır (`ready`) siparişleri okur. `isSuccess`, "henüz yüklenmedi" (boş liste) ile "hazır sipariş
+ * yok" ayrımı içindir — uygulama içi "Hazır" uyarısı ilk yüklemede çalmamalı (Görev 26).
+ */
+export function useReadyOrdersQuery(): { orders: OrderView[]; isSuccess: boolean } {
   const staffNames = useStaffNames();
-  const { data } = useQuery({
+  const { data, isSuccess } = useQuery({
     queryKey: qk.ready,
     queryFn: async (): Promise<OrderRow[]> => {
       const { data, error } = await supabase.from('orders').select(ORDER_SELECT).eq('status', 'ready');
@@ -81,7 +84,11 @@ export function useReadyOrders(): OrderView[] {
       return (data ?? []) as unknown as OrderRow[];
     },
   });
-  return mapOrders(data ?? [], staffNames);
+  return { orders: mapOrders(data ?? [], staffNames), isSuccess };
+}
+
+export function useReadyOrders(): OrderView[] {
+  return useReadyOrdersQuery().orders;
 }
 
 /**

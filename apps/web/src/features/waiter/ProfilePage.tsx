@@ -4,8 +4,9 @@ import { useSetLocale, useSetOnDuty } from '../../data/orders';
 import { useAuth } from '../../lib/auth';
 import { Button } from '../../ui/Button';
 import { Chip } from '../../ui/Chip';
+import { NotificationsSection } from '../onboarding/NotificationsSection';
 
-/** Profil: ad + rol, dil (TR/DE), mesai anahtarı, çıkış. Bildirim bölümü Görev 25'te eklenir. */
+/** Profil: ad + rol, dil (TR/DE), bildirimler (Görev 25), mesai anahtarı, çıkış. */
 export function ProfilePage() {
   const { t } = useTranslation();
   const profile = useAuth((s) => s.profile);
@@ -36,6 +37,8 @@ export function ProfilePage() {
           </Chip>
         </div>
       </div>
+
+      <NotificationsSection />
 
       <Button
         variant={onDuty ? 'secondary' : 'primary'}

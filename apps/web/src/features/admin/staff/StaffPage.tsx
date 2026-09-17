@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import type { TFunction } from 'i18next';
 import {
   CheckCircle2,
   CircleOff,
@@ -181,7 +182,8 @@ export function StaffPage() {
   );
 }
 
-type TFn = ReturnType<typeof useTranslation>['t'];
+// `TFunction`: bkz. OrderDrawer `errorText` (TS2589, denetim sırasına bağlı tip derinliği).
+type TFn = TFunction<'translation'>;
 
 function errorText(t: TFn, e: unknown): string {
   const key = e instanceof AdminStaffError ? e.key : 'unknown';

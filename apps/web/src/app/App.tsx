@@ -1,25 +1,17 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Flame, LogOut, RotateCw } from 'lucide-react';
+import { LogOut, RotateCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RouterProvider } from 'react-router';
 import { useAuth } from '../lib/auth';
 import { queryClient } from '../lib/queryClient';
+import { UpdatePrompt } from '../pwa/UpdatePrompt';
 import { Button } from '../ui/Button';
-import { Spinner } from '../ui/Spinner';
+import { Brand, BrandLoader } from './BrandLoader';
 import { router } from './router';
 
 /** StrictMode iki kez bağladığı için oturum açılışı yalnız bir kez çalışır. */
 let started = false;
-
-function Brand() {
-  return (
-    <>
-      <Flame aria-hidden size={40} className="text-lime" />
-      <p className="text-3xl font-bold tracking-tight">RAMO&apos;S</p>
-    </>
-  );
-}
 
 export function App() {
   const { t } = useTranslation();
@@ -36,10 +28,10 @@ export function App() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
-        <Brand />
-        <Spinner className="text-muted" label={t('common.loading')} />
-      </div>
+      <>
+        <BrandLoader />
+        <UpdatePrompt />
+      </>
     );
   }
 
@@ -76,6 +68,7 @@ export function App() {
             {t('common.logout')}
           </Button>
         </div>
+        <UpdatePrompt />
       </div>
     );
   }
@@ -83,6 +76,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
+      <UpdatePrompt />
     </QueryClientProvider>
   );
 }

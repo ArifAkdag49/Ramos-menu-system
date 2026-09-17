@@ -174,7 +174,13 @@
       "realtimeOffline": "Canlı bağlantı yeniden kuruluyor"
     },
     "printBadge": { "queued": "Yazdırılıyor" },
-    "nav": { "label": "Garson gezinmesi" }
+    "nav": { "label": "Garson gezinmesi" },
+    "readyAlert": {
+      "title": "{{table}} · {{orderNo}} hazır",
+      "more_one": "+{{count}} sipariş daha hazır",
+      "more_other": "+{{count}} sipariş daha hazır",
+      "show": "Göster"
+    }
   },
   "kitchen": {
     "title": "Mutfak",
@@ -797,6 +803,52 @@
       "errors": {
         "range_invalid": "Bitiş tarihi başlangıçtan önce olamaz — tarihleri düzelt",
         "range_too_long": "En fazla 31 gün seçilebilir — aralığı kısalt"
+      }
+    }
+  },
+  "pwa": {
+    "update": {
+      "ready": "Yeni sürüm hazır",
+      "reload": "Yenile"
+    },
+    "guide": {
+      "title": "Ramo's uygulamasını kur",
+      "subtitle": "Sipariş hazır olunca telefonun seni uyarsın.",
+      "close": "Kurulum rehberini kapat",
+      "installTitle": "Uygulamayı ana ekrana ekle",
+      "installButton": "Uygulamayı yükle",
+      "installed": "Yüklendi — Ramo's'u ana ekrandaki simgeden aç",
+      "iosShare": "Safari'nin alt çubuğundaki Paylaş düğmesine dokun",
+      "iosAdd": "Listeden “Ana Ekrana Ekle”yi seç",
+      "iosOpen": "Ramo's'u ana ekrandaki simgeden aç",
+      "androidMenu": "Chrome menüsünden “Uygulamayı yükle” ya da “Ana ekrana ekle”yi seç",
+      "notifyTitle": "Bildirimlere izin ver",
+      "stepDone": "Tamamlandı"
+    },
+    "push": {
+      "title": "Bildirimler",
+      "enable": "Bildirimleri aç",
+      "disable": "Bildirimleri kapat",
+      "state": {
+        "loading": "Durum okunuyor",
+        "enabled": "Açık — sipariş hazır olunca bildirim gelir",
+        "disabled": "Kapalı — hazır siparişler için bildirim gelmez",
+        "denied": "İzin reddedildi",
+        "unsupported": "Bu cihazda kullanılamıyor"
+      },
+      "hint": {
+        "ios_needs_install": "iPhone'da bildirim yalnız ana ekrana eklenen uygulamada çalışır: Safari → Paylaş → Ana Ekrana Ekle, sonra Ramo's'u oradan aç.",
+        "denied": "Bildirim izni kapalı. Telefon ayarlarından Ramo's (ya da tarayıcın) için bildirimlere izin ver, sonra buraya dön.",
+        "unsupported": "Bu tarayıcı bildirim desteklemiyor — Android'de Chrome'u ya da Ramo's uygulamasını kullan."
+      },
+      "result": {
+        "enabled": "Bildirimler açıldı",
+        "disabled": "Bildirimler kapatıldı",
+        "dismissed": "İzin verilmedi — bildirim için tekrar dokun ve “İzin ver”i seç",
+        "denied": "İzin reddedildi — telefon ayarlarından bildirimlere izin ver",
+        "ios_needs_install": "Önce Ramo's'u ana ekrana ekle, sonra uygulamanın içinden bildirimleri aç",
+        "unsupported": "Bu tarayıcı bildirim desteklemiyor",
+        "error": "Bildirimler açılamadı — bağlantını kontrol edip tekrar dene"
       }
     }
   },

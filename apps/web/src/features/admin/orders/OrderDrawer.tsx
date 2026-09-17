@@ -1,5 +1,6 @@
 import { formatEuro, formatOrderNo, localTableName, type Locale } from '@ramos/shared';
 import { clsx } from 'clsx';
+import type { TFunction } from 'i18next';
 import { AlertTriangle, Ban, Eye, EyeOff, Printer, RotateCw } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,7 +53,9 @@ const JOB_TONE: Record<PrintJobStatus, Tone> = {
   failed: 'danger',
 };
 
-const errorText = (t: ReturnType<typeof useTranslation>['t'], e: unknown) =>
+// `ReturnType<typeof useTranslation>['t']` yerine `TFunction`: şablon anahtarlı çağrıda (`errors.${…}`)
+// tip örneklemesi, dosyaların denetim sırasına göre TS2589 ("excessively deep") sınırına dayanıyordu.
+const errorText = (t: TFunction<'translation'>, e: unknown): string =>
   t(`errors.${e instanceof RpcError ? e.key : 'unknown'}`);
 
 /**

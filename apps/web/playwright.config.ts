@@ -20,6 +20,8 @@ process.env.TEST_USER_PASSWORD ||= readTestPassword();
 
 export default defineConfig({
   testDir: 'e2e',
+  // PWA denetimleri üretim derlemesi ister (SW/manifest geliştirme sunucusunda yok): playwright.pwa.config.ts
+  testIgnore: 'pwa.spec.ts',
   // Her beklenti canlı Supabase'e gidip geliyor; 5 sn'lik varsayılan, iki kez giriş yapan testte
   // ağ yavaşladığında yetmiyordu. Sabit `sleep` yok — beklenti yine sert, yalnız süresi gerçekçi.
   expect: { timeout: 15_000 },

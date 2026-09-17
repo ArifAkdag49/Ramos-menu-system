@@ -19,5 +19,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Service worker DOM değil WebWorker kütüphanesiyle denetlenir (tsconfig.sw.json).
+  "exclude": ["src/sw.ts"]
 }

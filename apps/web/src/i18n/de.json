@@ -174,7 +174,13 @@
       "realtimeOffline": "Live-Verbindung wird wiederhergestellt"
     },
     "printBadge": { "queued": "Wird gedruckt" },
-    "nav": { "label": "Kellner-Navigation" }
+    "nav": { "label": "Kellner-Navigation" },
+    "readyAlert": {
+      "title": "{{table}} · {{orderNo}} fertig",
+      "more_one": "+{{count}} weitere Bestellung fertig",
+      "more_other": "+{{count}} weitere Bestellungen fertig",
+      "show": "Anzeigen"
+    }
   },
   "kitchen": {
     "title": "Küche",
@@ -797,6 +803,52 @@
       "errors": {
         "range_invalid": "Das Enddatum liegt vor dem Startdatum — Daten korrigieren",
         "range_too_long": "Höchstens 31 Tage wählbar — Zeitraum verkürzen"
+      }
+    }
+  },
+  "pwa": {
+    "update": {
+      "ready": "Neue Version verfügbar",
+      "reload": "Neu laden"
+    },
+    "guide": {
+      "title": "Ramo's-App einrichten",
+      "subtitle": "Dein Handy meldet sich, sobald eine Bestellung fertig ist.",
+      "close": "Einrichtungshilfe schließen",
+      "installTitle": "App zum Startbildschirm hinzufügen",
+      "installButton": "App installieren",
+      "installed": "Installiert — öffne Ramo's über das Symbol auf dem Startbildschirm",
+      "iosShare": "Tippe unten in Safari auf „Teilen“",
+      "iosAdd": "Wähle „Zum Home-Bildschirm“",
+      "iosOpen": "Öffne Ramo's über das Symbol auf dem Home-Bildschirm",
+      "androidMenu": "Wähle im Chrome-Menü „App installieren“ oder „Zum Startbildschirm hinzufügen“",
+      "notifyTitle": "Benachrichtigungen erlauben",
+      "stepDone": "Erledigt"
+    },
+    "push": {
+      "title": "Benachrichtigungen",
+      "enable": "Benachrichtigungen einschalten",
+      "disable": "Benachrichtigungen ausschalten",
+      "state": {
+        "loading": "Status wird geladen",
+        "enabled": "An — du wirst benachrichtigt, sobald eine Bestellung fertig ist",
+        "disabled": "Aus — keine Benachrichtigung bei fertigen Bestellungen",
+        "denied": "Berechtigung verweigert",
+        "unsupported": "Auf diesem Gerät nicht verfügbar"
+      },
+      "hint": {
+        "ios_needs_install": "Auf dem iPhone funktionieren Benachrichtigungen nur in der App auf dem Home-Bildschirm: Safari → Teilen → Zum Home-Bildschirm, dann Ramo's von dort öffnen.",
+        "denied": "Benachrichtigungen sind blockiert. Erlaube sie in den Handy-Einstellungen für Ramo's (oder deinen Browser) und komm dann hierher zurück.",
+        "unsupported": "Dieser Browser unterstützt keine Benachrichtigungen — nutze auf Android Chrome oder die Ramo's-App."
+      },
+      "result": {
+        "enabled": "Benachrichtigungen eingeschaltet",
+        "disabled": "Benachrichtigungen ausgeschaltet",
+        "dismissed": "Keine Berechtigung erteilt — nochmal tippen und „Zulassen“ wählen",
+        "denied": "Berechtigung verweigert — erlaube Benachrichtigungen in den Handy-Einstellungen",
+        "ios_needs_install": "Füge Ramo's zuerst zum Home-Bildschirm hinzu und schalte Benachrichtigungen dann in der App ein",
+        "unsupported": "Dieser Browser unterstützt keine Benachrichtigungen",
+        "error": "Benachrichtigungen konnten nicht eingeschaltet werden — Verbindung prüfen und nochmal versuchen"
       }
     }
   },

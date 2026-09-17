@@ -1,18 +1,25 @@
 import { clsx } from 'clsx';
 import { ClipboardList, LayoutGrid, User } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet } from 'react-router';
 import { useReadyOrders, useSetOnDuty } from '../../data/orders';
 import { useAuth } from '../../lib/auth';
+import { syncPushSubscription } from '../../pwa/push';
 import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
 import { ToastHost } from '../../ui/ToastHost';
 import { ConnectionBanners } from '../common/ConnectionBanners';
+import { InstallGuide } from '../onboarding/InstallGuide';
+import { ReadyAlertBanner } from './ReadyAlertBanner';
 
 /**
  * Garson bölümünün iskeleti: üst bar (ad + mesai çipi), bağlantı şeritleri, içerik ve alt
  * gezinme (Masalar · Hazır · Profil). `/waiter/table/:id/order` (Görev 14) bu düzenin dışındadır.
+ *
+ * Görev 25/26: başlığın hemen altında uygulama içi "Hazır" şeridi (push'a ek, uygulama öndeyken);
+ * içeriğin üstünde ilk açılış kurulum rehberi (kapatılabilir sayfa içi kart — modal değil, akışı
+ * kesmez).
  */
 export function WaiterLayout() {
   const { t } = useTranslation();
@@ -20,6 +27,12 @@ export function WaiterLayout() {
   const setOnDuty = useSetOnDuty();
   const readyCount = useReadyOrders().length;
   const onDuty = !!profile?.on_duty_since;
+  const profileId = profile?.id;
+
+  // Bildirim izni zaten verilmişse aboneliği bu kullanıcıya yeniden yaz (sessiz; izin sormaz).
+  useEffect(() => {
+    if (profileId) void syncPushSubscription();
+  }, [profileId]);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -39,6 +52,8 @@ export function WaiterLayout() {
         </button>
       </header>
 
+      <ReadyAlertBanner />
+
       {!onDuty ? (
         <Banner
           tone="warning"
@@ -56,6 +71,7 @@ export function WaiterLayout() {
       <ConnectionBanners topics={['orders', 'menu', 'printer-status', 'settings']} />
 
       <main className="flex-1 overflow-y-auto pb-24">
+        <InstallGuide />
         <Outlet />
       </main>
 
