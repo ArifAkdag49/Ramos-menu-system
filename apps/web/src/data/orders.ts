@@ -17,7 +17,7 @@ export type { OrderItemView, OrderView } from './orderMapper';
 export const ORDER_SELECT = `id, order_no, round_no, status, created_at, ready_at, note, waiter_id,
   table_sessions!inner(id, dining_tables!inner(name)),
   order_items(id, product_id, quantity, product_code, product_name, variant_name_de, variant_name_tr,
-    removed_ingredients, selected_options, note, status, cancel_reason, sort, category_sort, is_beverage, unit_price_cents),
+    removed_ingredients, selected_options, extra_charges, note, status, cancel_reason, sort, category_sort, is_beverage, unit_price_cents),
   print_jobs(id, type, status, last_error, created_at)`;
 
 const READY_DISPLAY_WINDOW_MS = 30 * 60 * 1000;

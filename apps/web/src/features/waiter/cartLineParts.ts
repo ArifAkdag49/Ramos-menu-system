@@ -1,4 +1,4 @@
-import { localName, type CartLine, type Locale, type MenuProduct } from '@ramos/shared';
+import { formatEuro, localName, type CartLine, type Locale, type MenuProduct } from '@ramos/shared';
 import type { LineParts } from '../common/ItemLinesView';
 
 /**
@@ -19,7 +19,7 @@ import type { LineParts } from '../common/ItemLinesView';
  */
 export function cartLineParts(
   product: MenuProduct,
-  line: Pick<CartLine, 'variantId' | 'optionIds' | 'removedIngredientIds' | 'note'>,
+  line: Pick<CartLine, 'variantId' | 'optionIds' | 'removedIngredientIds' | 'note' | 'extraCharges'>,
   locale: Locale,
   removedPrefix: string,
 ): LineParts {
@@ -40,6 +40,8 @@ export function cartLineParts(
     if (g.ticket_format === 'plus_each') options.push(...chosen.map((v) => `+${v}`));
     else options.push(chosen.join('+'));
   }
+  // Serbest ekstra ücretler (garsonun yazdığı) seçeneklerden sonra, tutarıyla.
+  for (const e of line.extraCharges ?? []) options.push(`+${e.label} (+${formatEuro(e.cents)})`);
 
   return {
     variant: variant ? localName(variant, locale) : null,

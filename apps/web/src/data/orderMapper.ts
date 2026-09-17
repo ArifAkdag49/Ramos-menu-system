@@ -1,3 +1,5 @@
+import type { ExtraCharge } from '@ramos/shared';
+
 export interface RemovedIngredientView {
   id: string;
   name_de: string;
@@ -33,6 +35,8 @@ export interface OrderItemRow {
   variant_name_tr: string | null;
   removed_ingredients: RemovedIngredientView[];
   selected_options: SelectedOptionView[];
+  /** Garsonun yazdığı serbest ekstra ücretler (0009); eski kayıtlarda boş dizi. */
+  extra_charges: ExtraCharge[];
   note: string | null;
   status: OrderItemStatus;
   cancel_reason: string | null;

@@ -36,6 +36,7 @@ vi.mock('../../data/settings', () => ({ useSettings: () => undefined }));
 vi.mock('../../lib/online', () => ({ useOnline: () => true }));
 
 import { OrderPage } from './OrderPage';
+import { useCart } from './cartStore';
 
 const show = () =>
   render(
@@ -129,6 +130,31 @@ describe('OrderPage — kategori şeridi (O7)', () => {
   it('etiketli bir grup olarak duyurulur', () => {
     show();
     expect(screen.getByRole('group', { name: 'Kategoriler' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Ekstra ücretli sepet satırı "Düzenle" ile açılınca ekstralar panele gelmeli; aksi halde
+ * "Güncelle" onları sessizce siler ve mutfağa/fişe/hesaba ekstrasız gider.
+ */
+describe('OrderPage — sepetten düzenleme ekstra ücreti korur', () => {
+  afterEach(() => {
+    useCart.setState({ carts: {}, notes: {}, pendingOrderId: {} });
+  });
+
+  it('ekstra panelde çip olarak durur ve Güncelle sonrası satırda kalır', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const cheese = [{ label: 'ekstra peynir', cents: 100 }];
+    useCart.setState({ carts: {}, notes: {}, pendingOrderId: {} });
+    useCart.getState().add('t1', {
+      productId: 'p05', variantId: null, optionIds: [], removedIngredientIds: [], quantity: 1, note: '', extraCharges: cheese,
+    });
+    show();
+    await user.click(screen.getByRole('button', { name: /Sepet$/ }));
+    await user.click(screen.getByRole('button', { name: 'Düzenle' }));
+    expect(screen.getByRole('button', { name: /^ekstra peynir 1,00\s€ ekstrasını kaldır$/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^Güncelle/ }));
+    expect(useCart.getState().carts.t1).toEqual([expect.objectContaining({ productId: 'p05', extraCharges: cheese })]);
   });
 });
 

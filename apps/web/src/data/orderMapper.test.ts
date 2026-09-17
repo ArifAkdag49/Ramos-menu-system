@@ -14,19 +14,19 @@ const row: OrderRow = {
   order_items: [
     {
       id: 'i1', product_id: 'p1', quantity: 1, product_code: '08', product_name: 'Drehspieß',
-      variant_name_de: 'Kalb', variant_name_tr: 'Dana', removed_ingredients: [], selected_options: [],
+      variant_name_de: 'Kalb', variant_name_tr: 'Dana', removed_ingredients: [], selected_options: [], extra_charges: [],
       note: null, status: 'active', cancel_reason: null, sort: 2, category_sort: 1, is_beverage: false,
       unit_price_cents: 1350,
     },
     {
       id: 'i2', product_id: 'p2', quantity: 1, product_code: '30', product_name: 'Ayran',
-      variant_name_de: null, variant_name_tr: null, removed_ingredients: [], selected_options: [],
+      variant_name_de: null, variant_name_tr: null, removed_ingredients: [], selected_options: [], extra_charges: [],
       note: null, status: 'active', cancel_reason: null, sort: 1, category_sort: 1, is_beverage: true,
       unit_price_cents: 250,
     },
     {
       id: 'i3', product_id: 'p1', quantity: 1, product_code: '08', product_name: 'Drehspieß',
-      variant_name_de: 'Kalb', variant_name_tr: 'Dana', removed_ingredients: [], selected_options: [],
+      variant_name_de: 'Kalb', variant_name_tr: 'Dana', removed_ingredients: [], selected_options: [], extra_charges: [],
       note: null, status: 'cancelled', cancel_reason: 'Yanlış sipariş', sort: 1, category_sort: 1, is_beverage: false,
       unit_price_cents: 1350,
     },

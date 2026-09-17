@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { MenuGroup, MenuProduct } from './domain';
-import { defaultSelection, needsSheet, toggleOption, unitPriceCents, validateSelection } from './pricing';
+import {
+  defaultSelection,
+  needsSheet,
+  parseEuroToCents,
+  toggleOption,
+  unitPriceCents,
+  validateExtraCharge,
+  validateSelection,
+} from './pricing';
 
 const sauce: MenuGroup = { id: 'g-s', name_de: 'Soße', name_tr: 'Sos', min_select: 1, max_select: 3,
   ticket_format: 'label_values', sort: 1, options: [
@@ -53,6 +61,31 @@ describe('pricing', () => {
     expect(toggleOption(extras, ['wk', 'fl'], 'wk')).toEqual(['fl']);
     expect(toggleOption({ ...extras, max_select: 1 }, ['wk'], 'fl')).toEqual(['fl']);
     expect(toggleOption({ ...sauce, max_select: 2 }, ['kn', 'kr'], 'sc')).toEqual(['kn', 'kr']); // max dolu → değişmez
+  });
+  it('ekstra ücretler birim fiyata eklenir', () => {
+    expect(unitPriceCents(cola, { variantId: null, optionIds: [], removedIngredientIds: [],
+      extraCharges: [{ label: 'buz', cents: 50 }, { label: 'limon', cents: 30 }] })).toBe(250 + 80);
+  });
+  it('parseEuroToCents: virgül/nokta, en fazla iki ondalık', () => {
+    expect(parseEuroToCents('1')).toBe(100);
+    expect(parseEuroToCents('1,5')).toBe(150);
+    expect(parseEuroToCents(' 1.50 € ')).toBe(150);
+    expect(parseEuroToCents('0,05')).toBe(5);
+    expect(parseEuroToCents('12,345')).toBeNull();
+    expect(parseEuroToCents('-1')).toBeNull();
+    expect(parseEuroToCents('abc')).toBeNull();
+    expect(parseEuroToCents('')).toBeNull();
+  });
+  it('validateExtraCharge: sunucuyla aynı sınırlar', () => {
+    expect(validateExtraCharge('ekstra peynir', 100, 0)).toBeNull();
+    expect(validateExtraCharge('  ', 100, 0)).toBe('label_required');
+    expect(validateExtraCharge('x'.repeat(41), 100, 0)).toBe('label_too_long');
+    expect(validateExtraCharge('x'.repeat(40), 100, 0)).toBeNull();
+    expect(validateExtraCharge('peynir', 0, 0)).toBe('amount_invalid');
+    expect(validateExtraCharge('peynir', 5001, 0)).toBe('amount_invalid');
+    expect(validateExtraCharge('peynir', 5000, 0)).toBeNull();
+    expect(validateExtraCharge('peynir', null, 0)).toBe('amount_invalid');
+    expect(validateExtraCharge('peynir', 100, 5)).toBe('too_many');
   });
   it('panel gerekmeyen ürün tek dokunuşla eklenir', () => {
     expect(needsSheet(cola)).toBe(false);

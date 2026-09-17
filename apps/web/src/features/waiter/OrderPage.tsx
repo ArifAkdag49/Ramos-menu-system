@@ -114,6 +114,7 @@ export function OrderPage() {
         variantId: line.variantId,
         optionIds: line.optionIds,
         removedIngredientIds: line.removedIngredientIds,
+        extraCharges: line.extraCharges ?? [],
         quantity: line.quantity,
         note: line.note,
       },

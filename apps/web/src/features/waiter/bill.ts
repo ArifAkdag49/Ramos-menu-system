@@ -4,7 +4,7 @@ export interface BillLine {
   product_code: string | null;
   product_name: string;
   variant_name_de: string | null;
-  /** Hesapta ekstralar her zaman Almanca gelir (`get_session_bill` yalnız `name_de` toplar). */
+  /** Seçenek ekstraları her zaman Almanca gelir (`get_session_bill` yalnız `name_de` toplar); serbest ekstra ücretler garsonun yazdığı gibi, tutarıyla (0009). */
   variant_name_tr: string | null;
   extras: string[];
   unit_price_cents: number;

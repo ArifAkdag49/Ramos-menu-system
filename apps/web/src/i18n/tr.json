@@ -118,6 +118,21 @@
       "ingredientsTitle": "Malzemeler — çıkarmak için dokun",
       "noteLabel": "Not",
       "notePlaceholder": "Mutfağa not (opsiyonel)",
+      "extra": {
+        "title": "Ekstra ücret",
+        "hint": "Menüde olmayan bir istek için (ör. ekstra peynir). Tutar adet başına eklenir.",
+        "label": "Ekstra ne için",
+        "labelPlaceholder": "ör. ekstra peynir",
+        "amount": "Ekstra tutar (€)",
+        "add": "Ekle",
+        "remove": "{{label}} {{price}} ekstrasını kaldır",
+        "errors": {
+          "too_many": "En fazla {{max}} ekstra eklenebilir",
+          "label_required": "Ekstranın ne için olduğunu yazın",
+          "label_too_long": "Açıklama en fazla {{labelMax}} karakter olabilir",
+          "amount_invalid": "Geçerli bir tutar yazın (0,01–50,00 €)"
+        }
+      },
       "submitHint": "Önce {{group}} seçin",
       "requiredMark": "Gerekli",
       "quantity": {
@@ -553,6 +568,7 @@
     "order_not_found": "Sipariş bulunamadı — listeyi tazele",
     "job_not_failed": "Bu baskı zaten sırada — tekrar denemeye gerek yok",
     "job_not_found": "Baskı işi bulunamadı — listeyi tazele",
-    "job_not_printing": "Bu baskı artık basılmıyor — listeyi tazele"
+    "job_not_printing": "Bu baskı artık basılmıyor — listeyi tazele",
+    "extra_charge_invalid": "Ekstra ücret geçersiz: açıklama 1–40 karakter, tutar 0,01–50,00 €, kalem başına en fazla 5"
   }
 }

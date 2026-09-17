@@ -84,6 +84,18 @@ describe('cartLineParts', () => {
     });
   });
 
+  it('serbest ekstra ücretler seçeneklerden sonra tutarıyla yazılır', () => {
+    const parts = cartLineParts(
+      doener,
+      line({ variantId: 'h', optionIds: ['wk'], extraCharges: [{ label: 'ekstra peynir', cents: 150 }] }),
+      'tr',
+      'ÇIKAR',
+    );
+    expect(parts.options).toHaveLength(2);
+    expect(parts.options[0]).toBe('+Beyaz peynir');
+    expect(parts.options[1]).toMatch(/^\+ekstra peynir \(\+1,50\s€\)$/);
+  });
+
   it('yalnız not varsa yalnız not döner', () => {
     expect(cartLineParts(cola, line({ note: 'ohne Eis' }), 'de', 'OHNE')).toEqual({
       variant: null,

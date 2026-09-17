@@ -135,6 +135,7 @@ describe('ProductSheet', () => {
       removedIngredientIds: [],
       quantity: 2,
       note: '',
+      extraCharges: [],
     });
   });
 
@@ -151,6 +152,104 @@ describe('ProductSheet', () => {
     expect(screen.getByRole('button', { name: /Kalb/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /Aktualisieren/ })).toBeInTheDocument();
     expect(screen.getByDisplayValue('az pişmiş')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Garson önerisi: menüde olmayan bir istek (ör. "extra Käse") için serbest ekstra ücret. Tutar
+ * seçenek fiyat farkları gibi ADET BAŞINA birim fiyata eklenir; sınırlar sunucudaki
+ * `submit_order` (0009) ile aynıdır.
+ */
+describe('ProductSheet — ekstra ücret', () => {
+  const labelInput = () => screen.getByRole('textbox', { name: 'Aufpreis wofür' });
+  const amountInput = () => screen.getByRole('textbox', { name: 'Aufpreis (€)' });
+  const addExtra = () => screen.getByRole('button', { name: 'Hinzufügen' });
+  const withSauce = async (user: ReturnType<typeof userEvent.setup>) =>
+    user.click(screen.getByRole('button', { name: /^Knoblauch$/ }));
+
+  it('eklenen ekstra çip olur, fiyata adet başına eklenir ve gönderilir', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<ProductSheet product={teller} open onClose={vi.fn()} onSubmit={onSubmit} />);
+    await withSauce(user);
+    await user.type(labelInput(), '  extra   Käse ');
+    await user.type(amountInput(), '1,5');
+    await user.click(addExtra());
+    expect(screen.getByRole('button', { name: /^Aufpreis extra Käse 1,50\s€ entfernen$/ })).toBeInTheDocument();
+    expect(labelInput()).toHaveValue('');
+    expect(amountInput()).toHaveValue('');
+    expect(addToCart()).toHaveTextContent('14,00');
+    await user.click(screen.getByRole('button', { name: 'Menge erhöhen' }));
+    expect(addToCart()).toHaveTextContent('28,00');
+    await user.click(addToCart());
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ quantity: 2, extraCharges: [{ label: 'extra Käse', cents: 150 }] }),
+    );
+  });
+
+  it('çipe dokununca ekstra kalkar, fiyat geri döner', async () => {
+    const user = userEvent.setup();
+    render(<ProductSheet product={teller} open onClose={vi.fn()} onSubmit={vi.fn()} />);
+    await withSauce(user);
+    await user.type(labelInput(), 'Käse');
+    await user.type(amountInput(), '1');
+    await user.click(addExtra());
+    expect(addToCart()).toHaveTextContent('13,50');
+    await user.click(screen.getByRole('button', { name: /^Aufpreis Käse .* entfernen$/ }));
+    expect(screen.queryByRole('button', { name: /entfernen$/ })).not.toBeInTheDocument();
+    expect(addToCart()).toHaveTextContent('12,50');
+  });
+
+  it('"Hinzufügen"e basılmadan yazılmış geçerli ekstra fiyata dahil görünür ve gönderilir', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<ProductSheet product={teller} open onClose={vi.fn()} onSubmit={onSubmit} />);
+    await withSauce(user);
+    await user.type(labelInput(), 'Käse');
+    await user.type(amountInput(), '1');
+    expect(addToCart()).toHaveTextContent('13,50');
+    await user.click(addToCart());
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ extraCharges: [{ label: 'Käse', cents: 100 }] }));
+  });
+
+  it('hatalı tutarla sepete eklenmez ve sebebi yazılır — ekstra sessizce kaybolmaz', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<ProductSheet product={teller} open onClose={vi.fn()} onSubmit={onSubmit} />);
+    await withSauce(user);
+    await user.type(labelInput(), 'Käse');
+    await user.type(amountInput(), '0');
+    expect(addToCart()).toHaveTextContent('12,50');
+    await user.click(addToCart());
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Bitte gültigen Betrag eingeben');
+  });
+
+  it('açıklamasız tutar eklenmez; yazmaya başlayınca uyarı kalkar', async () => {
+    const user = userEvent.setup();
+    render(<ProductSheet product={teller} open onClose={vi.fn()} onSubmit={vi.fn()} />);
+    await user.type(amountInput(), '1');
+    await user.click(addExtra());
+    expect(screen.getByRole('alert')).toHaveTextContent('Bitte angeben, wofür der Aufpreis ist');
+    expect(screen.queryByRole('button', { name: /entfernen$/ })).not.toBeInTheDocument();
+    await user.type(labelInput(), 'K');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('düzenlemede mevcut ekstralar yüklenir; 5 ekstrada giriş alanı gizlenir', () => {
+    const five = ['a', 'b', 'c', 'd', 'e'].map((label) => ({ label, cents: 100 }));
+    render(
+      <ProductSheet
+        product={teller}
+        open
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        initial={{ variantId: 'h', optionIds: ['po', 'kn'], removedIngredientIds: [], quantity: 1, note: '', extraCharges: five }}
+      />,
+    );
+    expect(screen.getAllByRole('button', { name: /^Aufpreis . 1,00\s€ entfernen$/ })).toHaveLength(5);
+    expect(screen.queryByRole('textbox', { name: 'Aufpreis wofür' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Aktualisieren/ })).toHaveTextContent('17,50');
   });
 });
 

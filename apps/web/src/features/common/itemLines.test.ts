@@ -52,6 +52,14 @@ describe('itemLines', () => {
       note: 'Soße extra',
     }));
 
+  it('serbest ekstra ücretler seçeneklerin ardından tutarıyla gelir; alan yoksa satır eklenmez', () => {
+    const withExtra = { ...(item as object), extra_charges: [{ label: 'extra Käse', cents: 100 }] } as never;
+    const options = itemLines(withExtra, 'de').options;
+    expect(options.slice(0, 3)).toEqual(['Reis', 'Soße: Knoblauch', '+ Extra Weichkäse']);
+    expect(options[3]).toMatch(/^\+ extra Käse \(\+1,00\s€\)$/);
+    expect(itemLines({ ...(item as object), extra_charges: [] } as never, 'de').options).toHaveLength(3);
+  });
+
   it('Türkçe', () =>
     expect(itemLines(item, 'tr')).toEqual({
       variant: 'Dana',

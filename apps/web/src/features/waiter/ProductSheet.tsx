@@ -1,11 +1,17 @@
 import {
+  EXTRA_CHARGE_LIMITS,
   defaultSelection,
   formatEuro,
   localName,
+  normalizeExtraLabel,
+  parseEuroToCents,
   toggleOption,
   unitPriceCents,
+  validateExtraCharge,
   validateSelection,
   type CartLine,
+  type ExtraCharge,
+  type ExtraChargeError,
   type Locale,
   type MenuGroup,
   type MenuProduct,
@@ -35,7 +41,7 @@ function groupHint(g: Pick<MenuGroup, 'min_select' | 'max_select'>, chosen: numb
 }
 
 /**
- * Ürün paneli: varyant, seçim grupları, malzeme (OHNE/ÇIKAR) ve not. Kurallar
+ * Ürün paneli: varyant, seçim grupları, malzeme (OHNE/ÇIKAR), not ve serbest ekstra ücret. Kurallar
  * (`defaultSelection`/`toggleOption`/`validateSelection`/`unitPriceCents`) `@ramos/shared`'dan
  * gelir — sunucudaki `submit_order` aynısını uygular, burada ikinci bir kopya yazılmaz.
  *
@@ -67,6 +73,11 @@ export function ProductSheet({
   );
   const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
   const [note, setNote] = useState(initial?.note ?? '');
+  // Serbest ekstra ücret (menüde olmayan istek): eklenenler + henüz "Ekle"ye basılmamış giriş.
+  const [extras, setExtras] = useState<ExtraCharge[]>(initial?.extraCharges ?? []);
+  const [extraLabel, setExtraLabel] = useState('');
+  const [extraAmount, setExtraAmount] = useState('');
+  const [extraError, setExtraError] = useState<ExtraChargeError | null>(null);
 
   const errors = useMemo(() => validateSelection(product, selection), [product, selection]);
   const errorGroupIds = useMemo(() => new Set(errors.flatMap((e) => ('groupId' in e ? [e.groupId] : []))), [errors]);
@@ -75,7 +86,15 @@ export function ProductSheet({
 
   if (!open) return null;
 
-  const unitPrice = unitPriceCents(product, selection);
+  // Yazılmış ama "Ekle"ye basılmamış geçerli bir ekstra da fiyata dahil görünür; gönderimde eklenir.
+  const pendingText = extraLabel.trim() !== '' || extraAmount.trim() !== '';
+  const pendingCents = pendingText ? parseEuroToCents(extraAmount) : null;
+  const pendingExtra: ExtraCharge | null =
+    pendingText && pendingCents !== null && !validateExtraCharge(extraLabel, pendingCents, extras.length)
+      ? { label: normalizeExtraLabel(extraLabel), cents: pendingCents }
+      : null;
+  const allExtras = pendingExtra ? [...extras, pendingExtra] : extras;
+  const unitPrice = unitPriceCents(product, { ...selection, extraCharges: allExtras });
   const sortedGroups = [...product.groups].sort((a, b) => a.sort - b.sort);
 
   /**
@@ -103,9 +122,26 @@ export function ProductSheet({
         : [...s.removedIngredientIds, id],
     }));
 
+  /** Ekstrayı doğrular; geçerliyse listeye alır ve girişi temizler. Hata anahtarını döner. */
+  const addExtra = (): ExtraChargeError | null => {
+    const cents = parseEuroToCents(extraAmount);
+    const error = validateExtraCharge(extraLabel, cents, extras.length);
+    setExtraError(error);
+    if (error || cents === null) return error ?? 'amount_invalid';
+    setExtras((xs) => [...xs, { label: normalizeExtraLabel(extraLabel), cents }]);
+    setExtraLabel('');
+    setExtraAmount('');
+    return null;
+  };
+
   const submit = () => {
     if (!canSubmit) return;
-    onSubmit({ ...selection, quantity, note: note.trim() });
+    // Garson tutarı yazıp "Ekle"ye basmayı unuttuysa ekstra sessizce kaybolmasın.
+    if (pendingText && !pendingExtra) {
+      addExtra();
+      return;
+    }
+    onSubmit({ ...selection, quantity, note: note.trim(), extraCharges: allExtras });
   };
 
   return (
@@ -271,6 +307,76 @@ export function ProductSheet({
             </div>
           ) : null}
         </div>
+
+        {/* min-w-0: fieldset'in tarayıcı varsayılanı min-content genişliktir; giriş satırı paneli 390 px'te yana taşırıyordu. */}
+        <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+          <legend className="mb-1 text-base font-semibold">{t('waiter.order.extra.title')}</legend>
+          <p className="text-sm text-muted">{t('waiter.order.extra.hint')}</p>
+          {extras.length ? (
+            <div className="flex flex-wrap gap-2">
+              {extras.map((e, i) => (
+                <Chip
+                  key={`${i}-${e.label}`}
+                  selected
+                  aria-label={t('waiter.order.extra.remove', { label: e.label, price: formatEuro(e.cents) })}
+                  onClick={() => setExtras((xs) => xs.filter((_, j) => j !== i))}
+                >
+                  {e.label} +{formatEuro(e.cents)} ✕
+                </Chip>
+              ))}
+            </div>
+          ) : null}
+          {extras.length < EXTRA_CHARGE_LIMITS.maxPerItem ? (
+            // Telefonda iki satır: açıklama tam genişlik (DE yer tutucu da sığar), altında tutar + Ekle.
+            <div className="flex flex-col gap-2">
+              <input
+                id="product-extra-label"
+                aria-label={t('waiter.order.extra.label')}
+                value={extraLabel}
+                maxLength={EXTRA_CHARGE_LIMITS.labelMax}
+                placeholder={t('waiter.order.extra.labelPlaceholder')}
+                onChange={(e) => {
+                  setExtraLabel(e.target.value);
+                  setExtraError(null);
+                }}
+                className="min-h-12 w-full rounded-control border border-border bg-surface-2 px-3 text-base text-text placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime"
+              />
+              <div className="flex gap-2">
+                <div className="relative w-32 shrink-0">
+                  <input
+                    id="product-extra-amount"
+                    aria-label={t('waiter.order.extra.amount')}
+                    value={extraAmount}
+                    inputMode="decimal"
+                    placeholder="1,00"
+                    onChange={(e) => {
+                      setExtraAmount(e.target.value);
+                      setExtraError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addExtra();
+                      }
+                    }}
+                    className="tabular min-h-12 w-full rounded-control border border-border bg-surface-2 pl-3 pr-7 text-right text-base text-text placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime"
+                  />
+                  <span aria-hidden className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-base text-muted">
+                    €
+                  </span>
+                </div>
+                <Button variant="secondary" className="flex-1" onClick={() => void addExtra()} disabled={!pendingText}>
+                  {t('waiter.order.extra.add')}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {extraError ? (
+            <p role="alert" className="text-base font-medium text-danger-ink">
+              {t(`waiter.order.extra.errors.${extraError}`, { max: EXTRA_CHARGE_LIMITS.maxPerItem, labelMax: EXTRA_CHARGE_LIMITS.labelMax })}
+            </p>
+          ) : null}
+        </fieldset>
       </div>
     </Sheet>
   );

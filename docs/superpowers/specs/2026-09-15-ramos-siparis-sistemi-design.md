@@ -313,9 +313,10 @@ Tüm tablolarda RLS açıktır. `anon` rolünün hiçbir erişimi yoktur. Para *
 **`order_items`** — kalem (snapshot)
 - `id`, `order_id → orders`, `product_id → products`
 - Kopyalanan bilgiler: `category_sort int`, `is_beverage bool`, `product_code`, `product_name`, `variant_id null`, `variant_name_de`, `variant_name_tr`
-- `unit_price_cents int` (varyant/temel fiyat + Σ seçenek farkları), `quantity int check (1..99)`
+- `unit_price_cents int` (varyant/temel fiyat + Σ seçenek farkları + Σ ekstra ücretler), `quantity int check (1..99)`
 - `removed_ingredients jsonb default '[]'` → `[{id, name_de, name_tr}]`
 - `selected_options jsonb default '[]'` → `[{group_id, group_name_de, group_name_tr, ticket_format, group_sort, option_id, name_de, name_tr, price_delta_cents}]`
+- `extra_charges jsonb default '[]'` → `[{label, cents}]` — garsonun yazdığı serbest ekstra ücret (menüde olmayan istek, ör. "ekstra peynir"; 0009)
 - `note text`, `status item_status default 'active'`
 - İptal bilgisi: `cancel_reason`, `cancelled_by`, `cancelled_at`
 - `sort int`
@@ -401,11 +402,13 @@ Personel yönetimi RPC ile değil, **`admin-staff` Edge Function** ile yapılır
       "quantity": 2,
       "option_ids": ["…", "…"],
       "removed_ingredient_ids": ["…"],
+      "extra_charges": [{ "label": "ekstra peynir", "cents": 100 }],
       "note": "Soße extra"
     }
   ]
 }
 ```
+`extra_charges` isteğe bağlıdır; gönderilmezse (ya da `[]` / `null`) ekstra yoktur.
 
 **Çıktı:** `{ order_id, order_no, round_no, session_id, total_cents }`
 
@@ -425,7 +428,8 @@ Personel yönetimi RPC ile değil, **`admin-staff` Edge Function** ile yapılır
   - Grup başına en az / en fazla seçim sayısı tutmuyorsa `option_group_min` / `option_group_max`. Hata detayında grup kimliği döner.
   - Exclusive seçenek başka bir seçenekle birlikte seçilmişse `option_exclusive_conflict`.
 - **Malzemeler:** Çıkarılan malzeme ürüne bağlı değilse `ingredient_invalid`.
-- **Fiyat:** Birim fiyat = (varyant fiyatı ?? temel fiyat) + Σ seçilen seçeneklerin fiyat farkı. İstemcinin gönderdiği fiyat yok sayılır.
+- **Ekstra ücret (0009):** Kalem başına en fazla 5; açıklama kırpılmış 1–40 karakter (art arda boşluklar teke iner); tutar tam sayı sent, 1–5000 (0,01–50,00 €). İndirim / negatif tutar yok. Aksi hâlde `extra_charge_invalid` (detayda ürün kimliği).
+- **Fiyat:** Birim fiyat = (varyant fiyatı ?? temel fiyat) + Σ seçilen seçeneklerin fiyat farkı + Σ ekstra ücretler (adet başına). İstemcinin gönderdiği fiyat yok sayılır.
 - **Oturum ve numaralar:**
   - Masada açık oturum yoksa açılır (`opened_by` = çağıran kişi).
   - `round_no` = oturumdaki sipariş sayısı + 1.
@@ -459,6 +463,8 @@ Payload RPC içinde, iş oluşturulurken bir kez üretilir. Böylece tekrar bask
   "footer": ""
 }
 ```
+Serbest ekstra ücretler (0009) seçenek gruplarının ardından ayrı bir grup olarak eklenir: `{ "label": "Extra", "format": "plus_each", "values": ["ekstra peynir (+1,00)"] }`. Tutar € işaretsiz yazılır (kod sayfası); satır fiyatı (`priceCents`) ekstrayı zaten içerir. Mevcut biçim kullanıldığı için kurulu yazdırma ajanlarının güncellenmesi gerekmez.
+
 Diğer türler aynı modeli ek alanlarla kullanır:
 - `storno`: `items` yalnız iptal edilen kalemler, ayrıca `reason` ve `refOrderNo`.
 - `table_move`: `fromTable`, `toTable`, `openOrderNos`.
@@ -481,7 +487,8 @@ Diğer türler aynı modeli ek alanlarla kullanır:
   - `plus_each` → her seçim ayrı satırda: "+ Extra Weichkäse"
 - **Tükendi ürün:** Garson listesinde soluk görünür ve seçilemez. Sunucu da reddeder.
 - **Arşivleme:** Ürün silinmez, arşivlenir. Geçmiş siparişler snapshot sayesinde bozulmaz.
-- **Sepette birleştirme:** Aynı ürün + varyant + seçimler + çıkarılanlar + not tek satırda toplanır ve adet artar. Farklı olan her kombinasyon ayrı satırdır; örneğin 3 döner'den biri soğansızsa 2 + 1 olarak iki satır olur.
+- **Serbest ekstra ücret:** Menüde olmayan bir istek için garson ürün panelinde açıklama + tutar yazar. Adet başına birim fiyata eklenir; sepette, KDS'de, masa detayında, fişte (`+ ekstra peynir (+1,00)`) ve hesap özetinde görünür, raporlar `unit_price_cents × quantity` üzerinden sayar.
+- **Sepette birleştirme:** Aynı ürün + varyant + seçimler + çıkarılanlar + not (+ varsa aynı ekstra ücretler) tek satırda toplanır ve adet artar. Farklı olan her kombinasyon ayrı satırdır; örneğin 3 döner'den biri soğansızsa 2 + 1 olarak iki satır olur.
 - **Seed:** Menü, gruplar, setler ve ürün-grup bağlantıları `docs/menu/ramos-menu-data.md`'dedir.
 
 ---
@@ -523,7 +530,8 @@ Alt menüde üç sekme var: **Masalar · Hazır (rozetli) · Profil**.
     4. Soße çoklu seçim + "ohne Soße" (exclusive) + "scharf (Chili)" anahtarı
     5. Ekstralar (+ fiyat)
     6. Not alanı + ayarlardaki hızlı not çipleri
-    7. Adet ve canlı satır fiyatı, **Sepete ekle** butonu (zorunlu grup eksikse pasif kalır ve eksik grup vurgulanır)
+    7. **Ekstra ücret:** açıklama ("ekstra peynir") + tutar (1,00 €) + "Ekle"; eklenenler çip olur, dokununca silinir. Yazılıp "Ekle"ye basılmamış geçerli ekstra da sepete eklenirken alınır; hatalıysa sepete eklenmez ve sebebi yazılır.
+    8. Adet ve canlı satır fiyatı (ekstralar dahil), **Sepete ekle** butonu (zorunlu grup eksikse pasif kalır ve eksik grup vurgulanır)
   - İstenirse: son 7 günün en çok satan 8 ürünü "Hızlı erişim" satırında gösterilir.
   - **Ürün görselleri:** Ürün satırının solunda 56 px kare küçük görsel, ürün panelinin üstünde 4:3 geniş görsel. Görsel yoksa marka renklerinde sade bir yer tutucu (alev işareti + ürün numarası) görünür; düzen görselli ve görselsiz aynı kalır. KDS'de görsel yok.
 - **Sepet:**
@@ -535,7 +543,7 @@ Alt menüde üç sekme var: **Masalar · Hazır (rozetli) · Profil**.
 - **Hazır uyarısı:**
   - Uygulama açıksa: üst banner + ses (ilk etkileşimden sonra) + titreşim (yalnız Android).
   - Arka plandaysa veya ekran kilitliyse: Web Push. Başlık kullanıcının dilinde: "Masa 12 · #047 hazır" / "Tisch 12 · #047 fertig".
-- **Hesap özeti:** Aktif kalemler gruplanır (adet × birim = tutar) ve genel toplam gösterilir. Kasaya giriş içindir, fiş basılmaz.
+- **Hesap özeti:** Aktif kalemler gruplanır (adet × birim = tutar) ve genel toplam gösterilir. Ekstra ücretler satırda tutarıyla yazılır ("+ekstra peynir (+1,00 €)"). Kasaya giriş içindir, fiş basılmaz.
 - **Masayı taşı:** Boş masalardan biri seçilir, mutfağa TISCHWECHSEL fişi basılır.
 - **Masayı kapat:** Onay istenir. Mutfakta hazırlanan sipariş varsa kapatma engellenmez; pencere siparişin mutfak ekranında kalacağını ve hazır olunca Hazır listesine düşeceğini bilgi olarak gösterir (0008).
 - **Profil:** Dil (TR/DE), mesai anahtarı, bildirim durumu / tekrar izin, çıkış.

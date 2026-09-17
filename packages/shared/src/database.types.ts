@@ -232,6 +232,7 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           category_sort: number
+          extra_charges: Json
           id: string
           is_beverage: boolean
           note: string | null
@@ -254,6 +255,7 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           category_sort: number
+          extra_charges?: Json
           id?: string
           is_beverage?: boolean
           note?: string | null
@@ -276,6 +278,7 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           category_sort?: number
+          extra_charges?: Json
           id?: string
           is_beverage?: boolean
           note?: string | null

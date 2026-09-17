@@ -10,11 +10,21 @@ export interface MenuProduct {
   base_price_cents: number | null; allergens: string | null; image_path: string | null; is_sold_out: boolean; sort: number;
   variants: MenuVariant[]; ingredients: MenuIngredient[]; groups: MenuGroup[];
 }
-export interface Selection { variantId: string | null; optionIds: string[]; removedIngredientIds: string[] }
+/**
+ * Garsonun ürün panelinde yazdığı serbest ekstra ücret (menüde olmayan istek, ör. "ekstra peynir").
+ * Seçenek fiyat farkları gibi ADET BAŞINA birim fiyata eklenir (sunucu: 0009_extra_charges.sql).
+ */
+export interface ExtraCharge { label: string; cents: number }
+export interface Selection {
+  variantId: string | null; optionIds: string[]; removedIngredientIds: string[];
+  /** Eski (kalıcı) sepet satırlarında yoktur — yoksa boş sayılır. */
+  extraCharges?: ExtraCharge[];
+}
 export interface CartLine extends Selection { key: string; productId: string; quantity: number; note: string }
 export interface SubmitItem {
   product_id: string; variant_id: string | null; quantity: number;
   option_ids: string[]; removed_ingredient_ids: string[]; note: string | null;
+  extra_charges: ExtraCharge[];
 }
 export const localName = (x: Named, locale: Locale): string => (locale === 'tr' && x.name_tr) || x.name_de;
 

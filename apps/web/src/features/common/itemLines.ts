@@ -1,4 +1,4 @@
-import type { Locale } from '@ramos/shared';
+import { formatEuro, type Locale } from '@ramos/shared';
 import type { OrderItemView } from '../../data/orders';
 
 /**
@@ -10,7 +10,8 @@ export function itemLines(
   item: Pick<
     OrderItemView,
     'variant_name_de' | 'variant_name_tr' | 'note' | 'removed_ingredients' | 'selected_options'
-  >,
+  > &
+    Partial<Pick<OrderItemView, 'extra_charges'>>,
   locale: Locale,
 ) {
   const n = (de: string, tr: string | null) => (locale === 'tr' && tr ? tr : de);
@@ -34,6 +35,8 @@ export function itemLines(
           ? [g.values.join(', ')]
           : [`${g.label}: ${g.values.join(' + ')}`],
     );
+  // Serbest ekstra ücretler (0009) seçeneklerin ardından, tutarıyla — garsonun yazdığı dilde.
+  for (const e of item.extra_charges ?? []) options.push(`+ ${e.label} (+${formatEuro(e.cents)})`);
   const removed = item.removed_ingredients.map((r) => n(r.name_de, r.name_tr));
   return {
     ...(item.variant_name_de ? { variant: n(item.variant_name_de, item.variant_name_tr) } : {}),

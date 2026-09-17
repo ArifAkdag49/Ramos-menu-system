@@ -78,6 +78,7 @@ export const useCart = create<CartState>()(
                 variantId: hit.variantId,
                 optionIds: hit.optionIds,
                 removedIngredientIds: hit.removedIngredientIds,
+                extraCharges: hit.extraCharges ?? [],
                 note: hit.note,
                 quantity: 1,
               }),

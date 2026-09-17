@@ -6,7 +6,7 @@ import type { OrderItemView, OrderView } from '../../data/orderMapper';
 
 const item = (over: Partial<OrderItemView> & { id: string; product_name: string }): OrderItemView => ({
   product_id: 'p', quantity: 1, product_code: null, variant_name_de: null, variant_name_tr: null,
-  removed_ingredients: [], selected_options: [], note: null, status: 'active', cancel_reason: null,
+  removed_ingredients: [], selected_options: [], extra_charges: [], note: null, status: 'active', cancel_reason: null,
   sort: 1, category_sort: 1, is_beverage: false, unit_price_cents: 750, ...over,
 });
 

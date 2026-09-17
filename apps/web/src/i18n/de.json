@@ -118,6 +118,21 @@
       "ingredientsTitle": "Zutaten — zum Entfernen antippen",
       "noteLabel": "Notiz",
       "notePlaceholder": "Notiz an die Küche (optional)",
+      "extra": {
+        "title": "Aufpreis",
+        "hint": "Für einen Wunsch, der nicht auf der Karte steht, etwa extra Käse. Pro Stück berechnet.",
+        "label": "Aufpreis wofür",
+        "labelPlaceholder": "z. B. extra Käse",
+        "amount": "Aufpreis (€)",
+        "add": "Hinzufügen",
+        "remove": "Aufpreis {{label}} {{price}} entfernen",
+        "errors": {
+          "too_many": "Höchstens {{max}} Aufpreise möglich",
+          "label_required": "Bitte angeben, wofür der Aufpreis ist",
+          "label_too_long": "Höchstens {{labelMax}} Zeichen",
+          "amount_invalid": "Bitte gültigen Betrag eingeben (0,01–50,00 €)"
+        }
+      },
       "submitHint": "Zuerst {{group}} auswählen",
       "requiredMark": "Erforderlich",
       "quantity": {
@@ -553,6 +568,7 @@
     "order_not_found": "Bestellung nicht gefunden — Liste aktualisieren",
     "job_not_failed": "Dieser Druck ist schon in der Warteschlange — kein neuer Versuch nötig",
     "job_not_found": "Druckauftrag nicht gefunden — Liste aktualisieren",
-    "job_not_printing": "Dieser Druck läuft nicht mehr — Liste aktualisieren"
+    "job_not_printing": "Dieser Druck läuft nicht mehr — Liste aktualisieren",
+    "extra_charge_invalid": "Aufpreis ungültig: Text 1–40 Zeichen, Betrag 0,01–50,00 €, höchstens 5 pro Artikel"
   }
 }

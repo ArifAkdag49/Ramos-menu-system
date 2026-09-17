@@ -1,9 +1,11 @@
 import type { CartLine, MenuProduct, Selection, SubmitItem } from './domain';
 import { unitPriceCents } from './pricing';
 
+// Ekstra ücretler anahtara yalnız varsa eklenir: ekstrasız satırların anahtarı değişmez (kalıcı sepetler birleşmeye devam eder).
 export const lineKey = (productId: string, s: Selection, note: string): string =>
   [productId, s.variantId ?? '-', [...s.optionIds].sort().join(','),
-   [...s.removedIngredientIds].sort().join(','), note.trim()].join('|');
+   [...s.removedIngredientIds].sort().join(','), note.trim(),
+   ...(s.extraCharges?.length ? [s.extraCharges.map((e) => `${e.label}:${e.cents}`).join(';')] : [])].join('|');
 
 export function addLine(lines: CartLine[], line: Omit<CartLine, 'key'>): CartLine[] {
   const key = lineKey(line.productId, line, line.note);
@@ -23,4 +25,5 @@ export const toSubmitItems = (lines: CartLine[]): SubmitItem[] =>
   lines.map((l) => ({
     product_id: l.productId, variant_id: l.variantId, quantity: l.quantity,
     option_ids: l.optionIds, removed_ingredient_ids: l.removedIngredientIds, note: l.note.trim() || null,
+    extra_charges: l.extraCharges ?? [],
   }));

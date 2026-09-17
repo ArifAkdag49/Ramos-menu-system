@@ -41,6 +41,18 @@ describe('useCart', () => {
     expect(useCart.getState().carts.t1![0]!.quantity).toBe(2);
   });
 
+  it('duplicate ekstra ücretli satırı ekstrasıyla çoğaltır; ekstrasız satırla karışmaz', () => {
+    const cheese = [{ label: 'ekstra peynir', cents: 100 }];
+    useCart.getState().add('t1', line({ extraCharges: cheese }));
+    useCart.getState().add('t1', line());
+    const withExtra = useCart.getState().carts.t1!.find((l) => l.extraCharges?.length)!;
+    useCart.getState().duplicate('t1', withExtra.key);
+    const lines = useCart.getState().carts.t1!;
+    expect(lines).toHaveLength(2);
+    expect(lines.find((l) => l.key === withExtra.key)).toMatchObject({ quantity: 2, extraCharges: cheese });
+    expect(lines.find((l) => l.key !== withExtra.key)!.quantity).toBe(1);
+  });
+
   it('ensurePendingId iki çağrıda aynı UUID döner; clear sonrası yeni UUID üretir', () => {
     const first = useCart.getState().ensurePendingId('t1');
     const second = useCart.getState().ensurePendingId('t1');
