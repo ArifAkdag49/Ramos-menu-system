@@ -1,0 +1,3 @@
+# Ramo's — gecelik veritabanı yedeği. Sunucu saati UTC: 04:30 UTC = Almanya'da yazın 06:30, kışın 05:30.
+# tv-display-system'in 04:15 yedeğiyle çakışmaz. Kurulum: /etc/cron.d/ramos-backup (root, 0644). Kaynak: deploy/backup/ramos-backup.cron
+30 4 * * * root /opt/backups/ramos/backup.sh >> /var/log/ramos-backup.log 2>&1
