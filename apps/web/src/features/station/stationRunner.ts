@@ -1,3 +1,4 @@
+import { markCriticalWork } from '../../lib/busy';
 import { bytesToBase64 } from '../../native/base64';
 import type { RamosPrinterPlugin, RamosPrinterSendResult } from '../../native/capacitor';
 import type { StationSnapshot } from './stationStore';
@@ -146,6 +147,9 @@ export class StationRunner {
       return 0;
     }
     this.draining = true;
+    // Baskı sürerken yeni sürüm devreye alınıp sayfa yenilenmesin: sahiplenilmiş iş 60 sn geri
+    // alınana kadar basılmamış kalırdı (`pwa/updateGate`).
+    const releaseCritical = markCriticalWork();
     let printed = 0;
     try {
       do {
@@ -213,6 +217,7 @@ export class StationRunner {
       this.deps.log?.('drain beklenmeyen hata', e);
     } finally {
       this.draining = false;
+      releaseCritical();
     }
     return printed;
   }
