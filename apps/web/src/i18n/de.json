@@ -596,6 +596,52 @@
         "downloadHint": "Vektordatei: ohne Skalierung mit 100 % drucken, dann ist der Code genau 10 cm groß. Bilder, Preise und „Ausverkauft“ erscheinen automatisch in der Speisekarte; der Code muss nicht neu gedruckt werden.",
         "error": "QR-Code konnte nicht erstellt werden"
       },
+      "printRoute": {
+        "title": "Druckweg",
+        "description": "Wer druckt die Küchenbons",
+        "routeLabel": "Bons druckt",
+        "agent": "PC-Programm (Druckagent)",
+        "agentHint": "Das Programm auf dem Restaurant-PC schickt die Bons an den Drucker",
+        "epson": "Epson Server Direct Print",
+        "epsonHint": "Ein Epson-Drucker mit Internet (z. B. TM-m30III) holt die Bons ohne PC direkt vom Server",
+        "apply": "Druckweg übernehmen",
+        "applied": "Druckweg geändert",
+        "applyError": "Druckweg nicht gespeichert — erneut versuchen",
+        "pendingChange": "Bis zur Übernahme wird über den bisherigen Weg gedruckt",
+        "agentIdleNote": "Das PC-Programm darf weiterlaufen, druckt auf diesem Weg aber keine Bons.",
+        "noActivePrinter": "Kein aktiver Epson-Drucker — unten einen Drucker hinzufügen, sonst wird nichts gedruckt",
+        "printers": "Epson-Drucker",
+        "empty": "Noch kein Epson-Drucker hinzugefügt",
+        "name": "Druckername",
+        "namePlaceholder": "Küche TM-m30III",
+        "add": "Drucker hinzufügen",
+        "active": "Aktiv",
+        "inactive": "Inaktiv",
+        "online": "Verbunden",
+        "offline": "Keine Verbindung",
+        "never": "Noch nie verbunden",
+        "lastSeen": "Letzte Anfrage: {{ago}}",
+        "lastError": "Letzter Fehler: {{error}}",
+        "rotate": "Schlüssel erneuern",
+        "confirmRotate": "Neue Adresse für {{name}} erzeugen? Die alte Adresse wird sofort ungültig; bis die neue im Drucker eingetragen ist, wird nichts gedruckt.",
+        "deactivate": "Deaktivieren",
+        "activate": "Aktivieren",
+        "secretTitle": "{{name}} — Druckeradresse",
+        "secretWarning": "Diese Adresse wird nicht noch einmal angezeigt. Jetzt kopieren und in Web Config des Druckers eintragen. Verloren? Mit \"Schlüssel erneuern\" eine neue holen. Adresse nicht weitergeben.",
+        "copy": "Adresse kopieren",
+        "copied": "Adresse kopiert",
+        "copyError": "Kopieren fehlgeschlagen — Adresse von Hand markieren",
+        "done": "Gespeichert, schließen",
+        "guideTitle": "Schritte in Epson Web Config",
+        "guide": {
+          "step1": "Im Browser die IP-Adresse des Druckers öffnen (https://<IP>) und als Administrator anmelden (Standardpasswort meist die Seriennummer).",
+          "step2": "In den TM-Intelligent- / Web-Service-Einstellungen Server Direct Print öffnen und Enable wählen (Menünamen je nach Firmware).",
+          "step3": "Server 1 URL: die Adresse oben. Interval: 5 s.",
+          "step4": "ID und Password dürfen leer bleiben (oder Druckername als ID). URL Encode: Enable.",
+          "step5": "Übernehmen und Drucker neu starten; nach wenigen Sekunden steht hier \"Verbunden\".",
+          "step6": "Danach den Druckweg auf \"Epson Server Direct Print\" stellen, übernehmen und einen Testbon drucken."
+        }
+      },
       "ticket": {
         "title": "Küchenbon",
         "description": "Texte am Anfang und Ende des Bons",
@@ -928,6 +974,8 @@
     "job_not_failed": "Dieser Druck ist schon in der Warteschlange — kein neuer Versuch nötig",
     "job_not_found": "Druckauftrag nicht gefunden — Liste aktualisieren",
     "job_not_printing": "Dieser Druck läuft nicht mehr — Liste aktualisieren",
-    "extra_charge_invalid": "Aufpreis ungültig: Text 1–40 Zeichen, Betrag 0,01–50,00 €, höchstens 5 pro Artikel"
+    "extra_charge_invalid": "Aufpreis ungültig: Text 1–40 Zeichen, Betrag 0,01–50,00 €, höchstens 5 pro Artikel",
+    "printer_name_invalid": "Druckername muss 1–60 Zeichen lang sein",
+    "sdp_printer_not_found": "Drucker nicht gefunden — Liste aktualisieren"
   }
 }

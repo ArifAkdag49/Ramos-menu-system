@@ -596,6 +596,52 @@
         "downloadHint": "Vektör dosya: baskıda ölçeklemeden %100 basın, kod tam 10 cm çıkar. Görsel, fiyat ve tükendi değişiklikleri menüye kendiliğinden yansır; kodu yeniden basmak gerekmez.",
         "error": "QR kodu oluşturulamadı"
       },
+      "printRoute": {
+        "title": "Baskı yolu",
+        "description": "Mutfak fişlerini kim basar",
+        "routeLabel": "Fişleri basan",
+        "agent": "Bilgisayar programı (yazdırma ajanı)",
+        "agentHint": "Restorandaki bilgisayarda çalışan program fişi yazıcıya gönderir",
+        "epson": "Epson Server Direct Print",
+        "epsonHint": "İnternete bağlı Epson yazıcı (ör. TM-m30III) fişleri bilgisayarsız, doğrudan sunucudan çeker",
+        "apply": "Baskı yolunu uygula",
+        "applied": "Baskı yolu değişti",
+        "applyError": "Baskı yolu kaydedilemedi — tekrar deneyin",
+        "pendingChange": "Uygulanana kadar fişler eski yoldan basılır",
+        "agentIdleNote": "Bilgisayar programı açık kalabilir ama bu yolda fiş basmaz.",
+        "noActivePrinter": "Etkin Epson yazıcısı yok — aşağıdan yazıcı ekleyin, yoksa fişler basılmaz",
+        "printers": "Epson yazıcıları",
+        "empty": "Henüz Epson yazıcısı eklenmedi",
+        "name": "Yazıcı adı",
+        "namePlaceholder": "Mutfak TM-m30III",
+        "add": "Yazıcı ekle",
+        "active": "Etkin",
+        "inactive": "Pasif",
+        "online": "Bağlı",
+        "offline": "Bağlantı yok",
+        "never": "Hiç bağlanmadı",
+        "lastSeen": "Son istek: {{ago}}",
+        "lastError": "Son hata: {{error}}",
+        "rotate": "Anahtarı yenile",
+        "confirmRotate": "{{name}} için yeni adres üretilsin mi? Eski adres hemen geçersiz olur; yeni adresi yazıcıya girene kadar fiş basılmaz.",
+        "deactivate": "Pasifleştir",
+        "activate": "Etkinleştir",
+        "secretTitle": "{{name}} — yazıcı adresi",
+        "secretWarning": "Bu adres bir daha gösterilmez. Şimdi kopyalayıp yazıcının Web Config ekranına girin. Kaybederseniz \"Anahtarı yenile\" ile yenisini alın. Adresi kimseyle paylaşmayın.",
+        "copy": "Adresi kopyala",
+        "copied": "Adres kopyalandı",
+        "copyError": "Kopyalanamadı — adresi elle seçin",
+        "done": "Kaydettim, kapat",
+        "guideTitle": "Epson Web Config adımları",
+        "guide": {
+          "step1": "Tarayıcıda yazıcının IP adresini açın (https://<IP>) ve yönetici olarak girin (varsayılan parola çoğunlukla yazıcının seri numarasıdır).",
+          "step2": "TM-Intelligent / Web Service ayarlarında Server Direct Print bölümünü açın ve Enable seçin (menü adları yazılım sürümüne göre değişebilir).",
+          "step3": "Server 1 URL: yukarıdaki adres. Interval (aralık): 5 sn.",
+          "step4": "ID ve Password boş kalabilir (ya da ID'ye yazıcı adını yazın). URL Encode: Enable.",
+          "step5": "Uygulayıp yazıcıyı yeniden başlatın; birkaç saniye içinde bu listede \"Bağlı\" görünür.",
+          "step6": "Sonra baskı yolunu \"Epson Server Direct Print\" yapıp uygulayın ve Test fişi basın."
+        }
+      },
       "ticket": {
         "title": "Mutfak fişi",
         "description": "Fişin başında ve sonunda basılan yazılar",
@@ -928,6 +974,8 @@
     "job_not_failed": "Bu baskı zaten sırada — tekrar denemeye gerek yok",
     "job_not_found": "Baskı işi bulunamadı — listeyi tazele",
     "job_not_printing": "Bu baskı artık basılmıyor — listeyi tazele",
-    "extra_charge_invalid": "Ekstra ücret geçersiz: açıklama 1–40 karakter, tutar 0,01–50,00 €, kalem başına en fazla 5"
+    "extra_charge_invalid": "Ekstra ücret geçersiz: açıklama 1–40 karakter, tutar 0,01–50,00 €, kalem başına en fazla 5",
+    "printer_name_invalid": "Yazıcı adı 1–60 karakter olmalı",
+    "sdp_printer_not_found": "Yazıcı bulunamadı — listeyi tazele"
   }
 }

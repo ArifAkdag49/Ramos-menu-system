@@ -22,6 +22,8 @@ blob-report/
 # supabase yerel
 supabase/.temp/
 supabase/.branches/
+# epson-sdp ön-derleme çıktısı (scripts/build-epson-sdp.mjs; deploy sırasında yeniden üretilir)
+supabase/functions/epson-sdp/render.bundle.js
 
 # yazdırma ajanı
 apps/print-agent/logs/

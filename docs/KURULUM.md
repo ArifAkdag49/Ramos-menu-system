@@ -128,6 +128,31 @@ Avrupa'da satılan Epson TM modellerinde (ör. TM-m30III) **Secure Printing** fa
 
 > Yazıcı ile PC aynı ağda olmalıdır. Epson durum sorusuna şifreli portta cevap vermezse Yazıcı kartında durum "bilinmiyor" görünebilir; bu baskıyı engellemez. Secure Printing'i kapatıp `9100` ile basmak da mümkündür (yazıcının web ayarı, Epson Web Config), ama gerekmez.
 
+### 2.7 Epson Server Direct Print (bilgisayarsız)
+
+Epson TM-m30III (ve Server Direct Print destekleyen diğer Epson TM'ler) fişleri **bilgisayar olmadan**, internet üzerinden doğrudan sunucudan çekebilir. Yazıcı birkaç saniyede bir sunucuya "basılacak fiş var mı?" diye sorar, varsa basar ve sonucu bildirir. Restoran PC'si kapalı olsa da fiş çıkar. Teknik ayrıntılar ve henüz gerçek yazıcıda doğrulanmamış noktalar: [epson-server-direct-print.md](epson-server-direct-print.md).
+
+**Gerekenler:** yazıcı ağa bağlı ve **internete çıkabiliyor** olmalı (modem üzerinden; restoranın içinden gelen bağlantı gerekmez, yazıcı dışarı bağlanır). Yazıcının IP adresi (ayar fişinde yazar, bkz. §2.2).
+
+1. **Yazıcıyı ekleyin.** Yönetim panelinde **Ayarlar → Baskı yolu → Yazıcı adı** yazın (ör. "Mutfak TM-m30III") → **Yazıcı ekle**. Ekranda yazıcıya özel bir adres çıkar (`https://…/functions/v1/epson-sdp?t=…`). **Bu adres bir daha gösterilmez**: **Adresi kopyala** ile alın, bir sonraki adımda yazıcıya girin, sonra **Kaydettim, kapat**. Adres bir anahtar içerir; kimseyle paylaşmayın. Kaybolursa **Anahtarı yenile** yeni adres üretir (eskisi hemen geçersiz olur).
+2. **Yazıcıda Web Config.** Aynı ağdaki bir bilgisayarın tarayıcısında `https://<yazıcının IP'si>` açın (sertifika uyarısı normaldir) ve yönetici olarak girin (varsayılan parola çoğunlukla yazıcının seri numarası). **TM-Intelligent / Web Service** ayarlarında **Server Direct Print**'i açın (menü adları yazılım sürümüne göre biraz değişebilir):
+   - **Server Direct Print:** Enable
+   - **Server 1 URL:** 1. adımdaki adres · **Interval:** `5` sn
+   - **ID / Password:** boş kalabilir (ID'ye yazıcı adını yazmak da olur)
+   - **URL Encode:** Enable
+   - **Server Authentication:** önce **Disable** ile deneyin (bağlantı yine şifrelidir). **Access Test** düğmesi adresin açıldığını doğrular.
+   - Uygula ve yazıcıyı yeniden başlat.
+3. Birkaç saniye içinde **Ayarlar → Baskı yolu** listesinde yazıcının yanında **Bağlı** görünür (sayfa 30 sn'de bir tazelenir).
+4. **Baskı yolunu seçin:** **Epson Server Direct Print** → **Baskı yolunu uygula**. Bu andan itibaren fişleri yalnız Epson yazıcı çeker.
+5. **Yazıcı bağlantısı → Yazıcı türü: Epson TM** seçip **Kaydet**'e basın: karakter tablosu `Windows-1254 (48)` olur (adres/port alanları bu yolda kullanılmaz). Sonra **Test fişi bas**; `Şş Ğğ İı Çç` satırı düzgün çıkmalı.
+
+Bilmeniz gerekenler:
+
+- **Bilgisayar programını kaldırmak gerekmez.** Baskı yolu "Epson Server Direct Print" iken program çalışsa bile fiş basmaz (aynı fiş iki kez çıkmaz). Geri dönmek için yolu **Bilgisayar programı** yapıp uygulamanız yeterli.
+- Yol "Epson Server Direct Print" iken etkin yazıcı yoksa ya da yazıcı internete çıkamıyorsa **fiş basılmaz**; siparişler kaybolmaz, sırada bekler. Garson/mutfak ekranındaki "Yazıcı bağlantısı yok" uyarısı bu durumda da çıkar (yazıcı 90 sn'dir sormadıysa).
+- Kağıt biterse ya da kapak açıksa yazıcı bunu bildirir; ekranda ilgili uyarı çıkar ve fiş kısa aralıklarla yeniden denenir.
+- **Pasifleştir** yazıcının fiş çekmesini hemen durdurur (adres geçerli kalır, **Etkinleştir** ile döner).
+
 ---
 
 ## 3. Yazdırma programı (restoran PC'si)

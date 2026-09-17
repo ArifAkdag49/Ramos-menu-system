@@ -3,6 +3,16 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+// Fonksiyona özel ön-derleme (yalnız gerekenler). `build` fonksiyon klasörüne yüklenecek bir dosya üretir;
+// `skip` Deno'ya yüklenmeyecek kaynaklardır (ör. depo dışı modülleri içe aktaran ve pakete gömülen dosya).
+const PREBUILD = {
+  'epson-sdp': {
+    build: async () => (await import('./build-epson-sdp.mjs')).buildEpsonSdp(),
+    skip: ['render.ts'],
+  },
+};
+const CONTENT_TYPES = { '.ts': 'application/typescript', '.js': 'application/javascript', '.mjs': 'application/javascript' };
+
 // Hata yollarında process.exit() yerine process.exitCode kullanılır: açık fetch soketiyle
 // ani çıkış Windows'ta libuv assertion'ı tetikliyor (çıkış kodu 127 oluyordu).
 async function main() {
@@ -27,12 +37,16 @@ async function main() {
     return fail(`Yanlış proje: ${project.name} (beklenen: ${expectedProject}) — yayın durduruldu`);
   }
 
+  const prebuild = PREBUILD[name];
+  if (prebuild) await prebuild.build();
+
   const dir = path.resolve('supabase/functions', name);
   const form = new FormData();
   form.append('metadata', JSON.stringify({ entrypoint_path: 'index.ts', name, verify_jwt: flag !== '--no-verify-jwt' }));
   for (const f of await readdir(dir)) {
-    if (f.endsWith('.test.ts')) continue;
-    form.append('file', new Blob([await readFile(path.join(dir, f))], { type: 'application/typescript' }), f);
+    if (f.endsWith('.test.ts') || prebuild?.skip.includes(f)) continue;
+    const type = CONTENT_TYPES[path.extname(f)] ?? 'application/typescript';
+    form.append('file', new Blob([await readFile(path.join(dir, f))], { type }), f);
   }
   const res = await fetch(
     `https://api.supabase.com/v1/projects/${ref}/functions/deploy?slug=${name}`,

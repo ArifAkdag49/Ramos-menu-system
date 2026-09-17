@@ -282,6 +282,7 @@ const row = (over: Partial<SettingsRow> = {}): SettingsRow => ({
   printer_codepage: 'cp857',
   printer_codepage_number: 61,
   printer_transliterate: false,
+  print_route: 'agent',
   quick_notes: [{ de: 'gut durch', tr: 'İyi pişmiş' }],
   cancel_reasons: [
     { de: 'Gast hat storniert', tr: 'Müşteri vazgeçti' },

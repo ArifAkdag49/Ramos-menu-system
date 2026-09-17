@@ -21,6 +21,7 @@ import { FIELD, MoveButtons, Section, SelectField, TextField, Toggle } from '../
 import { TicketPayloadPaper } from '../menu/TicketPreview';
 import { formatDateTime } from '../orders/orderView';
 import { PrinterCard } from '../PrinterCard';
+import { PrintRouteSection } from './PrintRouteSection';
 import { QrMenuSection } from './QrMenuSection';
 import {
   addRow,
@@ -124,7 +125,10 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
   // çizim sırasında tek seferlik güncelleme.
   if (row !== loadedRow) {
     setLoadedRow(row);
-    if (!isSettingsDirty(form, loadedRow) || !isSettingsDirty(form, row)) {
+    if (!isSettingsDirty(formFromSettings(row), loadedRow)) {
+      // Yalnız formda olmayan bir alan değişti (ör. "Baskı yolu" bölümünün kendi kaydı): yerel
+      // değişikliklere dokunulmaz, çakışma da yoktur.
+    } else if (!isSettingsDirty(form, loadedRow) || !isSettingsDirty(form, row)) {
       setForm(formFromSettings(row));
       setConflict(false);
     } else {
@@ -317,6 +321,8 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
         </div>
 
         <div className="flex min-w-0 flex-col gap-6">
+          <PrintRouteSection />
+
           <Section
             level={2}
             title={t('admin.settings.printer.title')}

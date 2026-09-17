@@ -26,6 +26,11 @@ vi.mock('../PrinterCard', () => ({
   PrinterCard: () => <section aria-label="printer-card" />,
 }));
 
+// Baskı yolu bölümü kendi testinde (PrintRouteSection.test.tsx); kendi kaydını kendisi yapar.
+vi.mock('./PrintRouteSection', () => ({
+  PrintRouteSection: () => <section aria-label="print-route" />,
+}));
+
 import { useAuth } from '../../../lib/auth';
 import { useToast } from '../../../lib/toast';
 import { SettingsPage } from './SettingsPage';
@@ -41,6 +46,7 @@ const baseRow = (over: Partial<SettingsRow> = {}): SettingsRow => ({
   printer_codepage: 'cp857',
   printer_codepage_number: 61,
   printer_transliterate: false,
+  print_route: 'agent',
   quick_notes: [
     { de: 'gut durch', tr: 'İyi pişmiş' },
     { de: 'wenig Soße', tr: 'Az sos' },
@@ -316,6 +322,18 @@ describe('<SettingsPage />', () => {
     expect(screen.getByLabelText('Alt yazı')).toHaveValue('');
     expect(screen.getByLabelText('Başlık')).toHaveValue('NEU');
     expect(screen.queryByText(/başka bir cihazda değiştirildi/)).toBeNull();
+  });
+
+  it('yalnız baskı yolu değişirse (ayrı bölüm kaydı) yerel değişiklik korunur, uyarı çıkmaz', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<SettingsPage />);
+    expect(screen.getByRole('region', { name: 'print-route' })).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Alt yazı'), 'Danke');
+    h.row = baseRow({ print_route: 'epson_sdp', updated_at: '2026-09-17T11:00:00Z' });
+    rerender(<SettingsPage />);
+    expect(screen.getByLabelText('Alt yazı')).toHaveValue('Danke');
+    expect(screen.queryByText(/başka bir cihazda değiştirildi/)).toBeNull();
+    expect(saveButton()).toBeEnabled();
   });
 
   it('kendi kaydımız dönünce form yeni kayda geçer, uyarı çıkmaz', async () => {

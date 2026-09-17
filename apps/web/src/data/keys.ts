@@ -21,6 +21,7 @@ export const qk = {
   ready: ['orders', 'ready'] as const,
   printer: ['printer-status'] as const,
   settings: ['settings'] as const,
+  sdpPrinters: ['sdp-printers'] as const,
   staff: ['staff'] as const,
   // `staff` ön ekinin altında: personel yazımı `qk.staff`'ı geçersiz kılınca ad haritası da tazelenir.
   adminStaff: ['staff', 'admin'] as const,

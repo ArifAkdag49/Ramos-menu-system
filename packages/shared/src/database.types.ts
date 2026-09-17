@@ -768,12 +768,43 @@ export type Database = {
           },
         ]
       }
+      sdp_printers: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_error: string | null
+          last_seen_at: string | null
+          name: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_seen_at?: string | null
+          name: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_seen_at?: string | null
+          name?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           allergen_legend: Json
           business_day_start: string
           cancel_reasons: Json
           id: number
+          print_route: string
           printer_codepage: string
           printer_codepage_number: number
           printer_host: string
@@ -791,6 +822,7 @@ export type Database = {
           business_day_start?: string
           cancel_reasons?: Json
           id?: number
+          print_route?: string
           printer_codepage?: string
           printer_codepage_number?: number
           printer_host?: string
@@ -808,6 +840,7 @@ export type Database = {
           business_day_start?: string
           cancel_reasons?: Json
           id?: number
+          print_route?: string
           printer_codepage?: string
           printer_codepage_number?: number
           printer_host?: string
@@ -941,6 +974,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_sdp_printer: { Args: { p_name: string }; Returns: Json }
       current_business_day_start: { Args: never; Returns: string }
       delete_push_subscription: {
         Args: { p_endpoint: string }
@@ -965,6 +999,7 @@ export type Database = {
       report_range: { Args: { p_from: string; p_to: string }; Returns: Json }
       reprint_order: { Args: { p_order_id: string }; Returns: undefined }
       retry_print_job: { Args: { p_job_id: string }; Returns: undefined }
+      rotate_sdp_printer_token: { Args: { p_id: string }; Returns: Json }
       save_push_subscription: {
         Args: {
           p_auth: string
@@ -974,10 +1009,24 @@ export type Database = {
         }
         Returns: undefined
       }
+      sdp_claim_next: { Args: { p_token_hash: string }; Returns: Json }
+      sdp_complete: {
+        Args: {
+          p_error: string
+          p_job_id: string
+          p_success: boolean
+          p_token_hash: string
+        }
+        Returns: string
+      }
       set_my_locale: { Args: { p_locale: string }; Returns: undefined }
       set_on_duty: { Args: { p_on: boolean }; Returns: Json }
       set_product_sold_out: {
         Args: { p_product_id: string; p_sold_out: boolean }
+        Returns: undefined
+      }
+      set_sdp_printer_active: {
+        Args: { p_active: boolean; p_id: string }
         Returns: undefined
       }
       staff_names: {
