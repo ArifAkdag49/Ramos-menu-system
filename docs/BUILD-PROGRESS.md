@@ -73,16 +73,19 @@
 ### M6 — Admin (Plan 4)
 - [x] Görev 21 — Admin kabuğu ve canlı durum — `eea9e17`, `06d91f9` — 30 yeni test, inceleme "Approved"; R79 kapandı (takılı onay işareti artık operatöre görünüyor, ham hata metni gizli). M6 tasarım kapısı GEÇTİ: 5 ekranda 0 axe ihlali; 4 Yüksek bulgu düzeltildi — durum okunmadan yeşil "Çevrimiçi" gösterilmesi, ilk yüklemede yalan boş durum, DE metninin düğmeyle örtüşmesi, ISO tarih. R86 (iş günü başlangıcı) Görev 24'e taşındı · eski not: + R79: `printer_status.last_error` operatöre gösterilecek (`derivePrinterProblem`'e `complete_stuck*` dalı + i18n) — yoksa takılı onay işareti DB'de kalıp kimseye görünmüyor
 - [x] Görev 22 — Menü yönetimi (tek/toplu görsel yükleme dahil) — `e5eb862`, `3c1d4e2` — `npm run check` yeşil (549 test), canlı `admin-menu` E2E 1 ✓ (34,7 sn), 3 görüntü; inceleme "Approve". Uçtan uca doğrulandı: admin'de fiyat değişince garson panelinde Realtime ile anında görünüyor, toplu seçenek ataması ve görsel yükleme/kaldırma çalışıyor. **Gerçek menü seed'i değişmedi** — koşu öncesi/sonrası md5 parmak izi birebir aynı (107 ürün / 16 kategori), Storage bucket'ı boş. `TicketPreview` fiş satırlarını `renderTicket`'tan alıyor (ikinci biçimlendirici yok), `ui/Sheet side="right"` tamamen katkısal. İzlenen 3 Important Görev 27'ye: kaydetmenin tek işlem olmaması, `storage.remove()` hatasının yutulması (yetim dosya), yükleme yarıda kesilirse yetim tam-boy dosya
-- [ ] Görev 23 — Personel, masalar, siparişler, denetim kaydı
-- [ ] Görev 24 — Raporlar, CSV, Ayarlar · tasarım kapısı · + R86: iş günü başlangıcı Ayarlar'da düzenlenebilir olur olmaz admin panosunun sabit 05:00'i sunucudan sapar → `settings.business_day_start` okunacak ya da `business_date` RPC'si çağrılacak
+- [x] Görev 23 — Personel, masalar, siparişler, denetim kaydı — `9708fc2` — web 512 test ✓, `admin-staff` E2E ✓ (preview), 1440/390 görüntüler; personel düzenleme + Mesaide/Test rozetleri, masalar (taslak + tek Kaydet, açık hesaplı masa pasifleşmez), sipariş geçmişi + çekmece (fiş işleri, önizleme, kalem iptali), denetim kaydı `/admin/audit`. Not: test sırasında canlı masaların `sort` değerleri yeniden numaralandı, SQL ile eski değerlere geri alındı; `Test-Tisch-X` (pasif) ve `test-e2e-garson` hesabı test kaydı olarak kaldı
+- [x] Görev 24 — Raporlar, CSV, Ayarlar + R86 — `0cc5116` — web 658 test ✓; raporlar (hazır aralıklar, stat kutuları, garson/ilk 10 ürün, saatlik dağılım), CSV (BOM, `;`, CRLF, formül koruması, iptal `storniert`), ayarlar (fiş başlığı/altlığı + önizleme, yazıcı, hızlı notlar, iptal sebepleri, alerjenler); R86 kapandı: iş günü başlangıcı `settings.business_day_start`'tan. Canlı ayar yazılmadı
 ### M7 — PWA ve bildirim (Plan 4)
-- [ ] Görev 25 — PWA: marka varlıkları, manifest, SW, kurulum rehberi, bildirim izni
-- [ ] Görev 26 — "Hazır" bildirimi: `notify-ready`, pg_net trigger, uygulama içi uyarı
+- [x] Görev 25 — PWA — `1d59ae7`, `3665358` (ikonlar) — vite-plugin-pwa 1.3 injectManifest, manifest + `src/sw.ts` (precache 15, push, bildirim tıklama), yeni sürüm şeridi, InstallGuide (iOS/Android/TWA), Profil → Bildirimler; ikonlar `public/app-icons` (`/icons/` Apache alias'ıyla çakışır); `e2e:pwa` ✓; canlıda `/sw.js` ve `/manifest.webmanifest` 200 + no-cache
+- [x] Görev 26 — "Hazır" bildirimi — `1fd2371` (sunucu), `1d59ae7` (web) — `0010_notify_ready` (pg_net, `ready_push_targets` yalnız service_role, trigger), `notify-ready` ACTIVE (jsr:@negrel/webpush, 404/410 aboneliği siler), VAPID + Vault; fn 16/16, db push 7/7 (uçtan uca pg_net 200); garsonda uygulama içi hazır şeridi + bip + titreşim. ⏸ Gerçek telefonda kilitli ekran bildirimi denenmedi (kullanıcıya kalan)
 ### M8 — Test, yayın, teslim (Plan 5)
-- [ ] Görev 27 — Tam doğrulama, güvenlik denetimi, yayın öncesi temizlik
-- [ ] Görev 28 — Plesk'e yayın (HTTPS) ve canlı duman testi
-- [ ] Görev 29 — Gecelik veritabanı yedeği
-- [ ] Görev 30 — Kurulum ve kullanım rehberi, son rapor
+- [x] Görev 27 — Güvenlik ve temizlik — `e518891`, `1d59ae7` (admin ayrı parça) — anon testi 5/5 (28 fonksiyon + 19 tablo anon'a kapalı, signup kapalı), advisors ERROR yok, pakette/git'te sır yok, admin kodu ayrı chunk (ana paket 1017 → 883 kB). `scripts/go-live-cleanup.mjs` yazıldı, **yalnız dry-run** çalıştı (9 test/demo hesabı, 13 sipariş, 19 fiş işi) — `--yes` işletme sahibinin kararına bırakıldı. ⏸ HIBP sızmış parola koruması açılmadı (6 haneli PIN'lerle çakışır)
+- [x] Görev 28 — Plesk'e yayın (HTTPS) ve duman testi — `1d198ab` + her görevden sonra `deploy/deploy-web.ps1`; son yayında 13/13 kontrol ✓ (sw.js/manifest dahil). ⏸ Gerçek cihaz testleri kullanıcıya kalan kontrollerde
+- [x] Görev 29 — Gecelik veritabanı yedeği — `b457372` — sunucuda `/opt/backups/ramos`, cron 04:30 UTC, 30 gün; ilk koşu `ok 228K`, `TABLE DATA` = 20; RESTORE.md (Supabase uyumlu `session_replication_role = replica`)
+- [x] Görev 30 — Kurulum ve kullanım rehberi — `497d8e2` — `docs/KURULUM.md` (13 bölüm + Android APK + geliştirici eki), kök `README.md`
+### Plan dışı — Android uygulaması ve yazıcı ajanı
+- [x] Android uygulaması (TWA) — `3665358` — `apps/android` (@bubblewrap/core, `com.arxdigital.ramos`), imzalı APK `Desktop\Ramos APK\ramos-v1.0.0.apk` (anahtar aynı klasörde, repoda değil), `.well-known/assetlinks.json`; Pixel 6 emülatöründe açıldı, adres çubuğu yok (Digital Asset Links doğrulandı), giriş ekranı yüklendi
+- [x] Yazıcı ajanı: `feat/yazici-kurulum` birleştirildi (`a9e85a4`), yeni paket `Desktop\Ramos Yazıcı Kurulum`. Kök sebep: Claude kabuğunun `AppData\Local` yazımları sanallaştırıldığı için önceki "yeniden kurulum" gerçek Windows'a ulaşmadı → yazıcı eski fiş düzenini basıyordu. ⏸ Kullanıcı `Kurulum.cmd`'ye çift tıklamalı
 
 ## Milestone raporları
 _Henüz yok._
@@ -100,4 +103,10 @@ _Henüz yok._
 - [ ] Görsel yükleme telefonda denenmeli — `createImageBitmap` + `canvas.toBlob('image/webp')` yalnız masaüstü tarayıcıda doğrulandı (admin masaüstü öncelikli, yine de kontrol edilsin)
 - [ ] Menüdeki açık noktalar (`docs/menu/ramos-menu-data.md` §6) ve gerçek masa sayısı
 - [ ] TSE / Steuerberater teyidi (spec §1.4)
-- [ ] Ertelenen görevler: … (sebep + ne yapılmalı)
+- [ ] **Yazıcı ajanını güncelle:** `Desktop\Ramos Yazıcı Kurulum\Kurulum.cmd` çift tıkla → garson ekranından küçük bir deneme siparişi → fiş yeni düzende mi (RAMO'S, kutulu TISCH, Nr./Artikel/Preis, Gesamtbetrag) ve `€` doğru basılıyor mu
+- [ ] **Android uygulaması:** `Desktop\Ramos APK\ramos-v1.0.0.apk` telefona kurulup giriş + "Bildirimleri aç"; mesaide iken bir siparişi mutfakta "Hazır" yap → kilitli ekranda bildirim geliyor mu
+- [ ] **Yayın öncesi temizlik kararı:** `node --env-file=.env scripts/go-live-cleanup.mjs` (dry-run) çıktısına bak; uygunsa `--yes`, ardından `.env` içinde `DB_TESTS_ALLOWED=0`. `ahmet123` hesabı gerçek personel mi kontrol et; `ramo` ile verilen #201 (Tisch 5, in_kitchen) gerçek değilse elle kapat
+- [ ] **Yedek:** 17.09 04:30 UTC sonrası `/var/log/ramos-backup.log`'da `ok` satırı
+- [ ] **Fiş başlığı:** örnek fişteki gibi yalnız "RAMO'S" isteniyorsa Admin → Ayarlar → Fiş başlığı
+- [ ] **Görseli olmayan 19 ürün:** 04, 19, 54, 62, 66, 71a, 87, 89, 90, 92, 93, 94, 100, 102, 103, M5, Halka Tatlı, Mineralwasser, Ayran
+- [ ] **Mutfak fişinde fiyat:** spec'te yoktu, istek üzerine eklendi — müşteriye verilmemeli; TSE açısından Steuerberater'e sorulmalı
