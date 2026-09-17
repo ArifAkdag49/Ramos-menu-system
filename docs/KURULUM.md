@@ -105,11 +105,28 @@ Test fişi **kayıtlı** ayarlarla basılır. Yeni bir ayarı denemeden önce mu
 
 TESTDRUCK fişindeki `ÄÖÜ äöü ß · Şş Ğğ İı Çç` satırına bakın. Harfler bozuksa şu sırayla deneyin; her adımdan sonra **Kaydet** ve **Test fişi bas**:
 
-1. **Ayarlar → Yazıcı bağlantısı → Karakter tablosu:** `CP857 · Türkçe (61) — önerilen`. Varsayılan budur.
-2. Bozuksa: `Windows-1254 · Türkçe (91)`.
+1. **Ayarlar → Yazıcı bağlantısı → Karakter tablosu:** `CP857 · Türkçe (61) — Xprinter, önerilen`. Varsayılan budur.
+2. Bozuksa: `Windows-1254 · Türkçe (91) — Xprinter`.
 3. Hâlâ bozuksa **Türkçe harfleri sadeleştir** anahtarını açın (Ş→S, Ğ→G, İ→I, ı→i).
 
 Kurulum.cmd de test fişinden sonra "Bu özel harfler düzgün basılmış mı?" diye sorar. "Hayır" derseniz yalnız o PC için **sade harf** moduna geçer (ä → ae, ß → ss, ş → s; ör. "Drehspiess", "Kuzu Sis").
+
+Epson yazıcıda tablo numaraları farklıdır; bkz. [§2.6](#26-epson-tm-m30iii-secure-printing).
+
+### 2.6 Epson TM-m30III (Secure Printing)
+
+Avrupa'da satılan Epson TM modellerinde (ör. TM-m30III) **Secure Printing** fabrikadan açık gelir. Bu yazıcı şifresiz port `9100`'e gönderilen fişi reddeder ya da hiç basmaz; fişler **şifreli (TLS) port `9143`**'ten basılır. Yazdırma programı port `9143` görünce bağlantıyı kendiliğinden şifreli kurar. Yazıcının sertifikası yazıcının kendi ürettiği sertifikadır; program bunu yerel ağda kabul eder.
+
+1. Restoran PC'sinde **Kurulum.cmd**'yi çalıştırın. Sihirbaz ağda `9100`'e ek olarak `9143`'ü de dener. Epson bulunursa ekranda "Epson (şifreli baskı, port 9143) bulundu" yazar ve o PC'nin ayarına `PRINTER_PORT=9143`, `PRINTER_CODEPAGE=windows1254`, `PRINTER_CODEPAGE_NUMBER=48` yazılır. Adresi elle girerseniz de `9143` yoklanır.
+2. Yönetim panelinde **Ayarlar → Yazıcı bağlantısı → Yazıcı türü:** **Epson TM (şifreli)** seçin. Port `9143`, karakter tablosu `Windows-1254 · Türkçe + Almanca + € (48) — Epson` olarak dolar. **Kaydet**'e basın.
+3. **Test fişi bas.** `ÄÖÜ äöü ß · Şş Ğğ İı Çç` satırı düzgün çıkmalı. Bozuksa karakter tablosunda `CP857 · Türkçe (13) — Epson`'u deneyin.
+
+| | Xprinter | Epson TM (Secure Printing) |
+|---|---|---|
+| Port | `9100` (şifresiz) | `9143` (şifreli, TLS) |
+| Karakter tablosu | CP857 = `61`, WPC1254 = `91` | WPC1254 = `48` (önerilen), PC857 = `13` |
+
+> Yazıcı ile PC aynı ağda olmalıdır. Epson durum sorusuna şifreli portta cevap vermezse Yazıcı kartında durum "bilinmiyor" görünebilir; bu baskıyı engellemez. Secure Printing'i kapatıp `9100` ile basmak da mümkündür (yazıcının web ayarı, Epson Web Config), ama gerekmez.
 
 ---
 

@@ -1,6 +1,6 @@
 import { renderTicket, type Line } from '@ramos/shared';
 import { describe, expect, it } from 'vitest';
-import { encodeLines } from './escpos';
+import { encodeLines, isSupportedCodepage } from './escpos';
 import { sendBytes } from './transport';
 import { startFakePrinter } from './fake-printer';
 
@@ -89,6 +89,34 @@ describe('encodeLines — codepage adı/numarası tek doğruluk kaynağı (R60, 
     const out = Buffer.from(encodeLines([{ kind: 'text', text: 'Ş' }], { codepage: 'windows1254', codepageNumber: 91 }));
     expect(out.subarray(4, 7)).toEqual(Buffer.from([0x1b, 0x74, 0x5b])); // ESC t 91 (0x5b)
     expect(out.includes(Buffer.from([0xde]))).toBe(true); // windows1254: Ş = 0xDE (cp857 would wrongly say 0x9E)
+  });
+});
+
+describe('encodeLines — Epson numaraları (TM-m30III)', () => {
+  it('windows1254/48 (Epson WPC1254): ESC t 48, Ş=DE, ä=E4, €=80', () => {
+    const out = Buffer.from(encodeLines([{ kind: 'text', text: 'Şä€' }], { codepage: 'windows1254', codepageNumber: 48 }));
+    expect(out.subarray(4, 7)).toEqual(Buffer.from([0x1b, 0x74, 0x30])); // ESC t 48 (0x30)
+    expect(out.includes(Buffer.from([0xde, 0xe4, 0x80]))).toBe(true);
+  });
+
+  it('cp857/13 (Epson PC857): ESC t 13, Ş=9E', () => {
+    const out = Buffer.from(encodeLines([{ kind: 'text', text: 'Ş' }], { codepage: 'cp857', codepageNumber: 13 }));
+    expect(out.subarray(4, 7)).toEqual(Buffer.from([0x1b, 0x74, 0x0d]));
+    expect(out.includes(Buffer.from([0x9e]))).toBe(true);
+  });
+
+  it('başka tablonun Epson numarası hâlâ hata: cp857/48, windows1254/13, cp437/48', () => {
+    const x: Line[] = [{ kind: 'text', text: 'x' }];
+    expect(() => encodeLines(x, { codepage: 'cp857', codepageNumber: 48 })).toThrow(/uyuşmayan/);
+    expect(() => encodeLines(x, { codepage: 'windows1254', codepageNumber: 13 })).toThrow();
+    expect(() => encodeLines(x, { codepage: 'cp437', codepageNumber: 48 })).toThrow();
+  });
+
+  it('isSupportedCodepage bilinen çiftleri tanır', () => {
+    expect(isSupportedCodepage('windows1254', 48)).toBe(true);
+    expect(isSupportedCodepage('windows1254', 91)).toBe(true);
+    expect(isSupportedCodepage('cp857', 91)).toBe(false);
+    expect(isSupportedCodepage('utf8', 0)).toBe(false);
   });
 });
 

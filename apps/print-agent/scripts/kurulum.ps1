@@ -9,14 +9,15 @@
       2) Bu PC'de çalışan eski ajan durdurulur, ajan hesabıyla siteye giriş denenir,
          başka bir bilgisayarda çalışan ajan varsa uyarılır
       3) Bağlantı türü sorulur (1 kablo, 2 Wi-Fi, 3 USB, 4 otomatik; Enter = 4). USB'de ağ
-         taraması atlanır; diğerlerinde ağ taranır (TCP 9100 + ESC/POS durum cevabı). Durum sorusuna cevap vermeyen cihazlara
+         taraması atlanır; diğerlerinde ağ taranır (TCP 9100 ve Epson şifreli TLS 9143 + ESC/POS durum cevabı). Durum sorusuna cevap vermeyen cihazlara
          (bazı Star / ucuz modeller) kısa bir deneme fişi gönderilir, "fiş çıktı mı?" diye sorulur.
       4) Ağda bulunamazsa: USB ile bu bilgisayara bağlı yazıcı sorulur (sürücüsü yoksa Windows'un
          "Generic / Text Only" sürücüsüyle eklenir; fişler kuyruğa RAW gider). USB değilse tek
          yönetici izniyle markaların fabrika ağlarında aranır ve bulunan ağın adresi bilgisayarda
          kalıcı kalır ("köprü"); o da olmazsa ayar fişindeki adres sorulur.
          Wi-Fi yazıcılar önce modemin Wi-Fi ağına bağlanmış olmalı; sonra kablolu yazıcı gibi bulunur.
-      5) Adres bu PC'nin ajan ayarına (.env → PRINTER_HOST) yazılır
+      5) Adres bu PC'nin ajan ayarına (.env → PRINTER_HOST) yazılır. Epson "Secure Printing" (9143)
+         bulunduysa ayrıca PRINTER_PORT=9143, PRINTER_CODEPAGE=windows1254, PRINTER_CODEPAGE_NUMBER=48
       6) Test fişi; özel harfler (ä ö ü ß ş ğ ı) bozuksa bu PC için sade harf modu (PRINTER_ASCII=1)
       7) Prize takılıyken uyku / hazırda bekletme / kapak kapanınca uyku kapatılır (onayla)
       8) Ajan Zamanlanmış Görev olarak kurulur ve siteye bağlandığı doğrulanır
@@ -98,11 +99,18 @@ function Stop-Wizard([string]$text) {
 }
 
 # Varsayılanı "evet" olan soru (Enter = evet). -Yes verilmişse sormaz; etkileşimsiz
-# konakta Read-Host fırlatırsa "hayır" sayılır (güvenli yön).
+# konakta Read-Host fırlatırsa "hayır" sayılır (güvenli yön). Geçersiz cevapta (ör. "2") soru
+# tekrar sorulur — eskiden "e" ile başlamayan her şey sessizce "hayır" sayılıyordu (sahada yaşandı).
 function Confirm-Yes([string]$prompt) {
     if ($Yes) { Write-Info "$prompt -> evet (-Yes)"; return $true }
-    try { $a = Read-Host "  $prompt (E/h)" } catch { return $false }
-    return ($a -eq '' -or $a -match '^[eEyY]')
+    for ($i = 0; $i -lt 5; $i++) {
+        try { $a = Read-Host "  $prompt (E/h)" } catch { return $false }
+        $a = "$a".Trim().ToLowerInvariant()
+        if ($a -in @('', 'e', 'evet', 'y', 'yes', 'j', 'ja')) { return $true }
+        if ($a -in @('h', 'hayir', 'hayır', 'n', 'no', 'nein')) { return $false }
+        Write-Warn 'Evet için E (ya da Enter), hayır için H yazın.'
+    }
+    return $false
 }
 
 # Node'u çalıştırır. PS 5.1'de yerel komutun stderr çıktısı ErrorActionPreference=Stop ile
@@ -407,10 +415,17 @@ function Read-PrinterIp {
         return $KnownPrinterIp
     }
     if ($Yes) { return $null }
-    for ($i = 0; $i -lt 3; $i++) {
-        try { $a = Read-Host "  Ayar fişindeki 'IP Address' (Enter = atla)" } catch { return $null }
+    # Boş Enter bir kez daha sorulur: yanlışlıkla Enter'a basılınca kurulum hemen durmasın.
+    $blankOnce = $false
+    for ($i = 0; $i -lt 4; $i++) {
+        try { $a = Read-Host "  Ayar fişindeki 'IP Address'" } catch { return $null }
         $a = "$a".Trim()
-        if ($a -eq '') { return $null }
+        if ($a -eq '') {
+            if ($blankOnce) { return $null }
+            $blankOnce = $true
+            Write-Warn 'Adres yazılmadı. Ayar fişindeki "IP Address" değerini yazın (örnek: 192.168.1.100). Boş bırakırsanız kurulum durur.'
+            continue
+        }
         if (Test-Ipv4Text $a) { return $a }
         Write-Warn 'Geçersiz adres. Örnek: 192.168.1.100'
     }
@@ -446,14 +461,27 @@ function Invoke-NetworkBridge([int]$ifIndex, [string[]]$Gecici = @(), [string[]]
     return ($proc.ExitCode -eq 0)
 }
 
-# Adresi yoklar (`probe`, giriş gerektirmez): open = TCP 9100 açık, escpos = durum sorusuna
-# ESC/POS cevabı verdi. Bazı yazıcılar (Star'ın ESC/POS modu, bazı ucuz modeller) durum sorusuna
-# hiç cevap vermez ama fişi sorunsuz basar: onlar open=true, escpos=false döner.
+# Adresi yoklar (`probe`, giriş gerektirmez): önce Epson'un şifreli portu 9143 (TLS), sonra TCP
+# 9100. open = port açık, escpos = durum sorusuna ESC/POS cevabı verdi, port = kullanılacak port
+# (9143 ise Epson Secure Printing). Bazı yazıcılar (Star'ın ESC/POS modu, bazı ucuz modeller) durum
+# sorusuna hiç cevap vermez ama fişi sorunsuz basar: onlar open=true, escpos=false döner.
 function Get-PrinterProbe([string]$ip) {
     $r = Invoke-Agent @('probe', '--host', $ip)
     $p = ConvertFrom-AgentJson $r
-    if ($r.Code -ne 0 -or -not $p) { return [pscustomobject]@{ host = $ip; open = $false; escpos = $false } }
+    if ($r.Code -ne 0 -or -not $p) { return [pscustomobject]@{ host = $ip; port = 9100; open = $false; escpos = $false } }
     return $p
+}
+
+# Epson "Secure Printing": şifresiz 9100 baskıyı reddeder, fişler TLS ile 9143'ten basılır. Bu
+# portta bulunan yazıcı için .env'e port ve Epson'un karakter tablosu (WPC1254 = 48) yazılır.
+$EpsonTlsPort = 9143
+
+# Seçilen yazıcının portunu hatırlar (bulunan kayıt / yoklama sonucu). Port 9143 → Epson şifreli.
+function Set-ChosenPrinterPort($p) {
+    $port = if ($p -and $p.port) { [int]$p.port } else { 9100 }
+    $script:chosenPort = $port
+    $script:chosenEpson = ($port -eq $EpsonTlsPort)
+    if ($script:chosenEpson) { Write-Ok "Epson (şifreli baskı, port $EpsonTlsPort) bulundu: $($p.host)" }
 }
 
 # Port açılana kadar bekler; açılırsa yoklama sonucunu, açılmazsa $null döner.
@@ -469,11 +497,11 @@ function Wait-PrinterPort([string]$ip, [int]$seconds) {
 
 # Durum sorusuna cevap vermeyen cihazın yazıcı olduğunu deneme fişiyle doğrular. Onay "e" ister
 # (Enter "hayır"): fiş çıkmadığı hâlde yanlışlıkla Enter'a basılıp yanlış cihaz seçilmesin.
-function Confirm-PrinterByTicket([string]$ip) {
+function Confirm-PrinterByTicket([string]$ip, [int]$port = 9100) {
     if ($DryRun) { Write-Info "Deneme modu: $ip adresine deneme fişi gönderilmedi."; return $false }
     if ($Yes) { Write-Info "$ip durum sorusuna cevap vermiyor; -Yes ile fiş onayı alınamaz, atlandı."; return $false }
     Write-Info "$ip adresindeki cihaz durum sorusuna cevap vermiyor (bazı yazıcılar böyledir). Kısa bir deneme fişi gönderiliyor..."
-    $r = Invoke-Agent @('probe-print', '--host', $ip)
+    $r = Invoke-Agent @('probe-print', '--host', $ip, '--port', "$port")
     if ($r.Code -ne 0) {
         Write-Warn "Deneme fişi gönderilemedi: $($r.Text)"
         return $false
@@ -485,7 +513,8 @@ function Confirm-PrinterByTicket([string]$ip) {
 function Test-PrinterAccepted($probe) {
     if (-not $probe -or -not $probe.open) { return $false }
     if ($probe.escpos) { return $true }
-    return (Confirm-PrinterByTicket $probe.host)
+    $port = if ($probe.port) { [int]$probe.port } else { 9100 }
+    return (Confirm-PrinterByTicket $probe.host $port)
 }
 
 # ------------------------------------------------------------------------------------------
@@ -574,9 +603,12 @@ $previousHost = Get-EnvValue $existingEnv 'PRINTER_HOST'
 $extra = @($previousHost, $siteInfo.sitePrinterHost) | Where-Object { $_ } | Select-Object -Unique
 
 $chosenHost = $null
+$chosenPort = 9100      # 9143 → Epson şifreli baskı (TLS)
+$chosenEpson = $false
 if ($PrinterHost) {
     Write-Info "Adres verildi: $PrinterHost"
-    if (Test-PrinterAccepted (Get-PrinterProbe $PrinterHost)) { $chosenHost = $PrinterHost; Write-Ok "Yazıcı $PrinterHost adresinde." }
+    $givenProbe = Get-PrinterProbe $PrinterHost
+    if (Test-PrinterAccepted $givenProbe) { $chosenHost = $PrinterHost; Set-ChosenPrinterPort $givenProbe; Write-Ok "Yazıcı $PrinterHost adresinde (port $chosenPort)." }
     else { Stop-Wizard "$PrinterHost adresinde yazıcı bulunamadı." }
 }
 
@@ -607,24 +639,32 @@ if ($connection -eq 'usb') {
         $other = @($found.printers | Where-Object { -not $_.escpos })
         if ($escpos.Count -eq 1) {
             $chosenHost = $escpos[0].host
+            Set-ChosenPrinterPort $escpos[0]
             Write-Ok "Yazıcı bulundu: $chosenHost"
         } elseif ($escpos.Count -gt 1) {
             Write-Info 'Birden fazla fiş yazıcısı bulundu:'
-            for ($i = 0; $i -lt $escpos.Count; $i++) { Write-Host "    $($i + 1)) $($escpos[$i].host)" }
+            for ($i = 0; $i -lt $escpos.Count; $i++) {
+                $kind = if ([int]$escpos[$i].port -eq $EpsonTlsPort) { " (Epson, şifreli port $EpsonTlsPort)" } else { '' }
+                Write-Host "    $($i + 1)) $($escpos[$i].host)$kind"
+            }
+            $pickedEntry = $null
             if ($Yes) {
-                $chosenHost = $escpos[0].host
-                Write-Info "İlki seçildi: $chosenHost (-Yes)"
+                $pickedEntry = $escpos[0]
+                Write-Info "İlki seçildi: $($pickedEntry.host) (-Yes)"
             } else {
                 $pick = Read-Host '  Mutfak yazıcısının numarası'
-                if ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $escpos.Count) { $chosenHost = $escpos[[int]$pick - 1].host }
+                if ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $escpos.Count) { $pickedEntry = $escpos[[int]$pick - 1] }
                 else { Stop-Wizard 'Geçerli bir numara seçilmedi.' }
             }
+            $chosenHost = $pickedEntry.host
+            Set-ChosenPrinterPort $pickedEntry
             Write-Ok "Seçilen yazıcı: $chosenHost"
         } elseif ($other.Count -gt 0) {
             Write-Info ('Durum sorusuna cevap vermeyen, yazıcı olabilecek cihazlar: ' + (($other | ForEach-Object { $_.host }) -join ', '))
             foreach ($o in @($other | Select-Object -First 5)) {
-                if (Confirm-PrinterByTicket $o.host) {
+                if (Confirm-PrinterByTicket $o.host ([int]$o.port)) {
                     $chosenHost = $o.host
+                    Set-ChosenPrinterPort $o
                     Write-Ok "Yazıcı bulundu (deneme fişiyle doğrulandı): $chosenHost"
                     break
                 }
@@ -698,20 +738,22 @@ if ($chosenHost -and -not $ForceUsb) {
                     $silent = @($scan2.printers | Where-Object { -not $_.escpos -and -not (Test-SameSubnet $_.host $net.Address $net.Prefix) })
                 }
                 $pickHost = $null
+                $pickEntry = $null
                 if ($hits.Count -eq 1 -or ($hits.Count -gt 1 -and $Yes)) {
-                    $pickHost = $hits[0].host
+                    $pickEntry = $hits[0]
                 } elseif ($hits.Count -gt 1) {
                     Write-Info 'Birden fazla fiş yazıcısı bulundu:'
                     for ($i = 0; $i -lt $hits.Count; $i++) { Write-Host "    $($i + 1)) $($hits[$i].host)" }
                     $pick = Read-Host '  Mutfak yazıcısının numarası'
-                    if ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $hits.Count) { $pickHost = $hits[[int]$pick - 1].host }
+                    if ($pick -match '^\d+$' -and [int]$pick -ge 1 -and [int]$pick -le $hits.Count) { $pickEntry = $hits[[int]$pick - 1] }
                 }
-                if (-not $pickHost -and $silent.Count -gt 0) {
+                if (-not $pickEntry -and $silent.Count -gt 0) {
                     Write-Info ('Durum sorusuna cevap vermeyen, yazıcı olabilecek cihazlar: ' + (($silent | ForEach-Object { $_.host }) -join ', '))
                     foreach ($o in @($silent | Select-Object -First 5)) {
-                        if (Confirm-PrinterByTicket $o.host) { $pickHost = $o.host; break }
+                        if (Confirm-PrinterByTicket $o.host ([int]$o.port)) { $pickEntry = $o; break }
                     }
                 }
+                if ($pickEntry) { $pickHost = $pickEntry.host }
                 if ($pickHost) {
                     Write-Ok "Yazıcı bulundu: $pickHost"
                     $keep = Get-BridgeIp $pickHost
@@ -720,6 +762,7 @@ if ($chosenHost -and -not $ForceUsb) {
                     if (Invoke-NetworkBridge $net.IfIndex -Kalici @($keep) -Kaldir $others) {
                         if (Wait-PrinterPort $pickHost 15) {
                             $chosenHost = $pickHost
+                            Set-ChosenPrinterPort $pickEntry
                             $bridge = @{ IfIndex = $net.IfIndex; Ip = $keep }
                             Write-Ok "Köprü kuruldu: bu bilgisayar yazıcıya ($pickHost) $keep üzerinden ulaşıyor."
                         } else {
@@ -745,8 +788,11 @@ if ($chosenHost -and -not $ForceUsb) {
         Write-Host '  Yazıcının ayar fişini basın: yazıcıyı kapatın, FEED tuşuna basılı tutarak açın, fiş çıkınca bırakın.' -ForegroundColor White
         $manualIp = Read-PrinterIp
         if ($manualIp -and (Test-SameSubnet $manualIp $net.Address $net.Prefix)) {
-            if (Test-PrinterAccepted (Wait-PrinterPort $manualIp 8)) {
+            # Yoklama önce Epson şifreli portu (9143, TLS), sonra 9100'ü dener.
+            $manualProbe = Wait-PrinterPort $manualIp 8
+            if (Test-PrinterAccepted $manualProbe) {
                 $chosenHost = $manualIp
+                Set-ChosenPrinterPort $manualProbe
                 Write-Ok "Yazıcı bulundu: $chosenHost"
             } else {
                 Write-Warn "$manualIp adresinde yazıcı cevap vermedi. Yazıcı açık, ethernet kablosu modeme takılı mı?"
@@ -755,8 +801,10 @@ if ($chosenHost -and -not $ForceUsb) {
             $keep = Get-BridgeIp $manualIp
             Write-Info "Bilgisayara $keep adresi eklenecek (yönetici izni)."
             if (Invoke-NetworkBridge $net.IfIndex -Kalici @($keep)) {
-                if (Test-PrinterAccepted (Wait-PrinterPort $manualIp 20)) {
+                $manualProbe = Wait-PrinterPort $manualIp 20
+                if (Test-PrinterAccepted $manualProbe) {
                     $chosenHost = $manualIp
+                    Set-ChosenPrinterPort $manualProbe
                     $bridge = @{ IfIndex = $net.IfIndex; Ip = $keep }
                     Write-Ok "Köprü kuruldu: bu bilgisayar yazıcıya ($manualIp) $keep üzerinden ulaşıyor."
                 } else {
@@ -786,10 +834,10 @@ Write-Step 5 'Yazıcı bu bilgisayarın ajan ayarına yazılıyor'
 
 $envTarget = Join-Path $InstallDir '.env'
 if ($existingEnv.Count -gt 0) {
-    $lines = @($existingEnv | Where-Object { $_ -notmatch '^\s*(PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII|PRINTER_MAC|PRINTER_USB|PRINTER_USB_EXE)\s*=' })
+    $lines = @($existingEnv | Where-Object { $_ -notmatch '^\s*(PRINTER_HOST|PRINTER_PORT|PRINTER_CODEPAGE|PRINTER_CODEPAGE_NUMBER|PRINTER_ASCII|PRINTER_MAC|PRINTER_USB|PRINTER_USB_EXE)\s*=' })
     if (-not (Get-EnvValue $lines 'AGENT_ID')) { $lines += "AGENT_ID=$agentId" }
 } else {
-    $lines = @(Read-EnvLines $PackageEnv | Where-Object { $_ -notmatch '^\s*(AGENT_ID|LOG_DIR|PRINTER_HOST|PRINTER_PORT|PRINTER_ASCII|PRINTER_MAC|PRINTER_USB|PRINTER_USB_EXE)\s*=' })
+    $lines = @(Read-EnvLines $PackageEnv | Where-Object { $_ -notmatch '^\s*(AGENT_ID|LOG_DIR|PRINTER_HOST|PRINTER_PORT|PRINTER_CODEPAGE|PRINTER_CODEPAGE_NUMBER|PRINTER_ASCII|PRINTER_MAC|PRINTER_USB|PRINTER_USB_EXE)\s*=' })
     $lines += "AGENT_ID=$agentId"
 }
 # Paketteki hesap bilgileri eski kurulumdakinin yerine geçer (ör. parola sonradan değiştiyse).
@@ -808,6 +856,14 @@ if ($usbPrinterName) {
 } else {
     $lines += "PRINTER_HOST=$chosenHost"
     $printerSetting = "PRINTER_HOST=$chosenHost"
+    if ($chosenEpson) {
+        # Epson Secure Printing: şifreli port + Epson'un WPC1254 tablosu (Türkçe, Almanca ve €).
+        # Bu PC için sitedeki yazıcı portu / karakter tablosu ayarının önüne geçer.
+        $lines += "PRINTER_PORT=$EpsonTlsPort"
+        $lines += 'PRINTER_CODEPAGE=windows1254'
+        $lines += 'PRINTER_CODEPAGE_NUMBER=48'
+        $printerSetting += ", PRINTER_PORT=$EpsonTlsPort, PRINTER_CODEPAGE=windows1254, PRINTER_CODEPAGE_NUMBER=48"
+    }
 }
 # Sade harf modu 6. adımdaki test fişine göre belirlenir: test yapılmayacaksa eski karar korunur.
 $previousAscii = Get-EnvValue $existingEnv 'PRINTER_ASCII'
@@ -950,8 +1006,11 @@ Write-Host ''
 if ($connected -and $a.printer_reachable) {
     Write-Host '==========================================================' -ForegroundColor Green
     Write-Host ' KURULUM TAMAM' -ForegroundColor Green
-    $printerText = if ($usbPrinterName) { "USB ($usbPrinterName)" } else { $chosenHost }
+    $printerText = if ($usbPrinterName) { "USB ($usbPrinterName)" } elseif ($chosenEpson) { "$chosenHost (Epson, şifreli baskı, port $EpsonTlsPort)" } else { $chosenHost }
     Write-Host "  Yazıcı        : $printerText" -ForegroundColor Green
+    if ($chosenEpson) {
+        Write-Host '  Site ayarı    : Admin > Ayarlar > Yazıcı türü "Epson TM (şifreli)" seçip Kaydet' -ForegroundColor Green
+    }
     Write-Host "  Bu bilgisayar : $env:COMPUTERNAME (siteye bağlı, yazıcıya erişiyor)" -ForegroundColor Green
     if ($bridge) {
         Write-Host "  Köprü         : bu bilgisayara $($bridge.Ip) eklendi, yazıcıya bu yolla ulaşılıyor" -ForegroundColor Green

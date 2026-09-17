@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { discoverPrinters, intToIp, ipToInt, isPrivateIpv4, localNetworks, looksLikeEscPos, scanTargets } from './discover';
 import { startFakePrinter, type FakePrinter } from './fake-printer';
 import { parseStatus } from './status';
+import { testTlsCredentials } from './__fixtures__/testTls';
 
 describe('ipToInt / intToIp', () => {
   it('gidiş-dönüş aynı adresi verir', () => {
@@ -99,16 +100,17 @@ describe('discoverPrinters — gerçek TCP ile', () => {
   it('durum sorusuna ESC/POS cevabı veren cihazı fiş yazıcısı olarak bulur', async () => {
     const printer: FakePrinter = await startFakePrinter({ port: 0 });
     cleanup.push(() => printer.stop());
-    const found = await discoverPrinters({ networks: [], extraHosts: ['127.0.0.1'], port: printer.port });
+    const found = await discoverPrinters({ networks: [], extraHosts: ['127.0.0.1'], port: printer.port, securePort: null });
     expect(found).toHaveLength(1);
-    expect(found[0]).toMatchObject({ host: '127.0.0.1', port: printer.port, escpos: true });
+    expect(found[0]).toMatchObject({ host: '127.0.0.1', port: printer.port, tls: false, escpos: true });
+    expect(found[0]).not.toHaveProperty('brand');
     expect(found[0]!.state.raw).toBe('121212');
   });
 
   it('portu açık ama durum sorusuna cevap vermeyen cihaz escpos=false ile listelenir', async () => {
     const printer = await startFakePrinter({ port: 0, silent: true });
     cleanup.push(() => printer.stop());
-    const found = await discoverPrinters({ networks: [], extraHosts: ['127.0.0.1'], port: printer.port });
+    const found = await discoverPrinters({ networks: [], extraHosts: ['127.0.0.1'], port: printer.port, securePort: null });
     expect(found).toEqual([expect.objectContaining({ host: '127.0.0.1', escpos: false })]);
   });
 
@@ -117,7 +119,7 @@ describe('discoverPrinters — gerçek TCP ile', () => {
     await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
     const port = (server.address() as net.AddressInfo).port;
     await new Promise<void>((r) => server.close(() => r()));
-    const found = await discoverPrinters({ networks: [], extraHosts: ['127.0.0.1'], port, connectMs: 300 });
+    const found = await discoverPrinters({ networks: [], extraHosts: ['127.0.0.1'], port, securePort: port + 1, connectMs: 300 });
     expect(found).toEqual([]);
   });
 
@@ -126,6 +128,7 @@ describe('discoverPrinters — gerçek TCP ile', () => {
     const found = await discoverPrinters({
       networks: [],
       extraHosts: Object.keys(states),
+      securePort: null,
       probe: async () => true,
       status: async (host) => parseStatus(Uint8Array.from(states[host]!)),
     });
@@ -134,5 +137,87 @@ describe('discoverPrinters — gerçek TCP ile', () => {
       ['10.0.0.9', true],
       ['10.0.0.2', false],
     ]);
+  });
+
+  describe('Epson şifreli port (TLS 9143 yerine test portu)', () => {
+    const creds = testTlsCredentials();
+
+    it('TLS el sıkışması + durum cevabı veren cihaz epson-secure olarak bulunur', async () => {
+      const epson = await startFakePrinter({ tls: creds });
+      cleanup.push(() => epson.stop());
+      const closed = net.createServer();
+      await new Promise<void>((r) => closed.listen(0, '127.0.0.1', () => r()));
+      const plainPort = (closed.address() as net.AddressInfo).port;
+      await new Promise<void>((r) => closed.close(() => r()));
+      const found = await discoverPrinters({ networks: [], extraHosts: ['127.0.0.1'], port: plainPort, securePort: epson.port, connectMs: 300 });
+      expect(found).toEqual([
+        expect.objectContaining({ host: '127.0.0.1', port: epson.port, tls: true, brand: 'epson-secure', escpos: true }),
+      ]);
+    });
+
+    it('aynı adreste 9100 da açıksa şifreli port tercih edilir (tek kayıt)', async () => {
+      const epson = await startFakePrinter({ tls: creds });
+      const plain = await startFakePrinter({});
+      cleanup.push(() => epson.stop(), () => plain.stop());
+      const found = await discoverPrinters({ networks: [], extraHosts: ['127.0.0.1'], port: plain.port, securePort: epson.port });
+      expect(found).toHaveLength(1);
+      expect(found[0]).toMatchObject({ port: epson.port, tls: true, brand: 'epson-secure' });
+    });
+
+    it('şifreli port açık ama TLS değilse (el sıkışma hatası) düz port kullanılır', async () => {
+      const sockets = new Set<net.Socket>();
+      const notTls = net.createServer((socket) => {
+        sockets.add(socket);
+        socket.on('error', () => {}); // TLS istemcisi el sıkışma hatasında bağlantıyı sıfırlar
+        socket.end('nope');
+      });
+      await new Promise<void>((r) => notTls.listen(0, '127.0.0.1', () => r()));
+      cleanup.push(
+        () =>
+          new Promise<void>((r) => {
+            for (const so of sockets) so.destroy();
+            notTls.close(() => r());
+          }),
+      );
+      const plain = await startFakePrinter({});
+      cleanup.push(() => plain.stop());
+      const found = await discoverPrinters({
+        networks: [],
+        extraHosts: ['127.0.0.1'],
+        port: plain.port,
+        securePort: (notTls.address() as net.AddressInfo).port,
+      });
+      expect(found).toEqual([expect.objectContaining({ port: plain.port, tls: false, escpos: true })]);
+      expect(found[0]).not.toHaveProperty('brand');
+    });
+
+    it('yalnız şifreli port açık, durum cevabı yok: tls=true, escpos=false aday olarak listelenir', async () => {
+      const calls: Array<[number, boolean]> = [];
+      const found = await discoverPrinters({
+        networks: [],
+        extraHosts: ['10.0.0.7'],
+        probe: async (_h, port) => port === 9143,
+        status: async (_h, port, o) => {
+          calls.push([port, o.tls === true]);
+          return parseStatus(new Uint8Array());
+        },
+      });
+      expect(found).toEqual([expect.objectContaining({ host: '10.0.0.7', port: 9143, tls: true, escpos: false })]);
+      expect(calls.every(([port, tls]) => port === 9143 && tls)).toBe(true);
+    });
+
+    it('port şifreli portla aynıysa (ajan 9143 ile çalışıyor) yalnız TLS taranır', async () => {
+      const probed: number[] = [];
+      await discoverPrinters({
+        networks: [],
+        extraHosts: ['10.0.0.8'],
+        port: 9143,
+        probe: async (_h, port) => {
+          probed.push(port);
+          return false;
+        },
+      });
+      expect(probed).toEqual([9143]);
+    });
   });
 });

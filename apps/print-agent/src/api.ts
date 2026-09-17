@@ -195,8 +195,10 @@ export async function createSupabaseApi(
         // USB yazıcıda "adres" `usb:<Windows yazıcı adı>`dır (bkz. usb.ts); ağ ayarları kullanılmaz.
         host: env.PRINTER_USB ? `usb:${env.PRINTER_USB}` : (env.PRINTER_HOST ?? data.printer_host),
         port: env.PRINTER_PORT ?? data.printer_port,
-        codepage: data.printer_codepage,
-        codepageNumber: data.printer_codepage_number,
+        // Yerel karakter tablosu (ör. Epson: windows1254/48) de sitedekinin önüne geçer; config.ts
+        // ikisinin birlikte ve bilinen bir eşleşme olduğunu zaten doğruladı.
+        codepage: env.PRINTER_CODEPAGE ?? data.printer_codepage,
+        codepageNumber: env.PRINTER_CODEPAGE_NUMBER ?? data.printer_codepage_number,
         transliterate: data.printer_transliterate,
         ascii: env.PRINTER_ASCII ?? false,
       };

@@ -24,7 +24,9 @@ import { PrinterCard } from '../PrinterCard';
 import { QrMenuSection } from './QrMenuSection';
 import {
   addRow,
+  applyPrinterPreset,
   codepageChoices,
+  detectPrinterPreset,
   formFromSettings,
   isSettingsDirty,
   moveRow,
@@ -35,6 +37,7 @@ import {
   TICKET_HEADER_MAX,
   updateRow,
   validateSettings,
+  type PrinterPresetId,
   type SettingsErrorKey,
   type SettingsForm,
 } from './settingsLogic';
@@ -55,9 +58,17 @@ const ERROR_KEY = {
 const CODEPAGE_KEY = {
   'cp857/61': 'admin.settings.printer.codepages.cp857',
   'windows1254/91': 'admin.settings.printer.codepages.windows1254',
+  'windows1254/48': 'admin.settings.printer.codepages.windows1254_48',
+  'cp857/13': 'admin.settings.printer.codepages.cp857_13',
   'cp858/19': 'admin.settings.printer.codepages.cp858',
   'cp437/0': 'admin.settings.printer.codepages.cp437',
 } as const;
+
+const PRINTER_TYPE_KEY = {
+  xprinter: 'admin.settings.printer.types.xprinter',
+  epson: 'admin.settings.printer.types.epson',
+  custom: 'admin.settings.printer.types.custom',
+} as const satisfies Record<PrinterPresetId, string>;
 
 /** Liste satırının eylem sütunu (masaüstü): iki taşı düğmesi (2 × 48 px) + "Sil / Entfernen". */
 const ACTIONS_TRACK = '15rem';
@@ -104,6 +115,8 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
   const [showErrors, setShowErrors] = useState(false);
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const [previewAt] = useState(() => new Date());
+  // "Özel" elle seçildiyse alanlar bir hazır seçime uysa bile "Özel" görünür kalır.
+  const [customPrinterType, setCustomPrinterType] = useState(false);
 
   // Kayıt dışarıda değişti (kendi kaydımız ya da başka bir cihaz — Realtime `settings`). Yerel
   // değişiklik yoksa ya da form zaten yeni kayda eşitse sessizce yenilenir; yoksa operatörün
@@ -168,6 +181,7 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
 
   const discard = () => {
     setForm(formFromSettings(row));
+    setCustomPrinterType(false);
     setConflict(false);
     setShowErrors(false);
   };
@@ -195,6 +209,11 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
 
   const updatedBy = row.updated_by ? staffNames.get(row.updated_by) : undefined;
   const choices = codepageChoices(form.codepage);
+  const printerType: PrinterPresetId = customPrinterType ? 'custom' : detectPrinterPreset(form);
+  const choosePrinterType = (id: PrinterPresetId) => {
+    setCustomPrinterType(id === 'custom');
+    setForm((f) => applyPrinterPreset(f, id));
+  };
 
   return (
     <form
@@ -303,6 +322,21 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
             title={t('admin.settings.printer.title')}
             description={t('admin.settings.printer.description')}
           >
+            <SelectField<PrinterPresetId>
+              label={t('admin.settings.printer.type')}
+              value={printerType}
+              hint={t('admin.settings.printer.typeHint')}
+              onChange={choosePrinterType}
+              options={(['xprinter', 'epson', 'custom'] as const).map((id) => ({
+                value: id,
+                label: t(PRINTER_TYPE_KEY[id]),
+              }))}
+            />
+            {printerType === 'epson' ? (
+              <p role="note" className="text-sm text-muted">
+                {t('admin.settings.printer.epsonHint')}
+              </p>
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
               <TextField
                 label={t('admin.settings.printer.host')}

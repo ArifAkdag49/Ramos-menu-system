@@ -9,6 +9,7 @@ const settings = { host: '192.168.178.20', port: 9100, codepage: 'cp857', codepa
 const printer = (host: string, escpos = true): FoundPrinter => ({
   host,
   port: 9100,
+  tls: false,
   escpos,
   state: parseStatus(escpos ? Uint8Array.from([0x12, 0x12, 0x12]) : new Uint8Array()),
 });

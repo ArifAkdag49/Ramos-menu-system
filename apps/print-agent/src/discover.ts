@@ -1,11 +1,14 @@
 import net from 'node:net';
 import os from 'node:os';
 import type { PrinterState } from './status';
-import { queryStatus } from './transport';
+import { EPSON_TLS_PORT, queryStatus } from './transport';
 
 // Yazıcı kurulum sihirbazı (`Kurulum.cmd` → `ramos-agent.mjs find-printer`): bu PC'nin bağlı
-// olduğu yerel ağları bulur, her adreste TCP 9100'ü dener ve açık olanlara `DLE EOT` durum
-// sorusu sorar. Cevap ESC/POS durum baytı biçimindeyse cihaz fiş yazıcısı sayılır.
+// olduğu yerel ağları bulur, her adreste TCP 9100'ü ve Epson'un şifreli RAW portu 9143'ü dener,
+// açık olanlara `DLE EOT` durum sorusu sorar (9143'te TLS üzerinden). Cevap ESC/POS durum baytı
+// biçimindeyse cihaz fiş yazıcısı sayılır. 9143'te TLS el sıkışması başarılı olup durum cevabı da
+// gelirse cihaz "epson-secure" işaretlenir ve aynı adresin 9100'ü yok sayılır: Secure Printing açık
+// bir Epson'da 9100 açık görünür ama gönderilen fişi basmaz.
 // Ajan döngüsünden bağımsızdır; yazıcı aynı anda tek bağlantı kabul ettiği için sihirbaz
 // taramadan önce bu PC'deki ajanı durdurur.
 
@@ -20,9 +23,16 @@ export interface LocalNetwork {
   prefix: number;
 }
 
+/** Secure Printing açık Epson (TLS RAW 9143). Sihirbaz bunu görünce karakter tablosunu da ayarlar. */
+export const EPSON_SECURE_BRAND = 'epson-secure';
+
 export interface FoundPrinter {
   host: string;
   port: number;
+  /** Bu porta TLS ile bağlanılır (yalnız Epson şifreli port). */
+  tls: boolean;
+  /** `'epson-secure'`: 9143'te TLS + ESC/POS durum cevabı. */
+  brand?: typeof EPSON_SECURE_BRAND;
   /** Durum cevabı ESC/POS biçimindeyse true (Xprinter normalde `12 12 12` döner). */
   escpos: boolean;
   state: PrinterState;
@@ -114,11 +124,17 @@ export interface DiscoverOptions {
   networks?: LocalNetwork[];
   /** Ağ taramasından önce denenecek adresler (ör. önceki kurulumun adresi). */
   extraHosts?: string[];
+  /** Düz TCP portu (varsayılan 9100). */
   port?: number;
+  /**
+   * TLS ile denenecek Epson şifreli portu (varsayılan 9143); `null` → denenmez. `port` ile aynıysa
+   * yalnız bu TLS port taranır (ör. ajan zaten 9143'le çalışırken yeniden arama).
+   */
+  securePort?: number | null;
   connectMs?: number;
   concurrency?: number;
   probe?: (host: string, port: number, timeoutMs: number) => Promise<boolean>;
-  status?: (host: string, port: number, opts: { connectMs: number; replyMs: number }) => Promise<PrinterState>;
+  status?: (host: string, port: number, opts: { connectMs: number; replyMs: number; tls?: boolean }) => Promise<PrinterState>;
 }
 
 const UNKNOWN_STATE: PrinterState = {
@@ -126,7 +142,9 @@ const UNKNOWN_STATE: PrinterState = {
 };
 
 export async function discoverPrinters(opts: DiscoverOptions = {}): Promise<FoundPrinter[]> {
-  const port = opts.port ?? PRINTER_PORT;
+  const securePort = opts.securePort === undefined ? EPSON_TLS_PORT : opts.securePort;
+  const requestedPort = opts.port ?? PRINTER_PORT;
+  const plainPort = requestedPort === securePort ? null : requestedPort;
   // Wi-Fi'da ilk ARP + bağlantı 500 ms'yi aşabiliyor (sahada kaçırılan yazıcı riski); tarama
   // birden fazla ağı kapsayabildiği için eşzamanlılık da artırıldı.
   const connectMs = opts.connectMs ?? 800;
@@ -135,28 +153,53 @@ export async function discoverPrinters(opts: DiscoverOptions = {}): Promise<Foun
   const status = opts.status ?? queryStatus;
   const networks = opts.networks ?? localNetworks();
 
-  const targets = [...new Set([...(opts.extraHosts ?? []), ...networks.flatMap((n) => scanTargets(n.address, n.prefix))])];
+  const hosts = [...new Set([...(opts.extraHosts ?? []), ...networks.flatMap((n) => scanTargets(n.address, n.prefix))])];
+  const ports = [plainPort, securePort].filter((p): p is number => p !== null);
+  const targets = hosts.flatMap((host) => ports.map((port) => ({ host, port })));
 
-  const open: string[] = [];
+  const open = new Set<string>();
+  const key = (host: string, port: number) => `${host}:${port}`;
   let next = 0;
   const worker = async () => {
     while (next < targets.length) {
-      const host = targets[next++]!;
-      if (await probe(host, port, connectMs)) open.push(host);
+      const t = targets[next++]!;
+      if (await probe(t.host, t.port, connectMs)) open.add(key(t.host, t.port));
     }
   };
   await Promise.all(Array.from({ length: Math.min(concurrency, targets.length) }, worker));
 
   // Durum soruları sırayla: yazıcı tek bağlantı kabul eder, taramanın bıraktığı soketin
   // kapanmasına kısa bir pay bırakılır.
-  const found: FoundPrinter[] = [];
-  for (const host of open) {
+  const ask = async (host: string, port: number, tls: boolean): Promise<PrinterState> => {
     let state = UNKNOWN_STATE;
     for (let attempt = 0; attempt < 2 && !state.known; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 300));
-      state = await status(host, port, { connectMs: 1500, replyMs: 1200 }).catch(() => UNKNOWN_STATE);
+      const statusOpts = tls ? { connectMs: 1500, replyMs: 1200, tls: true } : { connectMs: 1500, replyMs: 1200 };
+      state = await status(host, port, statusOpts).catch(() => UNKNOWN_STATE);
     }
-    found.push({ host, port, escpos: looksLikeEscPos(state), state });
+    return state;
+  };
+
+  const found: FoundPrinter[] = [];
+  for (const host of hosts) {
+    const plainOpen = plainPort !== null && open.has(key(host, plainPort));
+    const secureOpen = securePort !== null && open.has(key(host, securePort));
+    if (!plainOpen && !secureOpen) continue;
+    let secureState: PrinterState | null = null;
+    if (secureOpen) {
+      secureState = await ask(host, securePort!, true);
+      if (looksLikeEscPos(secureState)) {
+        found.push({ host, port: securePort!, tls: true, brand: EPSON_SECURE_BRAND, escpos: true, state: secureState });
+        continue; // 9100 de açık olabilir ama Secure Printing açıkken basmaz — 9143 tercih edilir
+      }
+    }
+    if (plainOpen) {
+      const state = await ask(host, plainPort!, false);
+      found.push({ host, port: plainPort!, tls: false, escpos: looksLikeEscPos(state), state });
+    } else if (secureState) {
+      // 9143 açık, TLS'le cevap yok: yine de aday (deneme fişiyle doğrulanabilir).
+      found.push({ host, port: securePort!, tls: true, escpos: false, state: secureState });
+    }
   }
 
   const order = (h: string) => {

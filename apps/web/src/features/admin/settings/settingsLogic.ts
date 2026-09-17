@@ -106,6 +106,10 @@ export function validateSettings(s: SettingsDraft): Record<string, SettingsError
 export const CODEPAGES = [
   { codepage: 'cp857', number: 61 },
   { codepage: 'windows1254', number: 91 },
+  // Epson TM (ör. TM-m30III): aynı bayt tabloları başka `ESC t` numarasıyla seçilir. Ajan
+  // (apps/print-agent/src/escpos.ts CODEPAGE_TABLE) iki numarayı da aynı tabloya bağlar.
+  { codepage: 'windows1254', number: 48 },
+  { codepage: 'cp857', number: 13 },
   { codepage: 'cp858', number: 19 },
   { codepage: 'cp437', number: 0 },
 ] as const;
@@ -123,6 +127,39 @@ export function parseCodepageValue(value: string): { codepage: string; number: n
 export function codepageChoices(current: string): string[] {
   const known = CODEPAGES.map((c) => codepageValue(c.codepage, c.number));
   return known.includes(current) || !parseCodepageValue(current) ? known : [...known, current];
+}
+
+// --- Yazıcı türü (hazır seçim) -------------------------------------------------------------------
+
+/**
+ * "Yazıcı türü" hazır seçimleri: port ve karakter tablosunu birlikte doldurur. Epson TM'de
+ * (Avrupa modelleri) "Secure Printing" fabrikadan açıktır: şifresiz 9100 baskıyı reddeder, ajan
+ * 9143'e TLS ile bağlanır; Epson'un WPC1254 numarası 48'dir (Türkçe + Almanca + €).
+ */
+export const PRINTER_PRESETS = {
+  xprinter: { port: 9100, codepage: 'cp857/61' },
+  epson: { port: 9143, codepage: 'windows1254/48' },
+} as const;
+
+export type PrinterPresetId = keyof typeof PRINTER_PRESETS | 'custom';
+
+/** Formdaki port + karakter tablosu bir hazır seçime birebir uyuyorsa onun adı, yoksa `custom`. */
+export function detectPrinterPreset(
+  form: Pick<SettingsForm, 'printer_port' | 'codepage'>,
+): PrinterPresetId {
+  const port = form.printer_port.trim();
+  for (const id of Object.keys(PRINTER_PRESETS) as (keyof typeof PRINTER_PRESETS)[]) {
+    const preset = PRINTER_PRESETS[id];
+    if (port === String(preset.port) && form.codepage === preset.codepage) return id;
+  }
+  return 'custom';
+}
+
+/** Hazır seçimi forma uygular (port + karakter tablosu); `custom` alanlara dokunmaz. */
+export function applyPrinterPreset(form: SettingsForm, id: PrinterPresetId): SettingsForm {
+  if (id === 'custom') return form;
+  const preset = PRINTER_PRESETS[id];
+  return { ...form, printer_port: String(preset.port), codepage: preset.codepage };
 }
 
 // --- JSON listeleri ------------------------------------------------------------------------------

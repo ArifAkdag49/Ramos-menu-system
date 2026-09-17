@@ -9,13 +9,13 @@ import { renderTicketForPrinter } from './ascii';
 import { AGENT_VERSION, createSupabaseApi } from './api';
 import { findEnvFile, loadConfig, updateEnvFile, type AgentEnv } from './config';
 import { startFakePrinter } from './fake-printer';
-import { discoverPrinters, localNetworks, looksLikeEscPos, probePort } from './discover';
+import { discoverPrinters, EPSON_SECURE_BRAND, localNetworks, looksLikeEscPos, probePort } from './discover';
 import { encodeLines } from './escpos';
 import { createLogger, type Logger } from './log';
 import { defaultProcIo, isSameAgentProcess, probeProcess } from './proc';
 import { createShutdownHandler } from './shutdown';
 import { PrinterRediscovery } from './rediscover';
-import { printWithChecks, queryStatus, sendBytes } from './transport';
+import { EPSON_TLS_PORT, printWithChecks, queryStatus, sendBytes, usesTls } from './transport';
 import { createUsbPrinter } from './usb';
 
 const [cmd = 'run', ...rest] = process.argv.slice(2);
@@ -142,7 +142,7 @@ function usbExePath(cfg: AgentEnv): string {
   return cfg.PRINTER_USB_EXE ?? path.join(path.dirname(process.argv[1] ?? '.'), 'ramos-usb.exe');
 }
 
-/** Yazıcıya giden yol: .env'de PRINTER_USB varsa Windows USB kuyruğu, yoksa TCP 9100. */
+/** Yazıcıya giden yol: .env'de PRINTER_USB varsa Windows USB kuyruğu, yoksa TCP 9100 (port 9143 ise TLS). */
 function printerPortFor(cfg: AgentEnv): PrinterPort {
   return cfg.PRINTER_USB ? createUsbPrinter({ exe: usbExePath(cfg), printerName: cfg.PRINTER_USB }) : tcpPrinter;
 }
@@ -230,7 +230,9 @@ async function cmdRun(): Promise<void> {
 
 // ---------- status ----------
 
-const DEFAULT_PRINTER_PORT = 9100; // spec: ajan yalnızca TCP 9100 kullanır
+// Varsayılan düz TCP 9100. `--port 9143` verilirse bağlantı kendiliğinden TLS olur (Epson Secure
+// Printing, bkz. transport.ts `EPSON_TLS_PORT`) — status / test-print / probe / probe-print hepsinde.
+const DEFAULT_PRINTER_PORT = 9100;
 
 async function resolveHostPort(log: Logger): Promise<{ host: string; port: number }> {
   const hostArg = arg('host');
@@ -334,9 +336,19 @@ async function cmdTestPrint(): Promise<void> {
     const port = portArg ? Number(portArg) : (cfg.PRINTER_PORT ?? data.printer_port);
     const ascii = cfg.PRINTER_ASCII ?? false;
     // Fişteki "Transliteration: an/aus" satırı sade harf modunu da yansıtsın.
-    const payload = testPrintPayload({ ...data, printer_transliterate: data.printer_transliterate || ascii });
+    const payload = testPrintPayload({
+      ...data,
+      printer_host: host,
+      printer_port: port,
+      printer_codepage: cfg.PRINTER_CODEPAGE ?? data.printer_codepage,
+      printer_codepage_number: cfg.PRINTER_CODEPAGE_NUMBER ?? data.printer_codepage_number,
+      printer_transliterate: data.printer_transliterate || ascii,
+    });
     const lines = renderTicketForPrinter(payload, { transliterate: data.printer_transliterate, ascii });
-    const bytes = encodeLines(lines, { codepage: data.printer_codepage, codepageNumber: data.printer_codepage_number });
+    // Ajanla aynı kural: .env'deki yerel karakter tablosu (ör. Epson windows1254/48) sitedekinin önüne geçer.
+    const codepage = cfg.PRINTER_CODEPAGE ?? data.printer_codepage;
+    const codepageNumber = cfg.PRINTER_CODEPAGE_NUMBER ?? data.printer_codepage_number;
+    const bytes = encodeLines(lines, { codepage, codepageNumber });
 
     let result: unknown;
     if (cfg.PRINTER_USB && !hostArg) {
@@ -345,13 +357,14 @@ async function cmdTestPrint(): Promise<void> {
       const usbSettings = {
         host: `usb:${cfg.PRINTER_USB}`,
         port: 0,
-        codepage: data.printer_codepage,
-        codepageNumber: data.printer_codepage_number,
+        codepage,
+        codepageNumber,
         transliterate: data.printer_transliterate,
       };
       result = await usb.print(usbSettings, bytes);
     } else {
-      console.log(`Test baskısı gönderiliyor: ${host}:${port}${ascii ? ' (sade harf)' : ''}`);
+      const secure = usesTls(port) ? ' (şifreli / TLS)' : '';
+      console.log(`Test baskısı gönderiliyor: ${host}:${port}${secure} · ${codepage}/${codepageNumber}${ascii ? ' (sade harf)' : ''}`);
       result = await printWithChecks(host, port, bytes);
     }
     console.log(JSON.stringify(result, null, 2));
@@ -446,7 +459,8 @@ async function cmdFakePrinter(): Promise<void> {
 
 // ---------- find-printer (kurulum sihirbazı) ----------
 
-// `Kurulum.cmd` bunu `--json` ile çağırır: bu PC'nin yerel ağlarını tarar, TCP 9100'ü açık ve
+// `Kurulum.cmd` bunu `--json` ile çağırır: bu PC'nin yerel ağlarını tarar, TCP 9100'ü (ya da Epson
+// şifreli 9143'ü, TLS ile) açık ve
 // durum sorusuna ESC/POS biçiminde cevap veren cihazları listeler. Giriş/.env gerektirmez.
 // `--extra 192.168.1.250,...` önce denenecek adresleri ekler (ör. önceki kurulumun adresi).
 async function cmdFindPrinter(): Promise<void> {
@@ -455,16 +469,24 @@ async function cmdFindPrinter(): Promise<void> {
   const printers = await discoverPrinters({ networks, extraHosts });
   const result = {
     networks,
-    printers: printers.map((p) => ({ host: p.host, port: p.port, escpos: p.escpos, raw: p.state.raw })),
+    printers: printers.map((p) => ({
+      host: p.host,
+      port: p.port,
+      tls: p.tls,
+      ...(p.brand ? { brand: p.brand } : {}),
+      escpos: p.escpos,
+      raw: p.state.raw,
+    })),
   };
   if (rest.includes('--json')) {
     console.log(JSON.stringify(result));
     return;
   }
   console.log(`Taranan ağlar: ${networks.map((n) => `${n.name} ${n.address}/${n.prefix}`).join(', ') || '(yok)'}`);
-  if (printers.length === 0) console.log('Port 9100 açık cihaz bulunamadı.');
+  if (printers.length === 0) console.log(`Port 9100 ya da ${EPSON_TLS_PORT} açık cihaz bulunamadı.`);
   for (const p of result.printers) {
-    console.log(`${p.host}:${p.port} · ${p.escpos ? 'fiş yazıcısı (ESC/POS)' : 'port açık ama ESC/POS cevabı yok'} · durum ${p.raw || '-'}`);
+    const kind = p.brand === EPSON_SECURE_BRAND ? 'Epson (şifreli baskı, TLS)' : p.escpos ? 'fiş yazıcısı (ESC/POS)' : 'port açık ama ESC/POS cevabı yok';
+    console.log(`${p.host}:${p.port} · ${kind} · durum ${p.raw || '-'}`);
   }
 }
 
@@ -475,11 +497,28 @@ async function cmdFindPrinter(): Promise<void> {
 // döner — sihirbaz onları `probe-print` ile deneme fişi basıp kullanıcıya sorarak doğrular.
 async function cmdProbe(): Promise<void> {
   const host = arg('host');
-  if (!host) throw new Error('Kullanım: probe --host <ip> [--port 9100]');
-  const port = Number(arg('port') ?? DEFAULT_PRINTER_PORT);
-  const open = await probePort(host, port, 1500);
-  const state = open ? await queryStatus(host, port, { connectMs: 1500, replyMs: 1200 }).catch(() => null) : null;
-  console.log(JSON.stringify({ host, port, open, escpos: state ? looksLikeEscPos(state) : false, raw: state?.raw ?? '' }));
+  if (!host) throw new Error('Kullanım: probe --host <ip> [--port 9100|9143]');
+  const portArg = arg('port');
+  const probeOne = async (port: number) => {
+    const open = await probePort(host, port, 1500);
+    const state = open ? await queryStatus(host, port, { connectMs: 1500, replyMs: 1200 }).catch(() => null) : null;
+    const escpos = state ? looksLikeEscPos(state) : false;
+    const tls = usesTls(port);
+    return { host, port, tls, ...(tls && escpos ? { brand: EPSON_SECURE_BRAND } : {}), open, escpos, raw: state?.raw ?? '' };
+  };
+  if (portArg) {
+    console.log(JSON.stringify(await probeOne(Number(portArg))));
+    return;
+  }
+  // Port verilmediyse önce Epson şifreli portu (TLS 9143) yoklanır: Secure Printing açık bir Epson'da
+  // 9100 da açık görünür ama basmaz. 9143 TLS ile ESC/POS cevabı vermezse düz 9100 sonucu döner.
+  const secure = await probeOne(EPSON_TLS_PORT);
+  if (secure.escpos) {
+    console.log(JSON.stringify(secure));
+    return;
+  }
+  const plain = await probeOne(DEFAULT_PRINTER_PORT);
+  console.log(JSON.stringify(!plain.open && secure.open ? secure : plain));
 }
 
 /** Deneme fişinin satırları — yalnız ASCII: hangi karakter tablosu seçili olursa olsun okunur. */
@@ -499,7 +538,7 @@ function probeTicketLines(host: string): Line[] {
 // Durum sorusu sormadan kısa bir deneme fişi gönderir (tablo 0 / cp437, yalnız ASCII metin).
 async function cmdProbePrint(): Promise<void> {
   const host = arg('host');
-  if (!host) throw new Error('Kullanım: probe-print --host <ip> [--port 9100]');
+  if (!host) throw new Error('Kullanım: probe-print --host <ip> [--port 9100|9143]');
   const port = Number(arg('port') ?? DEFAULT_PRINTER_PORT);
   const bytes = encodeLines(probeTicketLines(host), { codepage: 'cp437', codepageNumber: 0 });
   await sendBytes(host, port, bytes);
@@ -540,6 +579,18 @@ async function cmdSiteStatus(): Promise<void> {
 
 // ---------- dispatch ----------
 
+const HELP = `Kullanım: ramos-agent.mjs <komut> [seçenekler]
+  run                                  ajanı çalıştırır (.env gerekir)
+  status      [--host <ip>] [--port <n>]   yazıcı durumunu sorar
+  test-print  [--host <ip>] [--port <n>]   test fişi basar (.env gerekir)
+  dry-run     [--limit <n>]            son işlerin fiş önizlemesi
+  fake-printer [--port <n>] [--codepage <ad>]
+  find-printer [--json] [--extra <ip,...>] ağda yazıcı arar (9100 ve Epson şifreli ${EPSON_TLS_PORT})
+  site-status                          siteye giriş + son ajan
+  probe       --host <ip> [--port <n>]   tek adresi yoklar
+  probe-print --host <ip> [--port <n>]   kısa deneme fişi
+Port ${EPSON_TLS_PORT} verilirse bağlantı TLS ile kurulur (Epson TM, Secure Printing açık).`;
+
 async function main(): Promise<void> {
   switch (cmd) {
     case 'run':
@@ -569,8 +620,12 @@ async function main(): Promise<void> {
     case 'probe-print':
       await cmdProbePrint();
       break;
+    case 'help':
+    case '--help':
+      console.log(HELP);
+      break;
     default:
-      console.error(`Bilinmeyen komut: ${cmd}. Kullanım: run | status | test-print | dry-run | fake-printer | find-printer | site-status | probe | probe-print`);
+      console.error(`Bilinmeyen komut: ${cmd}.\n${HELP}`);
       process.exit(1);
   }
 }

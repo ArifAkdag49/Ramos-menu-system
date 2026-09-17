@@ -64,6 +64,27 @@ describe('readConfig', () => {
     expect(() => readConfig({ ...full, PRINTER_ASCII: 'belki' })).toThrowError(/PRINTER_ASCII geçersiz/);
   });
 
+  it('PRINTER_CODEPAGE + PRINTER_CODEPAGE_NUMBER (Epson windows1254/48) birlikte okunur; boşsa alanlar eklenmez', () => {
+    const cfg = readConfig({ ...full, PRINTER_PORT: '9143', PRINTER_CODEPAGE: ' windows1254 ', PRINTER_CODEPAGE_NUMBER: '48' });
+    expect(cfg.PRINTER_PORT).toBe(9143);
+    expect(cfg.PRINTER_CODEPAGE).toBe('windows1254');
+    expect(cfg.PRINTER_CODEPAGE_NUMBER).toBe(48);
+    expect(readConfig({ ...full, PRINTER_CODEPAGE: '', PRINTER_CODEPAGE_NUMBER: ' ' })).not.toHaveProperty('PRINTER_CODEPAGE');
+    expect(readConfig(full)).not.toHaveProperty('PRINTER_CODEPAGE_NUMBER');
+    expect(readConfig({ ...full, PRINTER_CODEPAGE: 'cp857', PRINTER_CODEPAGE_NUMBER: '61' }).PRINTER_CODEPAGE_NUMBER).toBe(61);
+  });
+
+  it('kod sayfası çiftinin yalnız biri verilirse ConfigError', () => {
+    expect(() => readConfig({ ...full, PRINTER_CODEPAGE: 'windows1254' })).toThrowError(/birlikte verilmeli/);
+    expect(() => readConfig({ ...full, PRINTER_CODEPAGE_NUMBER: '48' })).toThrow(ConfigError);
+  });
+
+  it('bilinen tabloda olmayan ya da uyuşmayan çift ConfigError (cp857/48, utf8/0, windows1254/4x)', () => {
+    expect(() => readConfig({ ...full, PRINTER_CODEPAGE: 'cp857', PRINTER_CODEPAGE_NUMBER: '48' })).toThrowError(/PRINTER_CODEPAGE\/PRINTER_CODEPAGE_NUMBER geçersiz/);
+    expect(() => readConfig({ ...full, PRINTER_CODEPAGE: 'utf8', PRINTER_CODEPAGE_NUMBER: '0' })).toThrow(ConfigError);
+    expect(() => readConfig({ ...full, PRINTER_CODEPAGE: 'windows1254', PRINTER_CODEPAGE_NUMBER: '4x' })).toThrow(ConfigError);
+  });
+
   it('geçersiz PRINTER_HOST ya da PRINTER_PORT Türkçe mesajla ConfigError fırlatır', () => {
     expect(() => readConfig({ ...full, PRINTER_HOST: '192.168.1.250:9100' })).toThrowError(/PRINTER_HOST geçersiz/);
     expect(() => readConfig({ ...full, PRINTER_HOST: 'yazıcı adı' })).toThrow(ConfigError);

@@ -160,6 +160,59 @@ describe('<SettingsPage />', () => {
     });
   });
 
+  it('yazıcı türü: kayıtlı Xprinter ayarı tanınır; Epson seçilince port 9143 + windows1254/48 dolar, açıklama çıkar ve öyle kaydedilir', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    const type = screen.getByLabelText('Yazıcı türü');
+    expect(type).toHaveValue('xprinter');
+    expect(screen.queryByText(/Secure Printing/)).toBeNull();
+
+    await user.selectOptions(type, 'epson');
+
+    expect(screen.getByLabelText('Port')).toHaveValue('9143');
+    expect(screen.getByLabelText('Karakter tablosu')).toHaveValue('windows1254/48');
+    expect(
+      screen.getByText(
+        "Epson'da Secure Printing açıkken baskı şifreli 9143 portundan yapılır; yazıcı ile bilgisayar aynı ağda olmalı.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Test fişi kayıtlı ayarlarla basılır/)).toBeInTheDocument();
+    expect(h.mutate).not.toHaveBeenCalled(); // seçim tek başına kaydetmez
+
+    await user.click(saveButton());
+    expect(h.mutate.mock.calls[0]?.[0]).toMatchObject({
+      printer_host: '192.168.1.50',
+      printer_port: 9143,
+      printer_codepage: 'windows1254',
+      printer_codepage_number: 48,
+    });
+  });
+
+  it('yazıcı türü: kayıtlı Epson ayarı tanınır; alan elle değişince "Özel" olur; Özel seçimi alanlara dokunmaz', async () => {
+    h.row = baseRow({
+      printer_port: 9143,
+      printer_codepage: 'windows1254',
+      printer_codepage_number: 48,
+    });
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    const type = screen.getByLabelText('Yazıcı türü');
+    expect(type).toHaveValue('epson');
+
+    await user.selectOptions(screen.getByLabelText('Karakter tablosu'), 'cp857/13');
+    expect(type).toHaveValue('custom');
+    expect(screen.queryByText(/Secure Printing/)).toBeNull();
+
+    await user.selectOptions(type, 'xprinter');
+    expect(screen.getByLabelText('Port')).toHaveValue('9100');
+    expect(screen.getByLabelText('Karakter tablosu')).toHaveValue('cp857/61');
+
+    await user.selectOptions(type, 'custom');
+    expect(type).toHaveValue('custom');
+    expect(screen.getByLabelText('Port')).toHaveValue('9100');
+    expect(screen.getByLabelText('Karakter tablosu')).toHaveValue('cp857/61');
+  });
+
   it('transliterasyon açılınca önizlemede Türkçe harfler sadeleşir', async () => {
     const user = userEvent.setup();
     render(<SettingsPage />);

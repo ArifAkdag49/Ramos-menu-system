@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest';
 import type { SettingsRow } from '../../../data/settings';
 import {
   addRow,
+  applyPrinterPreset,
   CODEPAGES,
   codepageChoices,
   codepageValue,
+  detectPrinterPreset,
   formFromSettings,
   isSettingsDirty,
   moveRow,
   parseCodepageValue,
   parseQuickNotes,
+  PRINTER_PRESETS,
   removeRow,
   settingsPatch,
   settingsPreviewPayload,
@@ -151,10 +154,13 @@ describe('karakter tablosu', () => {
     expect(CODEPAGES.map((c) => codepageValue(c.codepage, c.number))).toEqual([
       'cp857/61',
       'windows1254/91',
+      'windows1254/48',
+      'cp857/13',
       'cp858/19',
       'cp437/0',
     ]);
     expect(parseCodepageValue('windows1254/91')).toEqual({ codepage: 'windows1254', number: 91 });
+    expect(parseCodepageValue('windows1254/48')).toEqual({ codepage: 'windows1254', number: 48 });
   });
 
   it('bozuk değer okunmaz', () => {
@@ -164,14 +170,56 @@ describe('karakter tablosu', () => {
   });
 
   it('listede olmayan kayıtlı değer seçeneklerin sonuna eklenir (sessizce değişmez)', () => {
-    expect(codepageChoices('cp857/61')).toHaveLength(4);
+    expect(codepageChoices('cp857/61')).toHaveLength(6);
+    expect(codepageChoices('windows1254/48')).toHaveLength(6);
     expect(codepageChoices('windows1252/16')).toEqual([
       'cp857/61',
       'windows1254/91',
+      'windows1254/48',
+      'cp857/13',
       'cp858/19',
       'cp437/0',
       'windows1252/16',
     ]);
+  });
+});
+
+describe('yazıcı türü (hazır seçim)', () => {
+  it('Xprinter 9100 + cp857/61, Epson 9143 + windows1254/48', () => {
+    expect(PRINTER_PRESETS).toEqual({
+      xprinter: { port: 9100, codepage: 'cp857/61' },
+      epson: { port: 9143, codepage: 'windows1254/48' },
+    });
+  });
+
+  it('port ve tablo birebir uyarsa türü tanır, biri farklıysa özel', () => {
+    expect(detectPrinterPreset({ printer_port: '9100', codepage: 'cp857/61' })).toBe('xprinter');
+    expect(detectPrinterPreset({ printer_port: ' 9143 ', codepage: 'windows1254/48' })).toBe(
+      'epson',
+    );
+    expect(detectPrinterPreset({ printer_port: '9100', codepage: 'windows1254/48' })).toBe(
+      'custom',
+    );
+    expect(detectPrinterPreset({ printer_port: '9143', codepage: 'windows1254/91' })).toBe(
+      'custom',
+    );
+  });
+
+  it('seçim port ve tabloyu doldurur, diğer alanlara dokunmaz; özel hiçbir şeyi değiştirmez', () => {
+    const form = formFromSettings(row());
+    const epson = applyPrinterPreset(form, 'epson');
+    expect(epson).toMatchObject({ printer_port: '9143', codepage: 'windows1254/48' });
+    expect(epson.printer_host).toBe(form.printer_host);
+    expect(settingsPatch(epson)).toMatchObject({
+      printer_port: 9143,
+      printer_codepage: 'windows1254',
+      printer_codepage_number: 48,
+    });
+    expect(applyPrinterPreset(epson, 'xprinter')).toMatchObject({
+      printer_port: '9100',
+      codepage: 'cp857/61',
+    });
+    expect(applyPrinterPreset(form, 'custom')).toBe(form);
   });
 });
 

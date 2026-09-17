@@ -1,4 +1,5 @@
 import net from 'node:net';
+import tls from 'node:tls';
 import { blockingProblem, parseStatus, type PrinterState } from './status';
 
 export class PrinterError extends Error {
@@ -13,7 +14,27 @@ export class PrinterError extends Error {
 // DLE EOT n for n = 1 (printer status), 2 (off-line status), 4 (paper sensor status).
 const STATUS_QUERY = Uint8Array.from([0x10, 0x04, 0x01, 0x10, 0x04, 0x02, 0x10, 0x04, 0x04]);
 
-function connect(host: string, port: number, connectMs: number): Promise<net.Socket> {
+/**
+ * Epson "Secure Printing" (TM-m30III gibi Avrupa/RED modellerinde fabrikadan açık): şifresiz
+ * TCP 9100 RAW baskı reddedilir ya da sessizce atılır; aynı ESC/POS baytları TLS ile 9143'ten
+ * basılır. Kural sade: port 9143 ise bağlantı TLS'tir, başka her port düz TCP.
+ */
+export const EPSON_TLS_PORT = 9143;
+
+export interface TransportOptions {
+  connectMs?: number;
+  /**
+   * Yalnız testler için: 9143 dışındaki bir portta da TLS'i zorlar (sahte TLS yazıcı rastgele
+   * portta dinler). Üretim kodu bunu vermez; orada kural "9143 → TLS" olarak kalır.
+   */
+  tls?: boolean;
+}
+
+export function usesTls(port: number, tlsFlag?: boolean): boolean {
+  return tlsFlag === true || port === EPSON_TLS_PORT;
+}
+
+function connectPlain(host: string, port: number, connectMs: number): Promise<net.Socket> {
   return new Promise((resolve, reject) => {
     const s = net.createConnection({ host, port });
     const t = setTimeout(() => {
@@ -29,6 +50,37 @@ function connect(host: string, port: number, connectMs: number): Promise<net.Soc
       reject(new PrinterError('offline', e.message));
     });
   });
+}
+
+// TLS bağlantısı: zaman aşımı TCP bağlantısı + el sıkışmanın TAMAMINI kapsar ('secureConnect').
+// `rejectUnauthorized: false` bilinçli: yazıcının sertifikası yazıcının kendi ürettiği, kendinden
+// imzalı bir sertifikadır (bir CA zinciri yoktur, adı da IP adresidir), bağlantı yalnız restoranın
+// yerel ağında kurulur. Şifreleme yazıcının şifresiz baskıyı reddetmesini aşmak için gereklidir;
+// sunucu kimliği doğrulanmaz. İleride yazıcının sertifika parmak izi ilk kurulumda .env'e yazılıp
+// sabitlenebilir (pinning). TLS 1.2 altı kabul edilmez.
+// `tls.TLSSocket` `net.Socket`'ten türer: yazma, DLE EOT durum okuma ve boşta kalma zaman aşımı
+// aşağıda aynı kodla çalışır.
+function connectTls(host: string, port: number, connectMs: number): Promise<net.Socket> {
+  return new Promise((resolve, reject) => {
+    const s = tls.connect({ host, port, rejectUnauthorized: false, minVersion: 'TLSv1.2' });
+    const t = setTimeout(() => {
+      s.destroy();
+      reject(new PrinterError('offline', 'tls: connect timeout'));
+    }, connectMs);
+    s.once('secureConnect', () => {
+      clearTimeout(t);
+      resolve(s);
+    });
+    s.once('error', (e) => {
+      clearTimeout(t);
+      s.destroy();
+      reject(new PrinterError('offline', `tls: ${e.message}`));
+    });
+  });
+}
+
+function connect(host: string, port: number, { connectMs = 3000, tls: tlsFlag }: TransportOptions): Promise<net.Socket> {
+  return usesTls(port, tlsFlag) ? connectTls(host, port, connectMs) : connectPlain(host, port, connectMs);
 }
 
 // Sends the DLE EOT status query on an already-connected socket and resolves with
@@ -112,9 +164,9 @@ function sendAndAwait(s: net.Socket, bytes: Uint8Array, sendMs: number, mode: 'e
 export async function queryStatus(
   host: string,
   port: number,
-  { connectMs = 3000, replyMs = 1000 }: { connectMs?: number; replyMs?: number } = {},
+  { connectMs = 3000, replyMs = 1000, tls: tlsFlag }: TransportOptions & { replyMs?: number } = {},
 ): Promise<PrinterState> {
-  const s = await connect(host, port, connectMs);
+  const s = await connect(host, port, { connectMs, tls: tlsFlag });
   try {
     return await readStatus(s, replyMs);
   } finally {
@@ -126,9 +178,9 @@ export async function sendBytes(
   host: string,
   port: number,
   bytes: Uint8Array,
-  { connectMs = 3000, sendMs = 5000 }: { connectMs?: number; sendMs?: number } = {},
+  { connectMs = 3000, sendMs = 5000, tls: tlsFlag }: TransportOptions & { sendMs?: number } = {},
 ): Promise<void> {
-  const s = await connect(host, port, connectMs);
+  const s = await connect(host, port, { connectMs, tls: tlsFlag });
   try {
     await sendAndAwait(s, bytes, sendMs, 'end');
   } finally {
@@ -150,9 +202,9 @@ export async function printWithChecks(
   host: string,
   port: number,
   bytes: Uint8Array,
-  { connectMs = 3000, replyMs = 1000, sendMs = 5000 }: { connectMs?: number; replyMs?: number; sendMs?: number } = {},
+  { connectMs = 3000, replyMs = 1000, sendMs = 5000, tls: tlsFlag }: TransportOptions & { replyMs?: number; sendMs?: number } = {},
 ): Promise<{ before: PrinterState; after: PrinterState }> {
-  const s = await connect(host, port, connectMs);
+  const s = await connect(host, port, { connectMs, tls: tlsFlag });
   try {
     const before = await readStatus(s, replyMs);
     const problem = blockingProblem(before);

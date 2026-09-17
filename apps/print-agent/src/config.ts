@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { isSupportedCodepage, knownCodepagePairs } from './escpos';
 
 export interface AgentEnv {
   SUPABASE_URL: string;
@@ -15,8 +16,16 @@ export interface AgentEnv {
    * bilgisayarlar (ev / restoran) kendi yazıcılarını kullanabilsin diye. Boşsa site ayarı geçerli.
    */
   PRINTER_HOST?: string;
-  /** `PRINTER_HOST` ile birlikte isteğe bağlı port (boşsa site ayarı). */
+  /** `PRINTER_HOST` ile birlikte isteğe bağlı port (boşsa site ayarı). 9143 = Epson şifreli (TLS) baskı. */
   PRINTER_PORT?: number;
+  /**
+   * Bu PC'nin yazıcısına özel karakter tablosu (kurulum sihirbazı Epson bulunca `windows1254` yazar).
+   * `PRINTER_CODEPAGE_NUMBER` ile BİRLİKTE verilmelidir; doluysa sitedeki `printer_codepage` /
+   * `printer_codepage_number` yerine kullanılır. Çift, escpos.ts'teki bilinen tabloda olmalıdır.
+   */
+  PRINTER_CODEPAGE?: string;
+  /** `ESC t` numarası (Epson WPC1254 = 48, Xprinter CP857 = 61). */
+  PRINTER_CODEPAGE_NUMBER?: number;
   /**
    * Sade harf modu (kurulum sihirbazı, test fişinde harfler bozuk çıkınca): fişteki ASCII dışı
    * her harf düz karşılığına çevrilir (ä→ae, ß→ss, ş→s …), yazıcının karakter tablosundan
@@ -86,7 +95,20 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
   const printerPortRaw = env.PRINTER_PORT?.trim() ?? '';
   const printerPort = printerPortRaw === '' ? undefined : Number(printerPortRaw);
   if (printerPort !== undefined && !(Number.isInteger(printerPort) && printerPort >= 1 && printerPort <= 65535)) {
-    throw new ConfigError(`PRINTER_PORT geçersiz: "${printerPortRaw}". 1–65535 arası bir sayı olmalı (yazıcı için genelde 9100).`);
+    throw new ConfigError(`PRINTER_PORT geçersiz: "${printerPortRaw}". 1–65535 arası bir sayı olmalı (yazıcı için genelde 9100; Epson şifreli baskı 9143).`);
+  }
+  const codepage = env.PRINTER_CODEPAGE?.trim() ?? '';
+  const codepageNumberRaw = env.PRINTER_CODEPAGE_NUMBER?.trim() ?? '';
+  if ((codepage === '') !== (codepageNumberRaw === '')) {
+    throw new ConfigError(
+      'PRINTER_CODEPAGE ve PRINTER_CODEPAGE_NUMBER birlikte verilmeli (ör. Epson: PRINTER_CODEPAGE=windows1254, PRINTER_CODEPAGE_NUMBER=48).',
+    );
+  }
+  const codepageNumber = codepageNumberRaw === '' ? undefined : Number(codepageNumberRaw);
+  if (codepage !== '' && !(/^\d{1,3}$/.test(codepageNumberRaw) && isSupportedCodepage(codepage, codepageNumber!))) {
+    throw new ConfigError(
+      `PRINTER_CODEPAGE/PRINTER_CODEPAGE_NUMBER geçersiz: "${codepage}" = "${codepageNumberRaw}". Bilinen eşleşmeler: ${knownCodepagePairs()}`,
+    );
   }
   const asciiRaw = env.PRINTER_ASCII?.trim().toLowerCase() ?? '';
   let printerAscii: boolean | undefined;
@@ -112,6 +134,9 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
     LOG_DIR: logDir,
     ...(printerHost !== '' ? { PRINTER_HOST: printerHost } : {}),
     ...(printerPort !== undefined ? { PRINTER_PORT: printerPort } : {}),
+    ...(codepage !== '' && codepageNumber !== undefined
+      ? { PRINTER_CODEPAGE: codepage, PRINTER_CODEPAGE_NUMBER: codepageNumber }
+      : {}),
     ...(printerAscii !== undefined ? { PRINTER_ASCII: printerAscii } : {}),
     ...(printerMac ? { PRINTER_MAC: printerMac } : {}),
     ...(printerUsb !== '' ? { PRINTER_USB: printerUsb } : {}),

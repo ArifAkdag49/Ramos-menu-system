@@ -1,9 +1,15 @@
 import net from 'node:net';
+import tls from 'node:tls';
 
 export interface FakePrinterOptions {
   port?: number;
   status?: [number, number, number];
   silent?: boolean;
+  /**
+   * Verilirse TLS dinler (Epson Secure Printing, port 9143 benzeri). Yalnız testler kullanır;
+   * sertifika/anahtar `src/__fixtures__`'taki kendinden imzalı test sertifikasıdır.
+   */
+  tls?: { key: string | Buffer; cert: string | Buffer };
 }
 
 export interface FakePrinter {
@@ -13,7 +19,7 @@ export interface FakePrinter {
   stop(): Promise<void>;
 }
 
-// Test double for the Xprinter: accepts one TCP connection at a time, answers a
+// Test double for the Xprinter (and, with `tls`, an Epson with Secure Printing): accepts one TCP connection at a time, answers a
 // `DLE EOT n` status query with the configured status byte (or stays `silent`),
 // and records everything else it receives as a finished "job" once the
 // connection closes.
@@ -23,7 +29,7 @@ export function startFakePrinter(opts: FakePrinterOptions = {}): Promise<FakePri
   const jobs: Uint8Array[] = [];
   const sockets = new Set<net.Socket>();
 
-  const server = net.createServer((socket) => {
+  const onConnection = (socket: net.Socket) => {
     sockets.add(socket);
     const job: number[] = [];
 
@@ -53,7 +59,13 @@ export function startFakePrinter(opts: FakePrinterOptions = {}): Promise<FakePri
     socket.on('error', () => {
       // A client that resets the connection (e.g. after a timeout) must not crash the fake printer.
     });
-  });
+  };
+  // TLS modunda 'secureConnection' el sıkışması bitmiş `tls.TLSSocket` verir (net.Socket'ten türer).
+  const server: net.Server = opts.tls
+    ? tls.createServer({ key: opts.tls.key, cert: opts.tls.cert }, onConnection)
+    : net.createServer(onConnection);
+  // El sıkışması başarısız istemciler (ör. düz TCP ile bağlanan) sunucuyu düşürmesin.
+  if (opts.tls) server.on('tlsClientError', () => {});
 
   return new Promise((resolve, reject) => {
     server.once('error', reject);

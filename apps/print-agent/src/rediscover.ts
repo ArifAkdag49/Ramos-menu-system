@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import type { AgentSettings, Logger, PrinterRediscoveryPort } from './agent';
 import { normalizeMac } from './config';
+import { EPSON_TLS_PORT } from './transport';
 import { discoverPrinters, localNetworks, type DiscoverOptions, type FoundPrinter, type LocalNetwork } from './discover';
 
 // Yazıcının adresi değişince (modem yeniden başladı, yazıcı DHCP'den başka adres aldı) ajan onu
@@ -81,7 +82,13 @@ export class PrinterRediscovery implements PrinterRediscoveryPort {
 
   async find(s: AgentSettings): Promise<string | null> {
     const discover = this.deps.discover ?? discoverPrinters;
-    const found = await discover({ networks: (this.deps.networks ?? localNetworks)(), port: s.port });
+    // Aynı portta aranır: 9143 (Epson şifreli) ile çalışan ajan yalnız TLS portu, 9100 ile çalışan
+    // yalnız düz portu tarar — başka porttaki bir cihaza geçmek baskıyı yine bozardı.
+    const found = await discover({
+      networks: (this.deps.networks ?? localNetworks)(),
+      port: s.port,
+      securePort: s.port === EPSON_TLS_PORT ? EPSON_TLS_PORT : null,
+    });
     const candidates = found.filter((f) => f.host !== s.host);
     if (candidates.length === 0) return null;
 

@@ -326,6 +326,15 @@ describe('createSupabaseApi — kurulum sihirbazı: yerel PRINTER_HOST site ayar
     });
   });
 
+  it('PRINTER_CODEPAGE/NUMBER doluysa (Epson) sitedeki karakter tablosunun önüne geçer; port 9143 de yerelden gelir', async () => {
+    const api = await createSupabaseApi(
+      { ...env, PRINTER_HOST: '192.168.178.40', PRINTER_PORT: 9143, PRINTER_CODEPAGE: 'windows1254', PRINTER_CODEPAGE_NUMBER: 48 },
+      log,
+    );
+    stubSettings();
+    expect(await api.settings()).toMatchObject({ host: '192.168.178.40', port: 9143, codepage: 'windows1254', codepageNumber: 48 });
+  });
+
   it('PRINTER_ASCII=1 ise ayarlarda sade harf modu açık gelir (sitede böyle bir alan yok)', async () => {
     const api = await createSupabaseApi({ ...env, PRINTER_ASCII: true }, log);
     stubSettings();

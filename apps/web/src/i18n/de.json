@@ -613,9 +613,19 @@
         "port": "Port",
         "codepage": "Zeichensatz",
         "codepageHint": "Sind türkische Buchstaben falsch, den anderen türkischen Zeichensatz wählen, speichern und Testbon drucken.",
+        "type": "Druckertyp",
+        "typeHint": "Die Auswahl füllt Port und Zeichensatz aus; danach speichern.",
+        "types": {
+          "xprinter": "Xprinter (Port 9100, CP857)",
+          "epson": "Epson TM (verschlüsselt)",
+          "custom": "Benutzerdefiniert (Felder selbst ausfüllen)"
+        },
+        "epsonHint": "Bei Epson mit aktiviertem Secure Printing wird verschlüsselt über Port 9143 gedruckt; Drucker und Computer müssen im selben Netzwerk sein.",
         "codepages": {
-          "cp857": "CP857 · Türkisch (61) — empfohlen",
-          "windows1254": "Windows-1254 · Türkisch (91)",
+          "cp857": "CP857 · Türkisch (61) — Xprinter, empfohlen",
+          "windows1254": "Windows-1254 · Türkisch (91) — Xprinter",
+          "windows1254_48": "Windows-1254 · Türkisch + Deutsch + € (48) — Epson",
+          "cp857_13": "CP857 · Türkisch (13) — Epson",
           "cp858": "CP858 · Westeuropa + € (19)",
           "cp437": "CP437 · Einfaches ASCII (0)"
         },

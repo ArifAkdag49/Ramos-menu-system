@@ -17,21 +17,33 @@ export interface EncodeOptions {
 // works because 91 is wired here to the matching `windows1254` encoding table.
 type SupportedCodepage = 'cp437' | 'windows1252' | 'cp858' | 'cp857' | 'windows1254';
 
-const CODEPAGE_TABLE: Record<SupportedCodepage, number> = {
-  cp437: 0,
-  windows1252: 16,
-  cp858: 19,
-  cp857: 61,
-  windows1254: 91,
+// Her kod sayfası için yazıcı markasına göre izinli `ESC t` numaraları. Aynı bayt tablosu farklı
+// markalarda farklı numarayla seçilir: CP857 Xprinter'da 61, Epson'da 13; WPC1254 Xprinter'da 91,
+// Epson'da 48 (Epson TM-m30III varsayılanı: Türkçe + Almanca harfler ve € tek tabloda). Numara
+// yine de ADA bağlıdır — `cp857` + 91 gibi başka bir tablonun numarası hâlâ hata verir (R60).
+export const CODEPAGE_TABLE: Record<SupportedCodepage, readonly number[]> = {
+  cp437: [0],
+  windows1252: [16],
+  cp858: [19],
+  cp857: [61, 13],
+  windows1254: [91, 48],
 };
 
+/** Ad + numara bilinen bir eşleşme mi (config.ts'teki yerel geçersiz kılma doğrulaması da kullanır). */
+export function isSupportedCodepage(codepage: string, codepageNumber: number): codepage is SupportedCodepage {
+  const allowed = (CODEPAGE_TABLE as Record<string, readonly number[] | undefined>)[codepage];
+  return allowed !== undefined && allowed.includes(codepageNumber);
+}
+
+export function knownCodepagePairs(): string {
+  return Object.entries(CODEPAGE_TABLE)
+    .flatMap(([name, ns]) => ns.map((n) => `${name}=${n}`))
+    .join(', ');
+}
+
 function assertSupportedCodepage(codepage: string, codepageNumber: number): asserts codepage is SupportedCodepage {
-  const expected = (CODEPAGE_TABLE as Record<string, number | undefined>)[codepage];
-  if (expected === undefined || expected !== codepageNumber) {
-    const known = Object.entries(CODEPAGE_TABLE)
-      .map(([name, n]) => `${name}=${n}`)
-      .join(', ');
-    throw new Error(`Bilinmeyen ya da uyuşmayan codepage: '${codepage}' = ${codepageNumber}. Bilinen eşleşmeler: ${known}`);
+  if (!isSupportedCodepage(codepage, codepageNumber)) {
+    throw new Error(`Bilinmeyen ya da uyuşmayan codepage: '${codepage}' = ${codepageNumber}. Bilinen eşleşmeler: ${knownCodepagePairs()}`);
   }
 }
 
@@ -50,7 +62,7 @@ function centerPad(text: string, columns: number): string {
 // - Init is `ESC @` + `FS .`, followed by `ESC t <n>` — written by hand up front
 //   (R61 below explains why nothing here uses the library's own `.initialize()`
 //   / `.align()` machinery), followed by `GS V 66 0` appended by hand at the end.
-// - CP857 = `ESC t 61` on Xprinter (not Epson's 13); WPC1254 recovery = `ESC t 91`.
+// - CP857 = `ESC t 61` on Xprinter (Epson: 13); WPC1254 = `ESC t 91` on Xprinter (Epson: 48).
 export function encodeLines(lines: Line[], { codepage, codepageNumber, columns = 48 }: EncodeOptions): Uint8Array {
   assertSupportedCodepage(codepage, codepageNumber);
 
