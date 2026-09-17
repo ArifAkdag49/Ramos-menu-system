@@ -50,7 +50,9 @@ export type Database = {
           id: string
           is_active: boolean
           is_beverage: boolean
+          name_ar: string | null
           name_de: string
+          name_en: string | null
           name_tr: string | null
           slug: string
           sort: number
@@ -61,7 +63,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_beverage?: boolean
+          name_ar?: string | null
           name_de: string
+          name_en?: string | null
           name_tr?: string | null
           slug: string
           sort?: number
@@ -72,7 +76,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_beverage?: boolean
+          name_ar?: string | null
           name_de?: string
+          name_en?: string | null
           name_tr?: string | null
           slug?: string
           sort?: number
@@ -954,6 +960,8 @@ export type Database = {
         Args: { p_session_id: string; p_target_table_id: string }
         Returns: undefined
       }
+      public_menu: { Args: never; Returns: Json }
+      ready_push_targets: { Args: { p_order_id: string }; Returns: Json }
       report_range: { Args: { p_from: string; p_to: string }; Returns: Json }
       reprint_order: { Args: { p_order_id: string }; Returns: undefined }
       retry_print_job: { Args: { p_job_id: string }; Returns: undefined }

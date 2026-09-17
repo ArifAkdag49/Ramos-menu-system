@@ -45,7 +45,8 @@ describe('anon yetkisi yok — her migration sonrası (R33)', () => {
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public'`);
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.filter((r) => r.anon).map((r) => r.fn)).toEqual([]);
+    // Tek bilinçli istisna: müşteri QR menüsü (0011_public_menu.sql; anon.test.ts'teki allowlist ile aynı).
+    expect(rows.filter((r) => r.anon && r.fn !== 'public_menu()').map((r) => r.fn)).toEqual([]);
   });
 
   it('anon hiçbir public sequence üzerinde usage/select/update yetkisine sahip değil', async () => {

@@ -13,6 +13,11 @@ import { sql } from './helpers/sql';
 //     - Bu yüzden argüman adları `null` değerlerle de gönderilir → imza eşleşir ve Postgres yetki denetimine
 //       ulaşılır: 401/403 + 42501 beklenir. Yetki denetimi gövde çalışmadan önce yapıldığı için yan etki yoktur.
 
+// Açık allowlist: anon'un çağırabildiği TEK fonksiyon — müşteri QR menüsü (0011_public_menu.sql).
+// Buraya yeni ad eklemek bilinçli bir güvenlik kararıdır; docs/BUILD-DECISIONS.md'ye yazılmalı.
+const ANON_ALLOWED_FUNCTIONS = ['public_menu'];
+const FORBIDDEN_KEYS = ['slug', 'is_active', 'archived_at', 'ingredients', 'groups', 'printer_host', 'ticket_header'];
+
 type Fn = { oid: number; proname: string; in_args: string[]; anon_exec: boolean };
 type Rel = { relname: string; relkind: string; anon_select: boolean };
 
@@ -47,12 +52,18 @@ describe('anon erişimi (Görev 27)', () => {
   });
 
   it('anon hiçbir public fonksiyonda EXECUTE yetkisine sahip değil (katalog)', () => {
-    expect(fns.filter((f) => f.anon_exec).map((f) => f.proname)).toEqual([]);
+    expect(fns.filter((f) => f.anon_exec && !ANON_ALLOWED_FUNCTIONS.includes(f.proname)).map((f) => f.proname))
+      .toEqual([]);
+    // Allowlist'teki fonksiyon gerçekten var ve anon'a açık (toplu revoke sonrası grant unutulmadı).
+    for (const name of ANON_ALLOWED_FUNCTIONS) {
+      expect(fns.find((f) => f.proname === name)?.anon_exec, name).toBe(true);
+    }
   });
 
   it('public şemadaki hiçbir fonksiyon anon tarafından çağrılamaz (PostgREST)', async () => {
     const failures: string[] = [];
     for (const { proname, in_args } of fns) {
+      if (ANON_ALLOWED_FUNCTIONS.includes(proname)) continue;
       const empty = await fetch(`${url()}/rest/v1/rpc/${proname}`, { method: 'POST', headers: headers(), body: '{}' });
       await empty.text();
       if (![401, 403, 404].includes(empty.status)) failures.push(`${proname} {} → ${empty.status}`);
@@ -83,6 +94,35 @@ describe('anon erişimi (Görev 27)', () => {
       if (!ok) leaks.push(`${relname} → ${res.status}`);
     }
     expect(leaks).toEqual([]);
+  });
+
+  it('anon public_menu çağırabilir; yanıtta iç alan yok ve tablolar hâlâ kapalı', async () => {
+    const res = await fetch(`${url()}/rest/v1/rpc/public_menu`, { method: 'POST', headers: headers(), body: '{}' });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { categories: unknown; products: unknown };
+    expect(Array.isArray(body.categories)).toBe(true);
+    expect(Array.isArray(body.products)).toBe(true);
+
+    const found: string[] = [];
+    const walk = (node: unknown, path: string) => {
+      if (Array.isArray(node)) node.forEach((v, i) => walk(v, `${path}[${i}]`));
+      else if (node && typeof node === 'object') {
+        for (const [k, v] of Object.entries(node)) {
+          if (FORBIDDEN_KEYS.includes(k)) found.push(`${path}.${k}`);
+          walk(v, `${path}.${k}`);
+        }
+      }
+    };
+    walk(body, '$');
+    expect(found).toEqual([]);
+
+    for (const table of ['categories', 'products', 'product_variants', 'settings']) {
+      expect(rels.find((r) => r.relname === table)?.anon_select, table).toBe(false);
+      const t = await fetch(`${url()}/rest/v1/${table}?select=*&limit=1`, { headers: headers() });
+      const text = await t.text();
+      expect(t.status === 401 || t.status === 403 || (t.status === 200 && text.trim() === '[]'), `${table} → ${t.status}`)
+        .toBe(true);
+    }
   });
 
   it('anon anahtarıyla kayıt (signup) kapalı — hesaplar yalnız admin-staff ile açılır', async () => {
