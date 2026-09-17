@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.arxdigital.ramos",
+      "sha256_cert_fingerprints": [
+        "DD:D9:93:71:6B:AA:17:D7:59:52:75:8F:8D:50:95:05:E1:58:FC:57:44:6C:7F:77:11:FB:C0:86:07:35:34:F4"
+      ]
+    }
+  }
+]
