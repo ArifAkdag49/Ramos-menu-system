@@ -12,7 +12,7 @@ import {
 import { clsx } from 'clsx';
 import type { TFunction } from 'i18next';
 import { ArrowLeft, Plus, Search, ShoppingCart } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { useMenu, type MenuCategory } from '../../data/menu';
@@ -25,6 +25,7 @@ import { IconButton } from '../../ui/IconButton';
 import { ProductImage } from '../../ui/ProductImage';
 import { ToastHost } from '../../ui/ToastHost';
 import { CartDrawer } from './CartDrawer';
+import { useScrollSpy } from '../common/useScrollSpy';
 import { useCart } from './cartStore';
 import { searchProducts } from './menuSearch';
 import { ProductSheet } from './ProductSheet';
@@ -62,7 +63,6 @@ export function OrderPage() {
   const [query, setQuery] = useState('');
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
   const filtered = useMemo(() => searchProducts(products, query), [products, query]);
   const searching = query.trim().length > 0;
@@ -73,28 +73,16 @@ export function OrderPage() {
     return map;
   }, [filtered]);
 
-  const sectionRefs = useRef(new Map<string, HTMLElement>());
-
-  useEffect(() => {
-    if (searching || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        const catId = visible?.target.getAttribute('data-category-id');
-        if (catId) setActiveCategoryId(catId);
-      },
-      { rootMargin: '-170px 0px -70% 0px' },
-    );
-    for (const el of sectionRefs.current.values()) observer.observe(el);
-    return () => observer.disconnect();
-  }, [searching, categories, filtered]);
-
-  const scrollToCategory = (categoryId: string) => {
-    setActiveCategoryId(categoryId);
-    sectionRefs.current.get(categoryId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  const spyWatch = useMemo(() => [categories, filtered], [categories, filtered]);
+  const {
+    activeId: activeCategoryId,
+    register: registerSection,
+    scrollTo: scrollToCategory,
+  } = useScrollSpy({
+    rootMargin: '-170px 0px -70% 0px',
+    enabled: !searching,
+    watch: spyWatch,
+  });
 
   const quickAdd = (p: MenuProduct) => {
     add(id, { productId: p.id, ...defaultSelection(p), quantity: 1, note: '' });
@@ -240,9 +228,7 @@ export function OrderPage() {
               t={t}
               onAdd={quickAdd}
               onOpenSheet={openSheetForAdd}
-              registerRef={(el) => {
-                if (el) sectionRefs.current.set(c.id, el);
-              }}
+              registerRef={registerSection(c.id)}
             />
           ))
         )}

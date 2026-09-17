@@ -16,6 +16,8 @@ interface CategoryDraft {
   id?: string;
   name_de: string;
   name_tr: string;
+  name_en: string;
+  name_ar: string;
   is_beverage: boolean;
   is_active: boolean;
 }
@@ -25,6 +27,8 @@ const draftOf = (c: AdminCategory): CategoryDraft => ({
   id: c.id,
   name_de: c.name_de,
   name_tr: c.name_tr ?? '',
+  name_en: c.name_en ?? '',
+  name_ar: c.name_ar ?? '',
   is_beverage: c.is_beverage,
   is_active: c.is_active,
 });
@@ -73,7 +77,15 @@ function CategoryList({ categories }: { categories: AdminCategory[] }) {
   const add = () =>
     setDrafts((list) => [
       ...list,
-      { key: crypto.randomUUID(), name_de: '', name_tr: '', is_beverage: false, is_active: true },
+      {
+        key: crypto.randomUUID(),
+        name_de: '',
+        name_tr: '',
+        name_en: '',
+        name_ar: '',
+        is_beverage: false,
+        is_active: true,
+      },
     ]);
 
   const save = async () => {
@@ -89,6 +101,8 @@ function CategoryList({ categories }: { categories: AdminCategory[] }) {
           id: d.id,
           name_de: d.name_de.trim(),
           name_tr: d.name_tr.trim() || null,
+          name_en: d.name_en.trim() || null,
+          name_ar: d.name_ar.trim() || null,
           is_beverage: d.is_beverage,
           is_active: d.is_active,
           sort: (i + 1) * 10,
@@ -114,6 +128,8 @@ function CategoryList({ categories }: { categories: AdminCategory[] }) {
         </Button>
       </div>
 
+      <p className="text-sm text-muted">{t('admin.menu.categories.qrNamesHint')}</p>
+
       {error ? (
         <p role="alert" className="rounded-card border border-danger/40 bg-danger/15 px-3 py-2 text-sm text-danger-ink">
           {error}
@@ -123,7 +139,7 @@ function CategoryList({ categories }: { categories: AdminCategory[] }) {
       <ul className="flex flex-col gap-3">
         {drafts.map((d, i) => (
           <li key={d.key} className="flex flex-col gap-2 rounded-card border border-border bg-surface p-3">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <TextField
                 label={t('admin.menu.nameDe')}
                 value={d.name_de}
@@ -133,6 +149,19 @@ function CategoryList({ categories }: { categories: AdminCategory[] }) {
                 label={t('admin.menu.nameTr')}
                 value={d.name_tr}
                 onChange={(name_tr) => patch(d.key, { name_tr })}
+              />
+              <TextField
+                label={t('admin.menu.nameEn')}
+                value={d.name_en}
+                lang="en"
+                onChange={(name_en) => patch(d.key, { name_en })}
+              />
+              <TextField
+                label={t('admin.menu.nameAr')}
+                value={d.name_ar}
+                lang="ar"
+                dir="rtl"
+                onChange={(name_ar) => patch(d.key, { name_ar })}
               />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">

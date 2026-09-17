@@ -374,6 +374,7 @@ Mutfak ekranındaki **Tükendi** düğmesinden ya da **Menü → ürün → Tük
 | Bölüm | İçerik |
 |---|---|
 | **Genel** | Restoran adı, İş günü başlangıcı |
+| **QR menü** | Müşteri menüsünün bağlantısı, QR önizlemesi ve **SVG indir (10 × 10 cm)** ([§6.10](#610-qr-menü-müşteriler-için)) |
 | **Mutfak fişi** | Fişin **Başlık** ve **Alt yazı** metinleri, örnek siparişle önizleme |
 | **Yazıcı bağlantısı** | IP adresi, Port, Karakter tablosu, Türkçe harfleri sadeleştir ([§2.4](#24-yönetim-panelinde-yazıcı-ayarı-ve-test-fişi)); Yazıcı kartı ve **Test fişi bas** |
 | **Hızlı notlar** | Garsonun ürün notuna tek dokunuşla eklediği kısa notlar (Almanca fişte, Türkçe ekranda) |
@@ -385,6 +386,23 @@ Değişikliklerden sonra **Kaydet**'e basın. Ayarlar aynı anda başka bir ciha
 ### 6.9 Denetim kaydı
 
 Kimin ne zaman ne yaptığını gösterir: masa açma/kapatma, sipariş, HAZIR, teslim, iptal, tükendi, menü ve ayar değişiklikleri, personel işlemleri. **İşlem** ve **Kayıt türü** süzgeçleriyle daraltılır, **Ayrıntıyı göster** ile kaydın ayrıntısı açılır.
+
+
+### 6.10 QR menü (müşteriler için)
+
+Müşteri masadaki QR kodu telefonuyla okutur ve **giriş yapmadan** menüyü görür: kategoriler, ürün görseli, adı ve fiyatı. Ürüne dokununca büyük görsel, açıklama ve alerjenler açılır. Sipariş, sepet ya da seçim yoktur — yalnız incelenir.
+
+1. **Ayarlar → QR menü** bölümünü açın. **Menüyü aç** ile müşterinin göreceği sayfayı kontrol edin.
+2. **SVG indir (10 × 10 cm)** ile `ramos-qr-menu-10cm.svg` dosyasını indirin.
+3. Dosyayı matbaaya ya da yazıcıya verin: **ölçekleme yapmadan (%100)** basıldığında kod tam 10 × 10 cm çıkar. Vektör olduğu için büyütülse de bulanıklaşmaz.
+4. Basılı kodu masalara koyun. Bir kez basmak yeter.
+
+Bilinmesi gerekenler:
+
+- Görsel, fiyat, yeni ürün ve **Tükendi** değişiklikleri menüye kendiliğinden yansır; kodu yeniden basmak gerekmez. Tükenen ürün menüde **Tükendi** rozetiyle görünür.
+- Sayfa telefonun diline göre açılır; müşteri üstten **Deutsch / Türkçe / English / العربية** seçebilir (Arapça sağdan sola). Kategori adları ve sayfa metinleri dört dildedir; **ürün adları ve açıklamaları Almancadır**.
+- Kategorilerin İngilizce ve Arapça adları **Menü → Kategoriler**'de düzenlenir; boş bırakılırsa Almanca ad görünür.
+- Kod sitenin adresini taşır (`…/menu`). Alan adı değişirse QR kodu yeniden indirip basın.
 
 ---
 

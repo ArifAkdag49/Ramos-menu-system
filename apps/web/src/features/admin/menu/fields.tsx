@@ -23,12 +23,17 @@ export function TextField({
   disabled,
   maxLength,
   inputMode,
+  dir,
+  lang,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   error?: string | null;
   hint?: string;
+  /** Sağdan sola yazılan içerik (ör. Arapça ad) için `rtl`. */
+  dir?: 'ltr' | 'rtl' | 'auto';
+  lang?: string;
   type?: 'text' | 'number' | 'date' | 'time';
   placeholder?: string;
   inputClassName?: string;
@@ -50,6 +55,8 @@ export function TextField({
         disabled={disabled}
         maxLength={maxLength}
         inputMode={inputMode}
+        dir={dir}
+        lang={lang}
         placeholder={placeholder}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}

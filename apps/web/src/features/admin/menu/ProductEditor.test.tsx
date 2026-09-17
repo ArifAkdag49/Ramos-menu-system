@@ -28,6 +28,8 @@ const category: AdminCategory = {
   slug: 'doener',
   name_de: 'Drehspieß',
   name_tr: 'Döner',
+  name_en: null,
+  name_ar: null,
   is_beverage: false,
   sort: 10,
   is_active: true,

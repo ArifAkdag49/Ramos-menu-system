@@ -21,6 +21,7 @@ import { FIELD, MoveButtons, Section, SelectField, TextField, Toggle } from '../
 import { TicketPayloadPaper } from '../menu/TicketPreview';
 import { formatDateTime } from '../orders/orderView';
 import { PrinterCard } from '../PrinterCard';
+import { QrMenuSection } from './QrMenuSection';
 import {
   addRow,
   codepageChoices,
@@ -262,6 +263,8 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
             </div>
             <p className="text-xs text-muted">{t('admin.settings.general.dayStartHint')}</p>
           </Section>
+
+          <QrMenuSection />
 
           <Section
             level={2}

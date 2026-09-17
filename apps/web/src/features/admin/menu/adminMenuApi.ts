@@ -35,6 +35,9 @@ export interface CategoryInput {
   id?: string;
   name_de: string;
   name_tr: string | null;
+  /** Yalnız müşteri QR menüsünde görünür (EN/AR); boşsa Almanca ad gösterilir. */
+  name_en: string | null;
+  name_ar: string | null;
   is_beverage: boolean;
   sort: number;
   is_active: boolean;
@@ -47,6 +50,8 @@ export async function upsertCategory(c: CategoryInput): Promise<string> {
       .update({
         name_de: c.name_de,
         name_tr: c.name_tr,
+        name_en: c.name_en,
+        name_ar: c.name_ar,
         is_beverage: c.is_beverage,
         sort: c.sort,
         is_active: c.is_active,
@@ -62,6 +67,8 @@ export async function upsertCategory(c: CategoryInput): Promise<string> {
       slug: slugWithFallback(c.name_de, shortId()),
       name_de: c.name_de,
       name_tr: c.name_tr,
+      name_en: c.name_en,
+      name_ar: c.name_ar,
       is_beverage: c.is_beverage,
       sort: c.sort,
       is_active: c.is_active,

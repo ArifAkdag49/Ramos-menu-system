@@ -234,6 +234,8 @@
       "moveDown": "Nach unten",
       "nameDe": "Name (Deutsch)",
       "nameTr": "Name (Türkisch)",
+      "nameEn": "Name (Englisch, QR-Speisekarte, optional)",
+      "nameAr": "Name (Arabisch, QR-Speisekarte, optional)",
       "code": "Nummer",
       "productName": "Produktname",
       "description": "Beschreibung",
@@ -283,7 +285,8 @@
       },
       "categories": {
         "add": "Kategorie hinzufügen",
-        "isBeverage": "Getränk"
+        "isBeverage": "Getränk",
+        "qrNamesHint": "Englische und arabische Namen erscheinen nur in der QR-Speisekarte für Gäste; leer bleibt der deutsche Name."
       },
       "ingredients": {
         "add": "Zutat hinzufügen",
@@ -579,6 +582,19 @@
         "restaurantName": "Name des Restaurants",
         "dayStart": "Beginn des Geschäftstags",
         "dayStartHint": "Bestellungen vor dieser Uhrzeit zählen zum Vortag — für Berichte, Bestellverlauf und Dienstzeiten."
+      },
+      "qrMenu": {
+        "title": "QR-Speisekarte",
+        "description": "Der QR-Code am Tisch öffnet die Speisekarte ohne Anmeldung",
+        "link": "Link zur Speisekarte",
+        "copy": "Link kopieren",
+        "copied": "Link kopiert",
+        "copyError": "Kopieren nicht möglich — Link bitte manuell markieren",
+        "open": "Speisekarte öffnen",
+        "previewAlt": "QR-Code des Speisekarten-Links",
+        "download": "SVG herunterladen (10 × 10 cm)",
+        "downloadHint": "Vektordatei: ohne Skalierung mit 100 % drucken, dann ist der Code genau 10 cm groß. Bilder, Preise und „Ausverkauft“ erscheinen automatisch in der Speisekarte; der Code muss nicht neu gedruckt werden.",
+        "error": "QR-Code konnte nicht erstellt werden"
       },
       "ticket": {
         "title": "Küchenbon",

@@ -234,6 +234,8 @@
       "moveDown": "Aşağı taşı",
       "nameDe": "Almanca ad",
       "nameTr": "Türkçe ad",
+      "nameEn": "İngilizce ad (QR menü, isteğe bağlı)",
+      "nameAr": "Arapça ad (QR menü, isteğe bağlı)",
       "code": "Numara",
       "productName": "Ürün adı",
       "description": "Açıklama",
@@ -283,7 +285,8 @@
       },
       "categories": {
         "add": "Kategori ekle",
-        "isBeverage": "İçecek"
+        "isBeverage": "İçecek",
+        "qrNamesHint": "İngilizce ve Arapça adlar yalnız müşteri QR menüsünde görünür; boş bırakılırsa Almanca ad gösterilir."
       },
       "ingredients": {
         "add": "Malzeme ekle",
@@ -579,6 +582,19 @@
         "restaurantName": "Restoran adı",
         "dayStart": "İş günü başlangıcı",
         "dayStartHint": "Bu saatten önce alınan siparişler önceki güne yazılır — raporlar, sipariş geçmişi ve mesai buna göre sayılır."
+      },
+      "qrMenu": {
+        "title": "QR menü",
+        "description": "Masadaki QR kodu müşteriyi girişsiz menüye götürür",
+        "link": "Menü bağlantısı",
+        "copy": "Bağlantıyı kopyala",
+        "copied": "Bağlantı kopyalandı",
+        "copyError": "Kopyalanamadı — bağlantıyı elle seçin",
+        "open": "Menüyü aç",
+        "previewAlt": "Menü bağlantısının QR kodu",
+        "download": "SVG indir (10 × 10 cm)",
+        "downloadHint": "Vektör dosya: baskıda ölçeklemeden %100 basın, kod tam 10 cm çıkar. Görsel, fiyat ve tükendi değişiklikleri menüye kendiliğinden yansır; kodu yeniden basmak gerekmez.",
+        "error": "QR kodu oluşturulamadı"
       },
       "ticket": {
         "title": "Mutfak fişi",

@@ -10,6 +10,9 @@ import { Button } from '../ui/Button';
 import { Brand, BrandLoader } from './BrandLoader';
 import { router } from './router';
 
+/** Girişsiz açılan yollar: oturum açılışının hatası bu yollarda gösterilmez. */
+const isPublicPath = (path: string) => path === '/menu' || path.startsWith('/menu/');
+
 /** StrictMode iki kez bağladığı için oturum açılışı yalnız bir kez çalışır. */
 let started = false;
 
@@ -35,8 +38,9 @@ export function App() {
     );
   }
 
-  // Açılış çözülemedi: sonsuz yükleyici yerine ne olduğu + iki çıkış yolu.
-  if (problem) {
+  // Açılış çözülemedi: sonsuz yükleyici yerine ne olduğu + iki çıkış yolu. Müşteri menüsü (`/menu`)
+  // oturum istemez: personel oturumundaki bir sorun menüyü kapatmasın, router yine çizilir.
+  if (problem && !isPublicPath(window.location.pathname)) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
         <Brand />

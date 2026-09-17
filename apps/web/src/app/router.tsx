@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { LoginPage } from '../features/auth/LoginPage';
 import { KitchenPage } from '../features/kitchen/KitchenPage';
+import { PublicMenuPage } from '../features/publicMenu/PublicMenuPage';
 import { OrderPage } from '../features/waiter/OrderPage';
 import { ProfilePage } from '../features/waiter/ProfilePage';
 import { ReadyPage } from '../features/waiter/ReadyPage';
@@ -23,6 +24,9 @@ const ADMIN: Role[] = ['admin'];
  * bağlantı şeritleri ve alt gezinmeyi paylaşır; sipariş girişi (Görev 14) bu düzenin dışındadır. */
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+
+  // Müşteri QR menüsü: girişsiz, `RoleGate` dışında. Oturum ve rol aranmaz.
+  { path: '/menu', element: <PublicMenuPage /> },
 
   {
     path: '/waiter',

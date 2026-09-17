@@ -19,6 +19,8 @@ export interface AdminCategory {
   slug: string;
   name_de: string;
   name_tr: string | null;
+  name_en: string | null;
+  name_ar: string | null;
   is_beverage: boolean;
   sort: number;
   is_active: boolean;
@@ -65,7 +67,7 @@ export function useAdminMenu(): AdminMenuData {
         queryFn: async (): Promise<AdminCategory[]> => {
           const { data, error } = await supabase
             .from('categories')
-            .select('id, slug, name_de, name_tr, is_beverage, sort, is_active')
+            .select('id, slug, name_de, name_tr, name_en, name_ar, is_beverage, sort, is_active')
             .order('is_active', { ascending: false })
             .order('sort');
           if (error) throw error;
