@@ -1,5 +1,12 @@
 import { clsx } from 'clsx';
-import { linesToText, renderTicket, type MenuProduct, type Selection } from '@ramos/shared';
+import {
+  linesToText,
+  renderTicket,
+  type Line,
+  type MenuProduct,
+  type Selection,
+  type TicketPayload,
+} from '@ramos/shared';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Chip } from '../../../ui/Chip';
@@ -101,38 +108,7 @@ export function TicketPreview({ product, isBeverage }: { product: MenuProduct; i
         </fieldset>
       ))}
 
-      {/*
-        Fiş her zaman Almanca (BUILD-PROMPT §5). TR arayüzde de bu kutunun içeriği Almanca kalır,
-        bu yüzden kapsayıcıya `lang="de"` verilir: ekran okuyucu doğru sesle okur ve `text-transform`
-        uygulayan bir stil "i" harfini Türkçe kuralıyla "İ" yapamaz (§6).
-      */}
-      <div
-        lang="de"
-        data-testid="ticket-preview"
-        className="overflow-x-auto rounded-card border border-border bg-[#F5F5F0] p-4 text-[#0A0A0A]"
-      >
-        <pre className="w-max font-mono text-xs leading-[1.45]">
-          {lines.map((line, i) => {
-            const text = linesToText([line], COLUMNS);
-            const isText = line.kind === 'text';
-            return (
-              <span
-                key={i}
-                className={clsx(
-                  'block',
-                  isText && line.bold && 'font-bold',
-                  isText && line.height === 2 && 'text-sm',
-                  // Çift genişlik: tek aralıklı yazıda harf başına 1ch ek aralık = kâğıttaki 2 kolon.
-                  isText && line.width === 2 && 'tracking-[1ch]',
-                  isText && line.invert && 'bg-[#0A0A0A] text-[#F5F5F0]',
-                )}
-              >
-                {text === '' ? ' ' : text}
-              </span>
-            );
-          })}
-        </pre>
-      </div>
+      <TicketPaper lines={lines} />
     </div>
   );
 }
@@ -144,4 +120,50 @@ function initialSelection(product: MenuProduct): Selection {
     optionIds: product.groups.flatMap((g) => g.options.filter((o) => o.is_default).map((o) => o.id)),
     removedIngredientIds: [],
   };
+}
+
+/**
+ * Görev 23: sipariş çekmecesi gerçek bir fiş işinin yükünü aynı kâğıtla gösterir — ürün editöründeki
+ * önizleme ile geçmiş siparişin fişi arasında görsel fark olmasın diye çizim tek yerdedir.
+ */
+export function TicketPayloadPaper({ payload }: { payload: TicketPayload }) {
+  const lines = useMemo(() => renderTicket(payload, { columns: COLUMNS }), [payload]);
+  return <TicketPaper lines={lines} />;
+}
+
+/**
+ * Fiş her zaman Almanca (BUILD-PROMPT §5). TR arayüzde de bu kutunun içeriği Almanca kalır,
+ * bu yüzden kapsayıcıya `lang="de"` verilir: ekran okuyucu doğru sesle okur ve `text-transform`
+ * uygulayan bir stil "i" harfini Türkçe kuralıyla "İ" yapamaz (§6).
+ */
+function TicketPaper({ lines }: { lines: Line[] }) {
+  return (
+    <div
+      lang="de"
+      data-testid="ticket-preview"
+      className="overflow-x-auto rounded-card border border-border bg-[#F5F5F0] p-4 text-[#0A0A0A]"
+    >
+      <pre className="w-max font-mono text-xs leading-[1.45]">
+        {lines.map((line, i) => {
+          const text = linesToText([line], COLUMNS);
+          const isText = line.kind === 'text';
+          return (
+            <span
+              key={i}
+              className={clsx(
+                'block',
+                isText && line.bold && 'font-bold',
+                isText && line.height === 2 && 'text-sm',
+                // Çift genişlik: tek aralıklı yazıda harf başına 1ch ek aralık = kâğıttaki 2 kolon.
+                isText && line.width === 2 && 'tracking-[1ch]',
+                isText && line.invert && 'bg-[#0A0A0A] text-[#F5F5F0]',
+              )}
+            >
+              {text === '' ? ' ' : text}
+            </span>
+          );
+        })}
+      </pre>
+    </div>
+  );
 }

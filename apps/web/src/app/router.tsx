@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { AdminLayout } from '../features/admin/AdminLayout';
+import { AuditLogPage } from '../features/admin/AuditLogPage';
 import { DashboardPage } from '../features/admin/DashboardPage';
 import { BulkAssignPage } from '../features/admin/menu/BulkAssignPage';
 import { BulkImagesPage } from '../features/admin/menu/BulkImagesPage';
@@ -8,8 +9,10 @@ import { CategoriesPage } from '../features/admin/menu/CategoriesPage';
 import { IngredientsPage } from '../features/admin/menu/IngredientsPage';
 import { MenuLayout } from '../features/admin/menu/MenuLayout';
 import { OptionGroupsPage } from '../features/admin/menu/OptionGroupsPage';
+import { OrdersPage } from '../features/admin/orders/OrdersPage';
 import { ProductsPage } from '../features/admin/menu/ProductsPage';
 import { StaffPage } from '../features/admin/staff/StaffPage';
+import { TablesAdminPage } from '../features/admin/tables/TablesAdminPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { KitchenPage } from '../features/kitchen/KitchenPage';
 import { OrderPage } from '../features/waiter/OrderPage';
@@ -19,13 +22,7 @@ import { TableDetailPage } from '../features/waiter/TableDetailPage';
 import { TablesPage } from '../features/waiter/TablesPage';
 import { WaiterLayout } from '../features/waiter/WaiterLayout';
 import type { Role } from '../lib/auth';
-import {
-  AdminOrdersPage,
-  AdminReportsPage,
-  AdminSettingsPage,
-  AdminTablesPage,
-  HomeRedirect,
-} from './pages';
+import { AdminReportsPage, AdminSettingsPage, HomeRedirect } from './pages';
 import { RoleGate } from './RoleGate';
 
 const gate = (roles: Role[], element: ReactNode) => <RoleGate roles={roles}>{element}</RoleGate>;
@@ -71,8 +68,9 @@ export const router = createBrowserRouter([
         ],
       },
       { path: 'staff', element: <StaffPage /> },
-      { path: 'tables', element: <AdminTablesPage /> },
-      { path: 'orders', element: <AdminOrdersPage /> },
+      { path: 'tables', element: <TablesAdminPage /> },
+      { path: 'orders', element: <OrdersPage /> },
+      { path: 'audit', element: <AuditLogPage /> },
       { path: 'reports', element: <AdminReportsPage /> },
       { path: 'settings', element: <AdminSettingsPage /> },
     ],

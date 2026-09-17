@@ -24,7 +24,16 @@ describe('<AdminLayout />', () => {
   it('bölümleri ve iki ekran kısayolunu listeler', () => {
     renderAt('/admin');
     const nav = screen.getByRole('navigation', { name: 'Yönetim' });
-    for (const label of ['Canlı durum', 'Menü', 'Personel', 'Masalar', 'Siparişler', 'Raporlar', 'Ayarlar'])
+    for (const label of [
+      'Canlı durum',
+      'Menü',
+      'Personel',
+      'Masalar',
+      'Siparişler',
+      'Raporlar',
+      'Ayarlar',
+      'Denetim kaydı',
+    ])
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     expect(within(nav).getByRole('link', { name: 'Garson ekranı' })).toHaveAttribute('href', '/waiter');
     expect(within(nav).getByRole('link', { name: 'Mutfak ekranı' })).toHaveAttribute('href', '/kitchen');

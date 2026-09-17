@@ -406,10 +406,92 @@
         "invalid_request": "İstek geçersiz",
         "network": "İnternet bağlantısı yok",
         "unknown": "Bir şeyler ters gitti"
+      },
+      "editTitle": "Personeli düzenle · {{name}}",
+      "onDuty": "Mesaide",
+      "testAccount": "Test hesabı",
+      "you": "Sen",
+      "selfRoleHint": "Kendi rolünü değiştiremezsin — başka bir yönetici değiştirebilir",
+      "noChanges": "Değişiklik yok"
+    },
+    "tables": {
+      "title": "Masalar",
+      "add": "Masa ekle",
+      "name": "Masa adı",
+      "nameHint": "Almanca yazılır; Türkçe ekranda \"Tisch\" yerine \"Masa\" görünür",
+      "isActive": "Kullanımda",
+      "isActiveHint": "Kapalıyken garson ekranında görünmez",
+      "inactive": "Kullanımda değil",
+      "openSession": "Açık hesap var",
+      "openSessionHint": "Önce masayı kapat",
+      "activeCount_one": "{{count}} masa kullanımda",
+      "activeCount_other": "{{count}} masa kullanımda",
+      "saved": "Masalar kaydedildi",
+      "empty": "Henüz masa yok — Masa ekle",
+      "errors": {
+        "required": "Masa adı boş olamaz",
+        "taken": "Bu ad başka bir masada — farklı bir ad yaz",
+        "too_long": "Masa adı en fazla 40 karakter olabilir",
+        "name_taken": "\"{{name}}\" adı zaten kullanılıyor — farklı bir ad yaz",
+        "open_session": "{{table}} masasında açık hesap var — önce masayı kapat, sonra kaydet",
+        "fix_fields": "İşaretli alanları düzelt, sonra kaydet"
       }
     },
-    "tables": { "title": "Masalar" },
-    "orders": { "title": "Siparişler" },
+    "orders": {
+      "title": "Siparişler",
+      "filters": {
+        "label": "Sipariş süzgeci",
+        "table": "Masa",
+        "allTables": "Bütün masalar",
+        "waiter": "Garson",
+        "allWaiters": "Bütün personel",
+        "status": "Durum",
+        "allStatuses": "Bütün durumlar"
+      },
+      "columns": {
+        "no": "No.",
+        "time": "Saat",
+        "table": "Masa",
+        "waiter": "Garson",
+        "status": "Durum",
+        "items": "Kalem",
+        "total": "Tutar"
+      },
+      "itemsCount_one": "{{count}} kalem",
+      "itemsCount_other": "{{count}} kalem",
+      "shown_one": "{{count}} sipariş",
+      "shown_other": "{{count}} sipariş",
+      "open": "{{no}} siparişini aç",
+      "more": "Daha fazla göster",
+      "empty": "Bu aralıkta sipariş yok — tarihi ya da süzgeci değiştir",
+      "loadError": "Siparişler alınamadı — bağlantını kontrol edip tekrar dene",
+      "drawer": {
+        "title": "Sipariş {{no}}",
+        "round": "{{round}}. tur",
+        "items": "Kalemler",
+        "total": "Toplam",
+        "note": "Not",
+        "cancelledBy": "{{name}} · {{time}}",
+        "timeline": "Zaman çizelgesi",
+        "events": {
+          "created": "Sipariş verildi",
+          "ready": "Hazır bildirildi",
+          "served": "Teslim edildi",
+          "cancelled": "Sipariş iptal oldu",
+          "item_cancelled": "Kalem iptal edildi: {{item}}"
+        },
+        "prints": "Fişler",
+        "noPrints": "Bu sipariş için fiş yok",
+        "attempts_one": "{{count}} deneme",
+        "attempts_other": "{{count}} deneme",
+        "showTicket": "Fişi göster",
+        "hideTicket": "Fişi gizle",
+        "ticketUnavailable": "Bu fişin önizlemesi gösterilemiyor",
+        "reprinted": "Fiş yeniden sıraya alındı",
+        "sessionClosed": "Masa kapandı — kalemler artık iptal edilemez",
+        "notFound": "Sipariş bulunamadı — listeyi tazele"
+      }
+    },
     "reports": { "title": "Raporlar" },
     "settings": { "title": "Ayarlar" },
     "nav": {
@@ -503,7 +585,12 @@
         "duty_off": "Mesai bitirdi",
         "insert": "{{entity}} ekledi",
         "update": "{{entity}} değiştirdi",
-        "delete": "{{entity}} sildi"
+        "delete": "{{entity}} sildi",
+        "staff_create": "Personel ekledi",
+        "staff_update": "Personeli değiştirdi",
+        "staff_reset_pin": "PIN sıfırladı",
+        "staff_activate": "Personeli aktifleştirdi",
+        "staff_deactivate": "Personeli pasifleştirdi"
       },
       "entity": {
         "categories": "Kategori",
@@ -515,7 +602,61 @@
         "options": "Seçenek",
         "product_option_groups": "Ürünün seçim grubu",
         "dining_tables": "Masa",
-        "settings": "Ayarlar"
+        "settings": "Ayarlar",
+        "table_session": "Masa hesabı",
+        "order": "Sipariş",
+        "order_item": "Sipariş kalemi",
+        "product": "Ürün",
+        "profile": "Personel"
+      },
+      "title": "Denetim kaydı",
+      "filters": {
+        "label": "Kayıt süzgeci",
+        "action": "İşlem",
+        "allActions": "Bütün işlemler",
+        "entity": "Kayıt türü",
+        "allEntities": "Bütün kayıt türleri"
+      },
+      "columns": {
+        "time": "Zaman",
+        "actor": "Kişi",
+        "action": "İşlem",
+        "detail": "Ayrıntı"
+      },
+      "system": "Sistem",
+      "showDetails": "Ayrıntıyı göster",
+      "hideDetails": "Ayrıntıyı gizle",
+      "empty": "Bu aralıkta kayıt yok — tarihi ya da süzgeci değiştir",
+      "loadError": "Kayıtlar alınamadı — bağlantını kontrol edip tekrar dene",
+      "fields": {
+        "name": "Ad",
+        "name_de": "Almanca ad",
+        "name_tr": "Türkçe ad",
+        "sort": "Sıra",
+        "is_active": "Aktiflik",
+        "is_sold_out": "Tükendi",
+        "base_price_cents": "Fiyat",
+        "price_cents": "Fiyat",
+        "price_delta_cents": "Fiyat farkı",
+        "code": "Numara",
+        "image_path": "Görsel",
+        "description": "Açıklama",
+        "allergens": "Alerjen",
+        "category_id": "Kategori",
+        "archived_at": "Arşiv",
+        "is_default": "Varsayılan",
+        "cancel_reasons": "İptal sebepleri",
+        "quick_notes": "Hızlı notlar"
+      }
+    },
+    "range": {
+      "from": "Başlangıç",
+      "to": "Bitiş",
+      "today": "Bugün",
+      "note": "İş günü sabah 05:00'te başlar",
+      "errors": {
+        "range_invalid": "Bitiş tarihi başlangıçtan önce olamaz — tarihleri düzelt",
+        "range_too_long": "En fazla 31 gün seçilebilir — aralığı kısalt"
       }
     }
   },

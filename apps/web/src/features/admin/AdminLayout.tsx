@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   LogOut,
   Menu,
+  ScrollText,
   Settings,
   Users,
 } from 'lucide-react';
@@ -31,7 +32,8 @@ interface NavItem {
     | 'admin.tables.title'
     | 'admin.orders.title'
     | 'admin.reports.title'
-    | 'admin.settings.title';
+    | 'admin.settings.title'
+    | 'admin.audit.title';
   icon: ReactNode;
   end?: boolean;
 }
@@ -64,6 +66,11 @@ const SECTIONS: NavItem[] = [
     to: '/admin/settings',
     labelKey: 'admin.settings.title',
     icon: <Settings aria-hidden size={20} />,
+  },
+  {
+    to: '/admin/audit',
+    labelKey: 'admin.audit.title',
+    icon: <ScrollText aria-hidden size={20} />,
   },
 ];
 

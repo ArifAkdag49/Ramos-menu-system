@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { agoParts, businessDate, dashboardStats, formatBusinessDay } from './dashboardLogic';
+import {
+  addDays,
+  agoParts,
+  businessDate,
+  businessDayStartUtc,
+  dashboardStats,
+  dateRangeError,
+  formatBusinessDay,
+} from './dashboardLogic';
 
 describe('dashboardStats', () => {
   it('açık masa, mutfak, hazır ve açık tutar toplamı', () => {
@@ -62,4 +70,45 @@ describe('formatBusinessDay', () => {
   it('beklenmeyen biçimi olduğu gibi bırakır', () => expect(formatBusinessDay('bugün')).toBe('bugün'));
   it('businessDate çıktısıyla birlikte çalışır', () =>
     expect(formatBusinessDay(businessDate(new Date('2026-01-10T03:30:00Z')))).toBe('09.01.2026'));
+});
+
+// Görev 23: sipariş ve denetim ekranları tarih aralığını iş günü olarak alır. Denetim kaydında
+// `at` bir zaman damgasıdır; iş gününün sınırı (Berlin 05:00) UTC'ye burada çevrilir.
+describe('businessDayStartUtc (iş günü Berlin 05:00 → UTC)', () => {
+  it('yaz saatinde 03:00 UTC', () =>
+    expect(businessDayStartUtc('2026-09-17')).toBe('2026-09-17T03:00:00.000Z'));
+
+  it('kış saatinde 04:00 UTC', () =>
+    expect(businessDayStartUtc('2026-01-10')).toBe('2026-01-10T04:00:00.000Z'));
+
+  it('yaz saatine geçilen gün (29.03.2026) 05:00 zaten yaz saatidir', () =>
+    expect(businessDayStartUtc('2026-03-29')).toBe('2026-03-29T03:00:00.000Z'));
+
+  it('kış saatine dönülen gün (25.10.2026) 05:00 zaten kış saatidir', () =>
+    expect(businessDayStartUtc('2026-10-25')).toBe('2026-10-25T04:00:00.000Z'));
+
+  it('businessDate ile tutarlı: sınırın 1 ms öncesi önceki iş günüdür', () => {
+    const start = new Date(businessDayStartUtc('2026-09-17'));
+    expect(businessDate(start)).toBe('2026-09-17');
+    expect(businessDate(new Date(start.getTime() - 1))).toBe('2026-09-16');
+  });
+});
+
+describe('addDays', () => {
+  it('ay ve yıl sınırını geçer', () => {
+    expect(addDays('2026-09-30', 1)).toBe('2026-10-01');
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28');
+  });
+});
+
+describe('dateRangeError (en fazla 31 gün, iki uç dahil)', () => {
+  it('geçerli aralık → null', () => expect(dateRangeError('2026-09-01', '2026-10-01')).toBeNull());
+  it('tek gün → null', () => expect(dateRangeError('2026-09-17', '2026-09-17')).toBeNull());
+  it('bitiş başlangıçtan önce → range_invalid', () =>
+    expect(dateRangeError('2026-09-17', '2026-09-16')).toBe('range_invalid'));
+  it('olmayan tarih → range_invalid', () =>
+    expect(dateRangeError('2026-02-30', '2026-03-01')).toBe('range_invalid'));
+  it('32 gün → range_too_long', () =>
+    expect(dateRangeError('2026-09-01', '2026-10-02')).toBe('range_too_long'));
 });

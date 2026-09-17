@@ -9,7 +9,7 @@ import { IconButton } from '../../../ui/IconButton';
  * (BUILD-PROMPT §10.6) — masaüstü öncelikli ekran telefonda da kullanılabilir kalır.
  */
 export const FIELD =
-  'min-h-12 w-full rounded-control border border-border bg-surface-2 px-3 text-sm text-text placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg';
+  'min-h-12 w-full rounded-control border border-border bg-surface-2 px-3 text-sm text-text placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-not-allowed disabled:opacity-60';
 
 export function TextField({
   label,
@@ -28,7 +28,7 @@ export function TextField({
   onChange: (v: string) => void;
   error?: string | null;
   hint?: string;
-  type?: 'text' | 'number';
+  type?: 'text' | 'number' | 'date';
   placeholder?: string;
   inputClassName?: string;
   disabled?: boolean;
@@ -100,12 +100,16 @@ export function SelectField<T extends string>({
   onChange,
   options,
   className,
+  disabled,
+  hint,
 }: {
   label: string;
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
   className?: string;
+  disabled?: boolean;
+  hint?: string;
 }) {
   const id = useId();
   return (
@@ -116,6 +120,8 @@ export function SelectField<T extends string>({
       <select
         id={id}
         value={value}
+        disabled={disabled}
+        aria-describedby={hint ? `${id}-hint` : undefined}
         onChange={(e) => onChange(e.target.value as T)}
         className={clsx(FIELD, 'py-2')}
       >
@@ -125,6 +131,11 @@ export function SelectField<T extends string>({
           </option>
         ))}
       </select>
+      {hint ? (
+        <p id={`${id}-hint`} className="text-xs text-muted">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -135,11 +146,14 @@ export function Toggle({
   checked,
   onChange,
   hint,
+  disabled,
 }: {
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
   hint?: string;
+  /** Kapalı anahtarın nedeni `hint` ile yazılır — gri bir kutu tek başına bir şey anlatmaz. */
+  disabled?: boolean;
 }) {
   const id = useId();
   return (
@@ -148,8 +162,9 @@ export function Toggle({
         id={id}
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="size-5 shrink-0 accent-[var(--lime)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        className="size-5 shrink-0 disabled:cursor-not-allowed disabled:opacity-50 accent-[var(--lime)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
       />
       <label htmlFor={id} className="flex flex-col">
         <span className="text-sm">{label}</span>

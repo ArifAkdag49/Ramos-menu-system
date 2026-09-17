@@ -406,10 +406,92 @@
         "invalid_request": "Ungültige Anfrage",
         "network": "Keine Internetverbindung",
         "unknown": "Etwas ist schiefgelaufen"
+      },
+      "editTitle": "Mitarbeiter bearbeiten · {{name}}",
+      "onDuty": "Im Dienst",
+      "testAccount": "Testkonto",
+      "you": "Du",
+      "selfRoleHint": "Deine eigene Rolle kannst du nicht ändern — das kann ein anderer Admin",
+      "noChanges": "Keine Änderungen"
+    },
+    "tables": {
+      "title": "Tische",
+      "add": "Tisch hinzufügen",
+      "name": "Tischname",
+      "nameHint": "Wird auf Deutsch gespeichert; in der türkischen Ansicht steht „Masa“ statt „Tisch“",
+      "isActive": "In Betrieb",
+      "isActiveHint": "Ausgeschaltet erscheint der Tisch nicht im Kellner-Bildschirm",
+      "inactive": "Außer Betrieb",
+      "openSession": "Offene Rechnung",
+      "openSessionHint": "Erst den Tisch schließen",
+      "activeCount_one": "{{count}} Tisch in Betrieb",
+      "activeCount_other": "{{count}} Tische in Betrieb",
+      "saved": "Tische gespeichert",
+      "empty": "Noch keine Tische — Tisch hinzufügen",
+      "errors": {
+        "required": "Tischname fehlt",
+        "taken": "Diesen Namen hat schon ein anderer Tisch — anderen Namen wählen",
+        "too_long": "Tischname darf höchstens 40 Zeichen haben",
+        "name_taken": "„{{name}}“ ist schon vergeben — anderen Namen wählen",
+        "open_session": "{{table}} hat eine offene Rechnung — erst den Tisch schließen, dann speichern",
+        "fix_fields": "Markierte Felder korrigieren, dann speichern"
       }
     },
-    "tables": { "title": "Tische" },
-    "orders": { "title": "Bestellungen" },
+    "orders": {
+      "title": "Bestellungen",
+      "filters": {
+        "label": "Bestellfilter",
+        "table": "Tisch",
+        "allTables": "Alle Tische",
+        "waiter": "Kellner",
+        "allWaiters": "Alle Mitarbeiter",
+        "status": "Status",
+        "allStatuses": "Alle Status"
+      },
+      "columns": {
+        "no": "Nr.",
+        "time": "Zeit",
+        "table": "Tisch",
+        "waiter": "Kellner",
+        "status": "Status",
+        "items": "Pos.",
+        "total": "Betrag"
+      },
+      "itemsCount_one": "{{count}} Position",
+      "itemsCount_other": "{{count}} Positionen",
+      "shown_one": "{{count}} Bestellung",
+      "shown_other": "{{count}} Bestellungen",
+      "open": "Bestellung {{no}} öffnen",
+      "more": "Mehr anzeigen",
+      "empty": "Keine Bestellungen in diesem Zeitraum — Datum oder Filter ändern",
+      "loadError": "Bestellungen konnten nicht geladen werden — Verbindung prüfen und erneut versuchen",
+      "drawer": {
+        "title": "Bestellung {{no}}",
+        "round": "{{round}}. Runde",
+        "items": "Positionen",
+        "total": "Summe",
+        "note": "Notiz",
+        "cancelledBy": "{{name}} · {{time}}",
+        "timeline": "Verlauf",
+        "events": {
+          "created": "Bestellung aufgegeben",
+          "ready": "Fertig gemeldet",
+          "served": "Serviert",
+          "cancelled": "Bestellung storniert",
+          "item_cancelled": "Position storniert: {{item}}"
+        },
+        "prints": "Belege",
+        "noPrints": "Für diese Bestellung gibt es keinen Beleg",
+        "attempts_one": "{{count}} Versuch",
+        "attempts_other": "{{count}} Versuche",
+        "showTicket": "Beleg anzeigen",
+        "hideTicket": "Beleg ausblenden",
+        "ticketUnavailable": "Für diesen Beleg ist keine Vorschau möglich",
+        "reprinted": "Beleg wird erneut gedruckt",
+        "sessionClosed": "Tisch ist geschlossen — Positionen können nicht mehr storniert werden",
+        "notFound": "Bestellung nicht gefunden — Liste aktualisieren"
+      }
+    },
     "reports": { "title": "Berichte" },
     "settings": { "title": "Einstellungen" },
     "nav": {
@@ -503,7 +585,12 @@
         "duty_off": "Schicht beendet",
         "insert": "{{entity}} angelegt",
         "update": "{{entity}} geändert",
-        "delete": "{{entity}} gelöscht"
+        "delete": "{{entity}} gelöscht",
+        "staff_create": "Mitarbeiter angelegt",
+        "staff_update": "Mitarbeiter geändert",
+        "staff_reset_pin": "PIN zurückgesetzt",
+        "staff_activate": "Mitarbeiter aktiviert",
+        "staff_deactivate": "Mitarbeiter deaktiviert"
       },
       "entity": {
         "categories": "Kategorie",
@@ -515,7 +602,61 @@
         "options": "Option",
         "product_option_groups": "Auswahlgruppe des Produkts",
         "dining_tables": "Tisch",
-        "settings": "Einstellungen"
+        "settings": "Einstellungen",
+        "table_session": "Tischrechnung",
+        "order": "Bestellung",
+        "order_item": "Bestellposition",
+        "product": "Produkt",
+        "profile": "Mitarbeiter"
+      },
+      "title": "Protokoll",
+      "filters": {
+        "label": "Protokollfilter",
+        "action": "Aktion",
+        "allActions": "Alle Aktionen",
+        "entity": "Bereich",
+        "allEntities": "Alle Bereiche"
+      },
+      "columns": {
+        "time": "Zeit",
+        "actor": "Person",
+        "action": "Aktion",
+        "detail": "Details"
+      },
+      "system": "System",
+      "showDetails": "Details anzeigen",
+      "hideDetails": "Details ausblenden",
+      "empty": "Keine Einträge in diesem Zeitraum — Datum oder Filter ändern",
+      "loadError": "Protokoll konnte nicht geladen werden — Verbindung prüfen und erneut versuchen",
+      "fields": {
+        "name": "Name",
+        "name_de": "Deutscher Name",
+        "name_tr": "Türkischer Name",
+        "sort": "Reihenfolge",
+        "is_active": "Aktiv",
+        "is_sold_out": "Ausverkauft",
+        "base_price_cents": "Preis",
+        "price_cents": "Preis",
+        "price_delta_cents": "Aufpreis",
+        "code": "Nummer",
+        "image_path": "Bild",
+        "description": "Beschreibung",
+        "allergens": "Allergene",
+        "category_id": "Kategorie",
+        "archived_at": "Archiv",
+        "is_default": "Standard",
+        "cancel_reasons": "Stornogründe",
+        "quick_notes": "Schnellnotizen"
+      }
+    },
+    "range": {
+      "from": "Von",
+      "to": "Bis",
+      "today": "Heute",
+      "note": "Der Geschäftstag beginnt um 05:00 Uhr",
+      "errors": {
+        "range_invalid": "Das Enddatum liegt vor dem Startdatum — Daten korrigieren",
+        "range_too_long": "Höchstens 31 Tage wählbar — Zeitraum verkürzen"
       }
     }
   },

@@ -53,6 +53,70 @@ export function businessDate(now: Date): string {
   return previous.toISOString().slice(0, 10);
 }
 
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** `yyyy-MM-dd` gerçek bir takvim günü mü? "2026-02-30" gibi taşan tarihler reddedilir. */
+function parseIsoDate(iso: string): number | null {
+  const m = ISO_DATE.exec(iso);
+  if (!m) return null;
+  const ms = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(ms).toISOString().slice(0, 10) === iso ? ms : null;
+}
+
+/** Takvim gününe gün ekler (UTC üzerinden: yaz/kış saati gün sayısını kaydırmaz). */
+export function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+export type DateRangeError = 'range_invalid' | 'range_too_long';
+
+/** Sipariş ve denetim ekranlarında seçilebilecek en uzun aralık (iki uç dahil). */
+export const MAX_RANGE_DAYS = 31;
+
+/**
+ * Tarih aralığı denetimi. Sınır sorgu maliyeti içindir: sipariş listesi iç içe kalem ve fiş işi
+ * taşır, aylarca geriye bakan bir sorgu telefonda sayfayı kilitlerdi. Uzun dönem için Raporlar var.
+ */
+export function dateRangeError(from: string, to: string): DateRangeError | null {
+  const a = parseIsoDate(from);
+  const b = parseIsoDate(to);
+  if (a === null || b === null || b < a) return 'range_invalid';
+  return Math.round((b - a) / DAY_MS) + 1 > MAX_RANGE_DAYS ? 'range_too_long' : null;
+}
+
+/** Europe/Berlin'in verilen andaki UTC farkı (dakika). `Intl` yaz/kış saatini kendisi bilir. */
+function berlinOffsetMinutes(at: number): number {
+  const parts = BERLIN_PARTS.formatToParts(new Date(at));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const wall = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'));
+  return Math.round((wall - at) / 60_000);
+}
+
+const BERLIN_PARTS = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Europe/Berlin',
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: 'numeric',
+  hourCycle: 'h23',
+});
+
+/**
+ * İş gününün başladığı an (Berlin 05:00) UTC olarak. Denetim kaydı `at` zaman damgasıyla
+ * süzülür, `business_date` sütunu yoktur; bu yüzden gün sınırı burada çevrilir. Ofset, tahmin
+ * edilen anın **kendisinde** yeniden okunur: geçiş gecesinde 05:00 zaten yeni ofsettedir.
+ */
+export function businessDayStartUtc(isoDate: string): string {
+  const [y = 0, m = 1, d = 1] = isoDate.split('-').map(Number);
+  const wall = Date.UTC(y, m - 1, d, BUSINESS_DAY_START_HOUR);
+  const guess = wall - berlinOffsetMinutes(wall) * 60_000;
+  return new Date(wall - berlinOffsetMinutes(guess) * 60_000).toISOString();
+}
+
 /**
  * İş gününü operatöre gösterirken kullanılan biçim. Arayüzde tarih her yerde `dd.MM.yyyy`dir
  * (BUILD-PROMPT §5); `yyyy-MM-dd` yalnız RPC'ye giden değerdir, ekrana yazılmaz.

@@ -91,8 +91,14 @@ export interface OrderView {
   print: OrderPrintView | null;
 }
 
-const byItemOrder = (a: OrderItemRow, b: OrderItemRow) =>
-  Number(a.is_beverage) - Number(b.is_beverage) || a.category_sort - b.category_sort || a.sort - b.sort;
+/** Kalem sırası: yemekler önce, içecekler sonda; kategori ve ürün sırasıyla (fiş ve KDS ile aynı). */
+export const byItemOrder = (
+  a: Pick<OrderItemRow, 'is_beverage' | 'category_sort' | 'sort'>,
+  b: Pick<OrderItemRow, 'is_beverage' | 'category_sort' | 'sort'>,
+) =>
+  Number(a.is_beverage) - Number(b.is_beverage) ||
+  a.category_sort - b.category_sort ||
+  a.sort - b.sort;
 
 /** Sipariş satırlarını (iç içe seçim) `OrderView`'a çevirir. İptal edilen kalemler korunur. */
 export function mapOrders(rows: OrderRow[], staffNames: Map<string, string>): OrderView[] {

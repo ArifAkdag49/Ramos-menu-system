@@ -8,46 +8,11 @@ import { Badge } from '../../ui/Badge';
 import { Spinner } from '../../ui/Spinner';
 import type { Tone } from '../../ui/tone';
 import { Elapsed } from '../common/Elapsed';
+import { auditLabelKeys, isRowAction } from './auditLogic';
 import { businessDate, dashboardStats, formatBusinessDay } from './dashboardLogic';
 import { PrinterCard } from './PrinterCard';
 
 const AUDIT_LIMIT = 10;
-
-const ACTION_KEY = {
-  session_open: 'admin.audit.action.session_open',
-  session_close: 'admin.audit.action.session_close',
-  session_move: 'admin.audit.action.session_move',
-  order_submit: 'admin.audit.action.order_submit',
-  order_ready: 'admin.audit.action.order_ready',
-  order_ready_undo: 'admin.audit.action.order_ready_undo',
-  order_served: 'admin.audit.action.order_served',
-  order_reprint: 'admin.audit.action.order_reprint',
-  item_cancel: 'admin.audit.action.item_cancel',
-  product_sold_out: 'admin.audit.action.product_sold_out',
-  product_available: 'admin.audit.action.product_available',
-  duty_on: 'admin.audit.action.duty_on',
-  duty_off: 'admin.audit.action.duty_off',
-} as const;
-
-/** `internal.audit_row()` tetikleyicisinin ürettiği kayıtlar: eylem satır işlemi, nesne tablodur. */
-const ROW_ACTION_KEY = {
-  insert: 'admin.audit.action.insert',
-  update: 'admin.audit.action.update',
-  delete: 'admin.audit.action.delete',
-} as const;
-
-const ENTITY_KEY = {
-  categories: 'admin.audit.entity.categories',
-  products: 'admin.audit.entity.products',
-  product_variants: 'admin.audit.entity.product_variants',
-  ingredients: 'admin.audit.entity.ingredients',
-  product_ingredients: 'admin.audit.entity.product_ingredients',
-  option_groups: 'admin.audit.entity.option_groups',
-  options: 'admin.audit.entity.options',
-  product_option_groups: 'admin.audit.entity.product_option_groups',
-  dining_tables: 'admin.audit.entity.dining_tables',
-  settings: 'admin.audit.entity.settings',
-} as const;
 
 const CLOCK = new Intl.DateTimeFormat('de-DE', {
   timeZone: 'Europe/Berlin',
@@ -273,14 +238,13 @@ function AuditList({
 }) {
   const { t } = useTranslation();
 
+  // Eylem/varlık anahtarları denetim ekranıyla ortak (`auditLogic`): iki yerde ayrı harita tutulunca
+  // yeni bir eylem (ör. personel işlemleri) birinde çevrilip diğerinde ham kalıyordu.
   const describe = (e: AuditEntry): string => {
-    const rowAction = ROW_ACTION_KEY[e.action as keyof typeof ROW_ACTION_KEY];
-    if (rowAction) {
-      const entity = ENTITY_KEY[e.entity as keyof typeof ENTITY_KEY];
-      return t(rowAction, { entity: entity ? t(entity) : e.entity });
-    }
-    const action = ACTION_KEY[e.action as keyof typeof ACTION_KEY];
-    return action ? t(action) : `${e.action} · ${e.entity}`;
+    const keys = auditLabelKeys(e);
+    if (!keys.action) return `${e.action} · ${e.entity}`;
+    if (!isRowAction(e.action)) return t(keys.action);
+    return t(keys.action, { entity: keys.entity ? t(keys.entity) : e.entity });
   };
 
   return (
