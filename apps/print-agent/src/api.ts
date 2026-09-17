@@ -191,11 +191,14 @@ export async function createSupabaseApi(
         .single();
       if (error) throw new Error(`settings: ${error.message}`);
       return {
-        host: data.printer_host,
-        port: data.printer_port,
+        // Kurulum sihirbazının yazdığı yerel adres, sitedeki genel ayarın önüne geçer (config.ts).
+        // USB yazıcıda "adres" `usb:<Windows yazıcı adı>`dır (bkz. usb.ts); ağ ayarları kullanılmaz.
+        host: env.PRINTER_USB ? `usb:${env.PRINTER_USB}` : (env.PRINTER_HOST ?? data.printer_host),
+        port: env.PRINTER_PORT ?? data.printer_port,
         codepage: data.printer_codepage,
         codepageNumber: data.printer_codepage_number,
         transliterate: data.printer_transliterate,
+        ascii: env.PRINTER_ASCII ?? false,
       };
     },
 

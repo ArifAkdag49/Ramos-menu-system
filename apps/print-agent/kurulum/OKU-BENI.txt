@@ -1,0 +1,92 @@
+﻿RAMO'S YAZICI KURULUMU
+======================
+
+Bu klasör, mutfak fiş yazıcısını (ethernet kablolu fiş yazıcıları: Epson, Xprinter, SNRO,
+Rongta, HPRT, Munbyn, Bixolon ...) siteye bağlar.
+Siparişleri yazıcıya bu bilgisayar gönderir; bilgisayar açık kaldığı sürece fişler basılır.
+
+
+YAZICI NASIL BAĞLANABİLİR
+------------------------
+Üç yolun hepsinde sipariş gelince fiş kendiliğinden basılır:
+
+  1) KABLOYLA MODEME: Yazıcının ethernet kablosu modeme takılı. Bu bilgisayar da aynı modeme
+     bağlı (kablo ya da Wi-Fi).
+  2) USB İLE BU BİLGİSAYARA: Yazıcının USB kablosu bu bilgisayara takılı. Yazıcının Windows
+     sürücüsü yoksa kurulum onu Windows'un kendi sürücüsüyle ekler.
+  3) WI-FI İLE: Yazıcı önce modemin Wi-Fi ağına bağlanmış olmalı (yazıcının kılavuzu, uygulaması
+     ya da WPS düğmesi). Bağlandıktan sonra kurulum onu kablolu yazıcı gibi bulur.
+     Bilgisayarı yazıcının KENDİ Wi-Fi ağına bağlıyorsanız bilgisayarın internete ayrıca
+     (kabloyla) bağlı olması gerekir; siparişler internetten gelir.
+
+
+KURULUM
+-------
+1) Yazıcıyı açın ve yukarıdaki yollardan biriyle bağlayın.
+2) "Kurulum.cmd" dosyasına çift tıklayın ve ekrandaki soruları cevaplayın.
+   İlk soru yazıcının nasıl bağlı olduğudur: 1 kablo, 2 Wi-Fi, 3 USB, 4 bilmiyorum (Enter).
+   Yazıcı hem kabloyla hem USB ile bağlıysa hangisini kullanmak istediğinizi buradan seçin.
+
+Sihirbaz şunları kendisi yapar:
+  - Node.js yoksa kurar (Windows izin isterse "Evet" deyin)
+  - Yazıcıyı ağda bulur (marka fark etmez: Epson, Xprinter, SNRO, Rongta, HPRT ...)
+  - "Bilmiyorum" seçilirse önce ağda arar, bulamazsa USB ile bağlı olup olmadığını sorar
+  - Bazı yazıcılar sorulara cevap vermez ama basar. Böyle bir cihaz bulursa ona kısa bir
+    "RAMO'S KURULUM" deneme fişi gönderir ve "fiş çıktı mı?" diye sorar: fiş çıktıysa "e"
+    yazıp Enter'a basın.
+  - Yazıcı fabrika adresinde kalmışsa (ör. 192.168.1.100) Windows'tan yönetici izni alıp
+    markaların fabrika ağlarında kendisi arar ve bilgisayara o ağdan bir adres ekler
+    ("köprü"). Yazıcının ayarına dokunulmaz, USB kablosu gerekmez. Bulamazsa yazıcının
+    ayar fişindeki adresi sorar.
+  - Bir test fişi basar ve özel harflerin (ä ö ü ß ş ğ ı) düzgün çıkıp çıkmadığını sorar.
+    Bozuksa bu bilgisayar için "sade harf" moduna geçer: Drehspiess, Haehnchen, Kuzu Sis.
+  - Sorarak, prize takılıyken bilgisayarın uykuya geçmesini kapatır (dizüstünde kapak
+    kapanınca uyumasını da). Uykudaki bilgisayar fiş basamaz.
+  - Bilgisayar her açıldığında kendiliğinden çalışacak şekilde kurar
+
+Sonunda yeşil "KURULUM TAMAM" yazısını görmelisiniz.
+
+
+ÖNEMLİ: AYNI ANDA TEK BİLGİSAYAR
+--------------------------------
+Yazdırma programı aynı anda yalnız BİR bilgisayarda açık olmalı. İki bilgisayarda açık
+olursa sipariş hangisine düşerse orada basılır.
+Başka bir bilgisayara geçmeden önce eski bilgisayarda "Kaldir.cmd" çalıştırın.
+Sihirbaz, başka bir bilgisayarda çalışan program görürse sizi uyarır.
+
+
+YAZICININ ADRESİ DEĞİŞİRSE
+--------------------------
+Modem yeniden başlayınca yazıcı başka bir adres alabilir. Program yazıcıya 1 dakika
+ulaşamazsa ağda kendisi arar ve aynı yazıcıyı (donanım adresinden tanıyarak) yeni adresinde
+bulursa oraya basmaya devam eder. Ağda birden fazla yazıcı varsa ve hangisi olduğundan emin
+olamazsa adresi değiştirmez; o zaman Kurulum.cmd'yi tekrar çalıştırın.
+
+
+BİLGİSAYAR AÇIK KALMALI
+-----------------------
+Fişleri bu bilgisayar gönderir: açık ve oturumu açık olmalı. Dizüstü bilgisayar prize takılı
+kalmalı (pildeyken uyku ayarı değiştirilmez). Ekranın kapanması sorun değildir.
+Kurulum "köprü" kurduysa ve bilgisayar sonradan Wi-Fi yerine kabloyla (ya da tersi)
+bağlanırsa Kurulum.cmd'yi tekrar çalıştırın.
+
+
+YAZICI BULUNAMAZSA
+------------------
+- Yazıcı açık mı, ethernet kablosu bilgisayarın bağlı olduğu MODEME takılı mı, ışıkları yanıyor mu?
+- Bilgisayar misafir Wi-Fi'ına değil, modemin ana ağına bağlı mı?
+- Windows izin penceresine "Evet" (Almanca Windows'ta "Ja") dediniz mi?
+- Yazıcının ayar fişini basın: yazıcı kapalıyken FEED tuşuna basılı tutun, yazıcıyı açın,
+  fiş çıkınca bırakın. Sihirbaz sorduğunda fişteki "IP Address" değerini yazın.
+- Fiş boş çıkıyorsa kağıt rulosu ters takılmıştır (termal yüz dışa bakmalı).
+
+
+KALDIRMA
+--------
+"Kaldir.cmd" dosyasına çift tıklayın.
+
+
+GİZLİLİK
+--------
+Bu klasördeki ".env" dosyası yazıcı hesabının parolasını içerir. Klasörü yalnız
+işletmenin bilgisayarlarına kopyalayın, e-postayla ya da herkese açık bir yere göndermeyin.

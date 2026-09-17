@@ -1,17 +1,22 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { linesToText, renderTicket, type TicketPayload, type Database } from '@ramos/shared';
+import { linesToText, type Line, type TicketPayload, type Database } from '@ramos/shared';
 import { createClient } from '@supabase/supabase-js';
 import CodepageEncoder, { type Codepage } from '@point-of-sale/codepage-encoder';
 import { Agent, type AgentApi, type PrinterPort } from './agent';
+import { renderTicketForPrinter } from './ascii';
 import { AGENT_VERSION, createSupabaseApi } from './api';
-import { loadConfig, type AgentEnv } from './config';
+import { findEnvFile, loadConfig, updateEnvFile, type AgentEnv } from './config';
 import { startFakePrinter } from './fake-printer';
+import { discoverPrinters, localNetworks, looksLikeEscPos, probePort } from './discover';
 import { encodeLines } from './escpos';
 import { createLogger, type Logger } from './log';
 import { defaultProcIo, isSameAgentProcess, probeProcess } from './proc';
 import { createShutdownHandler } from './shutdown';
-import { printWithChecks, queryStatus } from './transport';
+import { PrinterRediscovery } from './rediscover';
+import { printWithChecks, queryStatus, sendBytes } from './transport';
+import { createUsbPrinter } from './usb';
 
 const [cmd = 'run', ...rest] = process.argv.slice(2);
 const arg = (name: string): string | undefined => {
@@ -130,12 +135,24 @@ function acquireLock(dir: string, log: Logger): () => void {
 // Zamanlanmış Görev'in kendi yeniden başlatma sayacına (999) bağımlı kalmaz.
 const STARTUP_BACKOFF_MS = [1000, 2000, 5000, 10000, 30000, 60000];
 
-async function startAgentWithRetry(cfg: AgentEnv, log: Logger): Promise<{ api: AgentApi; agent: Agent }> {
+type AgentExtras = Pick<ConstructorParameters<typeof Agent>[1], 'rediscovery' | 'onHostChanged'>;
+
+/** USB modunda ramos-usb.exe'nin yolu: .env'deki PRINTER_USB_EXE, yoksa ajan dosyasının yanı. */
+function usbExePath(cfg: AgentEnv): string {
+  return cfg.PRINTER_USB_EXE ?? path.join(path.dirname(process.argv[1] ?? '.'), 'ramos-usb.exe');
+}
+
+/** Yazıcıya giden yol: .env'de PRINTER_USB varsa Windows USB kuyruğu, yoksa TCP 9100. */
+function printerPortFor(cfg: AgentEnv): PrinterPort {
+  return cfg.PRINTER_USB ? createUsbPrinter({ exe: usbExePath(cfg), printerName: cfg.PRINTER_USB }) : tcpPrinter;
+}
+
+async function startAgentWithRetry(cfg: AgentEnv, log: Logger, extras: AgentExtras = {}): Promise<{ api: AgentApi; agent: Agent }> {
   for (let attempt = 0; ; attempt++) {
     let api: AgentApi | undefined;
     try {
       api = await createSupabaseApi(cfg, log);
-      const agent = new Agent(api, { printer: tcpPrinter, log });
+      const agent = new Agent(api, { printer: printerPortFor(cfg), log, ...extras });
       await agent.start();
       return { api, agent };
     } catch (e) {
@@ -168,9 +185,40 @@ async function cmdRun(): Promise<void> {
   // throw e; }` bu yüzden hiçbir zaman tetiklenmeyen, yanıltıcı ölü kod hâline gelmişti —
   // kaldırıldı. Kilit yalnız `shutdown()`'da (SIGINT/SIGTERM) serbest bırakılır.
   log.info('ajan başlıyor', { version: AGENT_VERSION, agentId: cfg.AGENT_ID });
-  const { api, agent } = await startAgentWithRetry(cfg, log);
+
+  // Yazıcının adresi değişirse (DHCP) ajan onu ağda yeniden bulur; bulunan adres ve öğrenilen MAC
+  // bu PC'nin .env'ine yazılır ki yeniden başlatmadan sonra da geçerli olsun. `cfg` aynı nesne
+  // olarak `createSupabaseApi`'ye verildiği için `api.settings()` da yeni adresi görür.
+  const envFile = findEnvFile(process.argv[1], process.cwd());
+  const persist = (updates: Record<string, string>): void => {
+    if (!envFile) return;
+    try {
+      updateEnvFile(envFile, updates);
+    } catch (e) {
+      log.warn('.env güncellenemedi', { envFile, e: e instanceof Error ? e.message : String(e) });
+    }
+  };
+  const rediscovery = new PrinterRediscovery({
+    log,
+    knownMac: cfg.PRINTER_MAC ?? null,
+    onMacLearned: (mac) => {
+      cfg.PRINTER_MAC = mac;
+      persist({ PRINTER_MAC: mac });
+    },
+  });
+  const onHostChanged = (host: string): void => {
+    cfg.PRINTER_HOST = host;
+    persist({ PRINTER_HOST: host });
+  };
+  // USB yazıcının ağ adresi yoktur: ağda yeniden arama yalnız ağ yazıcısında.
+  const extras: AgentExtras = cfg.PRINTER_USB ? {} : { rediscovery, onHostChanged };
+  const { api, agent } = await startAgentWithRetry(cfg, log, extras);
   const settings = await api.settings().catch(() => null);
-  log.info('ajan çalışıyor', { host: settings?.host ?? null, port: settings?.port ?? null });
+  log.info('ajan çalışıyor', {
+    host: settings?.host ?? null,
+    port: settings?.port ?? null,
+    hostSource: cfg.PRINTER_USB ? `USB (Windows yazıcısı: ${cfg.PRINTER_USB})` : cfg.PRINTER_HOST ? 'bu PC (.env PRINTER_HOST)' : 'site ayarı',
+  });
 
   const shutdown = createShutdownHandler(agent, log, () => {
     releaseLock();
@@ -202,6 +250,17 @@ async function resolveHostPort(log: Logger): Promise<{ host: string; port: numbe
 const silentLog: Logger = { info: () => {}, warn: () => {}, error: () => {} };
 
 async function cmdStatus(): Promise<void> {
+  // `--host` verilmediyse ve bu PC USB yazıcı kullanıyorsa Windows kuyruğunun durumu gösterilir.
+  if (!arg('host')) {
+    const cfg = loadConfig();
+    if (cfg.PRINTER_USB) {
+      const usb = createUsbPrinter({ exe: usbExePath(cfg), printerName: cfg.PRINTER_USB });
+      const queue = await usb.queueStatus();
+      const state = await usb.status({ host: `usb:${cfg.PRINTER_USB}`, port: 0, codepage: '', codepageNumber: 0, transliterate: false });
+      console.log(JSON.stringify({ usb: queue, state }, null, 2));
+      return;
+    }
+  }
   const { host, port } = await resolveHostPort(silentLog);
   const state = await queryStatus(host, port);
   console.log(JSON.stringify(state, null, 2));
@@ -271,14 +330,30 @@ async function cmdTestPrint(): Promise<void> {
       .single();
     if (error) throw new Error(`settings: ${error.message}`);
 
-    const host = hostArg ?? data.printer_host;
-    const port = portArg ? Number(portArg) : data.printer_port;
-    const payload = testPrintPayload(data);
-    const lines = renderTicket(payload, { transliterate: data.printer_transliterate });
+    const host = hostArg ?? cfg.PRINTER_HOST ?? data.printer_host;
+    const port = portArg ? Number(portArg) : (cfg.PRINTER_PORT ?? data.printer_port);
+    const ascii = cfg.PRINTER_ASCII ?? false;
+    // Fişteki "Transliteration: an/aus" satırı sade harf modunu da yansıtsın.
+    const payload = testPrintPayload({ ...data, printer_transliterate: data.printer_transliterate || ascii });
+    const lines = renderTicketForPrinter(payload, { transliterate: data.printer_transliterate, ascii });
     const bytes = encodeLines(lines, { codepage: data.printer_codepage, codepageNumber: data.printer_codepage_number });
 
-    console.log(`Test baskısı gönderiliyor: ${host}:${port}`);
-    const result = await printWithChecks(host, port, bytes);
+    let result: unknown;
+    if (cfg.PRINTER_USB && !hostArg) {
+      console.log(`Test baskısı gönderiliyor: USB (Windows yazıcısı: ${cfg.PRINTER_USB})${ascii ? ' (sade harf)' : ''}`);
+      const usb = createUsbPrinter({ exe: usbExePath(cfg), printerName: cfg.PRINTER_USB });
+      const usbSettings = {
+        host: `usb:${cfg.PRINTER_USB}`,
+        port: 0,
+        codepage: data.printer_codepage,
+        codepageNumber: data.printer_codepage_number,
+        transliterate: data.printer_transliterate,
+      };
+      result = await usb.print(usbSettings, bytes);
+    } else {
+      console.log(`Test baskısı gönderiliyor: ${host}:${port}${ascii ? ' (sade harf)' : ''}`);
+      result = await printWithChecks(host, port, bytes);
+    }
     console.log(JSON.stringify(result, null, 2));
   } finally {
     await sb.auth.signOut();
@@ -306,7 +381,7 @@ async function cmdDryRun(): Promise<void> {
 
     for (const row of data ?? []) {
       console.log(`--- ${row.id} · ${row.type} · ${row.status} · ${row.created_at} ---`);
-      console.log(linesToText(renderTicket(row.payload as unknown as TicketPayload, { transliterate: settingsRow.printer_transliterate })));
+      console.log(linesToText(renderTicketForPrinter(row.payload as unknown as TicketPayload, { transliterate: settingsRow.printer_transliterate, ascii: cfg.PRINTER_ASCII ?? false })));
       console.log('');
     }
     if (!data || data.length === 0) console.log('Kuyrukta iş yok.');
@@ -369,6 +444,100 @@ async function cmdFakePrinter(): Promise<void> {
   process.on('SIGTERM', shutdown);
 }
 
+// ---------- find-printer (kurulum sihirbazı) ----------
+
+// `Kurulum.cmd` bunu `--json` ile çağırır: bu PC'nin yerel ağlarını tarar, TCP 9100'ü açık ve
+// durum sorusuna ESC/POS biçiminde cevap veren cihazları listeler. Giriş/.env gerektirmez.
+// `--extra 192.168.1.250,...` önce denenecek adresleri ekler (ör. önceki kurulumun adresi).
+async function cmdFindPrinter(): Promise<void> {
+  const networks = localNetworks();
+  const extraHosts = (arg('extra') ?? '').split(',').map((h) => h.trim()).filter(Boolean);
+  const printers = await discoverPrinters({ networks, extraHosts });
+  const result = {
+    networks,
+    printers: printers.map((p) => ({ host: p.host, port: p.port, escpos: p.escpos, raw: p.state.raw })),
+  };
+  if (rest.includes('--json')) {
+    console.log(JSON.stringify(result));
+    return;
+  }
+  console.log(`Taranan ağlar: ${networks.map((n) => `${n.name} ${n.address}/${n.prefix}`).join(', ') || '(yok)'}`);
+  if (printers.length === 0) console.log('Port 9100 açık cihaz bulunamadı.');
+  for (const p of result.printers) {
+    console.log(`${p.host}:${p.port} · ${p.escpos ? 'fiş yazıcısı (ESC/POS)' : 'port açık ama ESC/POS cevabı yok'} · durum ${p.raw || '-'}`);
+  }
+}
+
+// ---------- probe / probe-print (kurulum sihirbazı) ----------
+
+// Tek bir adresi yoklar (giriş gerektirmez): port açık mı, durum sorusuna ESC/POS cevabı veriyor mu.
+// Durum sorusuna cevap vermeyen yazıcılar (bazı Star / ucuz modeller) `open: true, escpos: false`
+// döner — sihirbaz onları `probe-print` ile deneme fişi basıp kullanıcıya sorarak doğrular.
+async function cmdProbe(): Promise<void> {
+  const host = arg('host');
+  if (!host) throw new Error('Kullanım: probe --host <ip> [--port 9100]');
+  const port = Number(arg('port') ?? DEFAULT_PRINTER_PORT);
+  const open = await probePort(host, port, 1500);
+  const state = open ? await queryStatus(host, port, { connectMs: 1500, replyMs: 1200 }).catch(() => null) : null;
+  console.log(JSON.stringify({ host, port, open, escpos: state ? looksLikeEscPos(state) : false, raw: state?.raw ?? '' }));
+}
+
+/** Deneme fişinin satırları — yalnız ASCII: hangi karakter tablosu seçili olursa olsun okunur. */
+function probeTicketLines(host: string): Line[] {
+  return [
+    { kind: 'text', text: "RAMO'S KURULUM / SETUP", align: 'center', bold: true },
+    { kind: 'rule' },
+    { kind: 'text', text: 'Bu fis cikiyorsa yazici bulundu.' },
+    { kind: 'text', text: 'Drucker gefunden.' },
+    { kind: 'text', text: `Adres / Adresse: ${host}` },
+    { kind: 'text', text: 'Kurulum ekraninda E ile onaylayin.' },
+    { kind: 'text', text: 'Im Setup mit E bestaetigen.' },
+    { kind: 'feed', lines: 3 },
+  ];
+}
+
+// Durum sorusu sormadan kısa bir deneme fişi gönderir (tablo 0 / cp437, yalnız ASCII metin).
+async function cmdProbePrint(): Promise<void> {
+  const host = arg('host');
+  if (!host) throw new Error('Kullanım: probe-print --host <ip> [--port 9100]');
+  const port = Number(arg('port') ?? DEFAULT_PRINTER_PORT);
+  const bytes = encodeLines(probeTicketLines(host), { codepage: 'cp437', codepageNumber: 0 });
+  await sendBytes(host, port, bytes);
+  console.log(JSON.stringify({ host, port, sent: bytes.length }));
+}
+
+// ---------- site-status (kurulum sihirbazı) ----------
+
+// Ajan hesabıyla giriş yapılabildiğini doğrular ve sitenin gördüğü son ajanı döner — sihirbaz
+// bununla "başka bir bilgisayarda çalışan ajan var mı" uyarısını ve kurulum sonrası
+// "bu PC siteye bağlandı mı" kontrolünü yapar.
+async function cmdSiteStatus(): Promise<void> {
+  const cfg = loadConfig();
+  const sb = createClient<Database>(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+  const { error: signInError } = await sb.auth.signInWithPassword({ email: cfg.AGENT_EMAIL, password: cfg.AGENT_PASSWORD });
+  if (signInError) throw new Error(`Ajan girişi başarısız: ${signInError.message}`);
+  try {
+    const [{ data: st, error: stError }, { data: set, error: setError }] = await Promise.all([
+      sb.from('printer_status').select('agent_id, host, last_seen_at, printer_reachable').eq('id', 'main').maybeSingle(),
+      sb.from('settings').select('printer_host, printer_port').eq('id', 1).single(),
+    ]);
+    if (stError) throw new Error(`printer_status: ${stError.message}`);
+    if (setError) throw new Error(`settings: ${setError.message}`);
+    const secondsAgo = st?.last_seen_at ? Math.round((Date.now() - Date.parse(st.last_seen_at)) / 1000) : null;
+    console.log(
+      JSON.stringify({
+        thisComputer: os.hostname(),
+        lastAgent: st ? { ...st, seconds_ago: secondsAgo } : null,
+        sitePrinterHost: set.printer_host,
+        sitePrinterPort: set.printer_port,
+        localPrinterHost: cfg.PRINTER_HOST ?? null,
+      }),
+    );
+  } finally {
+    await sb.auth.signOut();
+  }
+}
+
 // ---------- dispatch ----------
 
 async function main(): Promise<void> {
@@ -388,8 +557,20 @@ async function main(): Promise<void> {
     case 'fake-printer':
       await cmdFakePrinter();
       break;
+    case 'find-printer':
+      await cmdFindPrinter();
+      break;
+    case 'site-status':
+      await cmdSiteStatus();
+      break;
+    case 'probe':
+      await cmdProbe();
+      break;
+    case 'probe-print':
+      await cmdProbePrint();
+      break;
     default:
-      console.error(`Bilinmeyen komut: ${cmd}. Kullanım: run | status | test-print | dry-run | fake-printer`);
+      console.error(`Bilinmeyen komut: ${cmd}. Kullanım: run | status | test-print | dry-run | fake-printer | find-printer | site-status | probe | probe-print`);
       process.exit(1);
   }
 }
