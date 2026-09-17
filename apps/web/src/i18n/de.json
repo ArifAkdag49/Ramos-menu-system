@@ -184,6 +184,16 @@
   },
   "kitchen": {
     "title": "Küche",
+    "station": {
+      "label": "Druckstation",
+      "on": "An",
+      "onLastPrint": "An · letzter Druck {{time}}",
+      "unreachable": "Drucker nicht erreichbar",
+      "off": "Aus",
+      "noPrinter": "Keine Druckeradresse — Admin → Einstellungen → Druckerverbindung",
+      "lastError": "Letzter Fehler: {{error}}",
+      "hint": "Bildschirm anlassen, App nicht schließen — im Hintergrund wird nicht gedruckt."
+    },
     "start": {
       "title": "Küchenbildschirm starten",
       "hint": "Für Ton und Bildschirm-Sperre antippen",
@@ -604,11 +614,15 @@
         "agentHint": "Das Programm auf dem Restaurant-PC schickt die Bons an den Drucker",
         "epson": "Epson Server Direct Print",
         "epsonHint": "Ein Epson-Drucker mit Internet (z. B. TM-m30III) holt die Bons ohne PC direkt vom Server",
+        "station": "Tablet-Druckstation",
+        "stationHint": "Ein Tablet im Restaurant (Ramo's-Android-App) druckt die Bons selbst auf dem Drucker im selben WLAN — ohne PC",
+        "stationNote": "Die neue Ramo's-Android-App (v2) ist nötig. Tablet und Drucker müssen im selben WLAN sein; in der Küchenansicht den Schalter „Druckstation“ einschalten. Druckeradresse, Port und Zeichentabelle kommen aus dem Abschnitt Druckerverbindung unten. Ist die App geschlossen oder im Hintergrund, wird nicht gedruckt.",
         "apply": "Druckweg übernehmen",
         "applied": "Druckweg geändert",
         "applyError": "Druckweg nicht gespeichert — erneut versuchen",
         "pendingChange": "Bis zur Übernahme wird über den bisherigen Weg gedruckt",
         "agentIdleNote": "Das PC-Programm darf weiterlaufen, druckt auf diesem Weg aber keine Bons.",
+        "stationIdleNote": "Auf diesem Weg druckt nur die Tablet-Station: PC-Programm und Epson Server Direct Print bekommen keine Aufträge.",
         "noActivePrinter": "Kein aktiver Epson-Drucker — unten einen Drucker hinzufügen, sonst wird nichts gedruckt",
         "printers": "Epson-Drucker",
         "empty": "Noch kein Epson-Drucker hinzugefügt",
@@ -906,12 +920,14 @@
         "enabled": "An — du wirst benachrichtigt, sobald eine Bestellung fertig ist",
         "disabled": "Aus — keine Benachrichtigung bei fertigen Bestellungen",
         "denied": "Berechtigung verweigert",
-        "unsupported": "Auf diesem Gerät nicht verfügbar"
+        "unsupported": "Auf diesem Gerät nicht verfügbar",
+        "error": "Benachrichtigungen sind in dieser Version aus"
       },
       "hint": {
         "ios_needs_install": "Auf dem iPhone funktionieren Benachrichtigungen nur in der App auf dem Home-Bildschirm: Safari → Teilen → Zum Home-Bildschirm, dann Ramo's von dort öffnen.",
         "denied": "Benachrichtigungen sind blockiert. Erlaube sie in den Handy-Einstellungen für Ramo's (oder deinen Browser) und komm dann hierher zurück.",
-        "unsupported": "Dieser Browser unterstützt keine Benachrichtigungen — nutze auf Android Chrome oder die Ramo's-App."
+        "unsupported": "Dieser Browser unterstützt keine Benachrichtigungen — nutze auf Android Chrome oder die Ramo's-App.",
+        "error": "Diese App-Version kann keine Benachrichtigungen empfangen. Du kannst normal weiterarbeiten; nach dem Update hier wieder einschalten."
       },
       "result": {
         "enabled": "Benachrichtigungen eingeschaltet",
@@ -920,7 +936,8 @@
         "denied": "Berechtigung verweigert — erlaube Benachrichtigungen in den Handy-Einstellungen",
         "ios_needs_install": "Füge Ramo's zuerst zum Home-Bildschirm hinzu und schalte Benachrichtigungen dann in der App ein",
         "unsupported": "Dieser Browser unterstützt keine Benachrichtigungen",
-        "error": "Benachrichtigungen konnten nicht eingeschaltet werden — Verbindung prüfen und nochmal versuchen"
+        "error": "Benachrichtigungen konnten nicht eingeschaltet werden — Verbindung prüfen und nochmal versuchen",
+        "unavailable": "Benachrichtigungen sind in dieser Version aus"
       }
     }
   },
@@ -976,6 +993,8 @@
     "job_not_printing": "Dieser Druck läuft nicht mehr — Liste aktualisieren",
     "extra_charge_invalid": "Aufpreis ungültig: Text 1–40 Zeichen, Betrag 0,01–50,00 €, höchstens 5 pro Artikel",
     "printer_name_invalid": "Druckername muss 1–60 Zeichen lang sein",
-    "sdp_printer_not_found": "Drucker nicht gefunden — Liste aktualisieren"
+    "sdp_printer_not_found": "Drucker nicht gefunden — Liste aktualisieren",
+    "station_id_invalid": "Kennung der Druckstation ungültig — App neu öffnen",
+    "fcm_token_invalid": "Benachrichtigungs-Registrierung ungültig — Benachrichtigungen aus- und wieder einschalten"
   }
 }

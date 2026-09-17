@@ -1,5 +1,5 @@
 // epson-sdp Edge Function'ı için ön-derleme: supabase/functions/epson-sdp/render.ts → render.bundle.js.
-// render.ts depo modüllerini (packages/shared ticket.ts, apps/print-agent escpos.ts) ve npm paketlerini
+// render.ts depo modüllerini (packages/shared ticket.ts + escpos.ts) ve npm paketlerini
 // (@point-of-sale/*) kullanır; Supabase'e yalnız fonksiyon klasörü yüklendiği için bunlar tek bir ESM
 // dosyasına gömülür. Çıktı .gitignore'dadır — deploy-function.mjs yayından hemen önce bu betiği çalıştırır.
 // Elle: node scripts/build-epson-sdp.mjs

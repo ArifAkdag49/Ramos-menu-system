@@ -54,6 +54,11 @@ describe('Realtime broadcast', () => {
     await waitFor(() => events.some((e) => JSON.stringify(e).includes('"table":"products"')), 15_000);
   });
 
+  it('mutfak (tablet yazıcı istasyonu) print-jobs konusuna abone olabilir, garson olamaz', async () => {
+    expect(await subscribe(kitchen, 'print-jobs', [])).toBe('SUBSCRIBED');
+    expect(await subscribe(waiter, 'print-jobs', [])).toBe('CHANNEL_ERROR');
+  });
+
   it('printer orders konusuna abone olamaz', async () => {
     expect(await subscribe(printer, 'orders', [])).toBe('CHANNEL_ERROR');
   });

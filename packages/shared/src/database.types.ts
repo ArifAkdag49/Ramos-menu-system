@@ -729,32 +729,35 @@ export type Database = {
       }
       push_subscriptions: {
         Row: {
-          auth: string
+          auth: string | null
           created_at: string
           endpoint: string
           id: string
+          kind: string
           last_success_at: string | null
-          p256dh: string
+          p256dh: string | null
           user_agent: string | null
           user_id: string
         }
         Insert: {
-          auth: string
+          auth?: string | null
           created_at?: string
           endpoint: string
           id?: string
+          kind?: string
           last_success_at?: string | null
-          p256dh: string
+          p256dh?: string | null
           user_agent?: string | null
           user_id: string
         }
         Update: {
-          auth?: string
+          auth?: string | null
           created_at?: string
           endpoint?: string
           id?: string
+          kind?: string
           last_success_at?: string | null
-          p256dh?: string
+          p256dh?: string | null
           user_agent?: string | null
           user_id?: string
         }
@@ -1000,6 +1003,10 @@ export type Database = {
       reprint_order: { Args: { p_order_id: string }; Returns: undefined }
       retry_print_job: { Args: { p_job_id: string }; Returns: undefined }
       rotate_sdp_printer_token: { Args: { p_id: string }; Returns: Json }
+      save_fcm_token: {
+        Args: { p_token: string; p_ua: string }
+        Returns: undefined
+      }
       save_push_subscription: {
         Args: {
           p_auth: string
@@ -1036,6 +1043,51 @@ export type Database = {
           id: string
           role: Database["public"]["Enums"]["staff_role"]
         }[]
+      }
+      station_claim_print_job: {
+        Args: { p_station_id: string }
+        Returns: {
+          attempts: number
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          order_id: string | null
+          payload: Json
+          printed_at: string | null
+          session_id: string | null
+          status: Database["public"]["Enums"]["print_job_status"]
+          type: Database["public"]["Enums"]["print_job_type"]
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "print_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      station_complete_print_job: {
+        Args: {
+          p_error?: string
+          p_job_id: string
+          p_ok: boolean
+          p_station_id?: string
+        }
+        Returns: undefined
+      }
+      station_heartbeat: {
+        Args: {
+          p_error: string
+          p_host: string
+          p_reachable: boolean
+          p_state: Json
+          p_station_id: string
+          p_version: string
+        }
+        Returns: undefined
       }
       submit_order: {
         Args: {

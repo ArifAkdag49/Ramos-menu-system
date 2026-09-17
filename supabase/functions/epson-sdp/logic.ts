@@ -84,7 +84,7 @@ export function printJobIdToJobId(printJobId: string): string | null {
  * Kod sayfası: ADI ayarlardan gelir, `ESC t` NUMARASI Epson tablosundan. Ayarlardaki numara Xprinter
  * için olabilir (cp857=61, windows1254=91) ve Epson'da başka bir tabloyu seçer. Bilinmeyen ad →
  * Epson TM-m30III varsayılanı WPC1254 (48): Türkçe + Almanca harfler ve € tek tabloda.
- * Numaralar apps/print-agent/src/escpos.ts CODEPAGE_TABLE ile aynı (Epson sütunu).
+ * Numaralar packages/shared/src/escpos.ts CODEPAGE_TABLE ile aynı (Epson sütunu).
  */
 const EPSON_CODEPAGE_NUMBER: Record<string, number> = {
   cp437: 0,

@@ -29,6 +29,9 @@ export default defineConfig({
           '**/montserrat-vietnamese*',
           // Marka kaynak görseli (ikonlar ondan üretildi); hiçbir ekran bunu yüklemez.
           'brand/**',
+          // Tablet yazıcı istasyonu (fiş kodlayıcı, ~120 kB): yalnız yerel uygulamada, istasyon açılınca
+          // ağdan yüklenir — garson/admin cihazları önbelleğe indirmesin.
+          '**/stationBoot-*.js',
         ],
       },
       manifest: {
@@ -55,6 +58,18 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rolldownOptions: {
+      // Fiş kodlayıcı (`@point-of-sale/*`, `@ramos/shared` escpos) yalnız yerel uygulamadaki tablet
+      // yazıcı istasyonunda gerekir ve `features/station/stationBoot` ile tembel yüklenir. Bu paketler
+      // `sideEffects` bildirmediği için paylaşılan barrel (`@ramos/shared`) üzerinden ana pakete
+      // sızıyordu; yan etkisiz sayılınca kullanılmayan kod ana paketten atılır, istasyon parçasına gider.
+      treeshake: {
+        moduleSideEffects: (id: string) =>
+          !/\/@point-of-sale\/|\/packages\/shared\/src\/escpos\.ts$/.test(id.replace(/\\/g, '/')),
+      },
+    },
+  },
   server: { port: 5173, host: true },
   test: {
     environment: 'jsdom',

@@ -9,7 +9,7 @@ import { useEnablePush } from './useEnablePush';
 
 /**
  * Profil → Bildirimler: durum + aç/kapat. Açılamıyorsa neden ve ne yapılacağı yazılır
- * (iPhone'da ana ekrana ekleme, reddedilmiş izin, desteksiz tarayıcı).
+ * (iPhone'da ana ekrana ekleme, reddedilmiş izin, desteksiz tarayıcı, yerel uygulamada kayıt hatası).
  */
 export function NotificationsSection() {
   const { t } = useTranslation();
@@ -24,6 +24,8 @@ export function NotificationsSection() {
 
   let hint: string | null = null;
   if (state === 'denied') hint = t('pwa.push.hint.denied');
+  // Yalnız yerel uygulama: bildirim kaydı yapılamadı (ör. Firebase'siz derleme) — sakin açıklama.
+  else if (state === 'error') hint = t('pwa.push.hint.error');
   else if (state === 'unsupported')
     hint = t(
       platform.isIOS && !platform.standalone

@@ -1,4 +1,11 @@
 import { callRpc } from '../lib/rpc';
+import { isNative } from '../native/capacitor';
+import {
+  disableNativePush,
+  enableNativePush,
+  nativePushState,
+  syncNativePush,
+} from '../native/nativePush';
 import { detectPlatform } from './platform';
 
 /**
@@ -10,6 +17,8 @@ import { detectPlatform } from './platform';
  * - İzin yalnız **kullanıcı dokunuşunun içinden** istenir: `enablePush()` bir düğmenin `onClick`'inde,
  *   önünde başka bir `await` olmadan çağrılmalı. Uygulama açılışında asla kendiliğinden sorulmaz.
  * - Android uygulaması (TWA) siteyi Chrome ile açar; push orada da bu yoldan çalışır.
+ * - Yerel Android uygulaması (Capacitor, `isNative()`): WebView'da Web Push yok → her giriş noktası
+ *   FCM yoluna (`native/nativePush.ts`) geçer. Tarayıcı/PWA davranışı değişmez.
  */
 
 export interface PushEnv {
@@ -21,13 +30,18 @@ export interface PushEnv {
 }
 
 export type PushSupport = 'ok' | 'ios_needs_install' | 'unsupported';
-export type PushState = 'enabled' | 'disabled' | 'denied' | 'unsupported';
+/** `error`: yalnız yerel uygulamada — bildirim kaydı başarısız (ör. Firebase'siz derleme). */
+export type PushState = 'enabled' | 'disabled' | 'denied' | 'unsupported' | 'error';
 export type EnablePushResult =
   | { ok: true }
   | {
       ok: false;
-      /** `dismissed`: izin penceresi karar verilmeden kapatıldı — tekrar sorulabilir. */
-      reason: 'unsupported' | 'ios_needs_install' | 'denied' | 'dismissed' | 'error';
+      /**
+       * `dismissed`: izin penceresi karar verilmeden kapatıldı — tekrar sorulabilir.
+       * `unavailable`: yerel uygulamada bildirim kaydı yapılamadı (bu sürümde bildirimler kapalı).
+       */
+      reason:
+        'unsupported' | 'ios_needs_install' | 'denied' | 'dismissed' | 'unavailable' | 'error';
       detail?: string;
     };
 
@@ -102,6 +116,7 @@ async function saveSubscription(sub: PushSubscription): Promise<void> {
 
 /** Yalnız kullanıcı dokunuşundan çağır (bkz. dosya başı). */
 export async function enablePush(): Promise<EnablePushResult> {
+  if (isNative()) return enableNativePush();
   const support = pushSupport(detectPushEnv());
   if (support !== 'ok') return { ok: false, reason: support };
 
@@ -134,6 +149,7 @@ export async function enablePush(): Promise<EnablePushResult> {
 }
 
 export async function disablePush(): Promise<void> {
+  if (isNative()) return disableNativePush();
   const sub = await currentSubscription();
   if (!sub) return;
   try {
@@ -146,6 +162,7 @@ export async function disablePush(): Promise<void> {
 }
 
 export async function pushState(): Promise<PushState> {
+  if (isNative()) return nativePushState();
   if (pushSupport(detectPushEnv()) !== 'ok') return 'unsupported';
   if (Notification.permission === 'denied') return 'denied';
   if (Notification.permission !== 'granted') return 'disabled';
@@ -162,6 +179,7 @@ export async function pushState(): Promise<PushState> {
  * (`save_push_subscription` uç noktada upsert yapar) ve tarayıcının yenilediği abonelik kaybolmaz.
  */
 export async function syncPushSubscription(): Promise<void> {
+  if (isNative()) return syncNativePush();
   try {
     if ((await pushState()) !== 'enabled') return;
     const sub = await currentSubscription();

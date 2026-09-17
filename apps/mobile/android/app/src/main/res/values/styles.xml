@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Temel tema: koyu, durum/gezinme çubukları #0A0A0A, açık renkli çubuk ikonları. -->
+    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/ramos_bg</item>
+        <item name="android:statusBarColor">@color/ramos_bg</item>
+        <item name="android:navigationBarColor">@color/ramos_bg</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+
+    <!-- BridgeActivity açılışta bu temaya geçer (Capacitor kütüphanesindeki aynı adlı temayı ezer). -->
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <item name="android:windowBackground">@color/ramos_bg</item>
+        <item name="android:statusBarColor">@color/ramos_bg</item>
+        <item name="android:navigationBarColor">@color/ramos_bg</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+    </style>
+
+    <!-- Açılış (Android 12+ SplashScreen API: koyu zemin + uygulama ikonu; eski sürümlerde splash.png). -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/ramos_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="android:statusBarColor">@color/ramos_bg</item>
+        <item name="android:navigationBarColor">@color/ramos_bg</item>
+    </style>
+</resources>

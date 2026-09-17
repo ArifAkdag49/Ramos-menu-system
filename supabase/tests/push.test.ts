@@ -7,7 +7,7 @@ import { anonClient, clientFor, ensureTestUsers, serviceClient } from './helpers
 // "Hazır" push hattı (Görev 26): ready_push_targets → notify-ready Edge Function → pg_net trigger.
 // Sahte abonelikler yalnız test kullanıcılarına bağlanır ve koşu sonunda silinir.
 
-type Target = { id: string; endpoint: string; p256dh: string; auth: string; locale: string };
+type Target = { id: string; kind: 'webpush' | 'fcm'; endpoint: string; p256dh: string | null; auth: string | null; locale: string };
 type Targets = {
   order: { id: string; order_no: number; table: string; items: { qty: number; code: string | null; name: string }[] } | null;
   targets: Target[];
@@ -116,10 +116,50 @@ describe('ready push hattı', () => {
       expect(r.order).toBeNull();
       const mine = r.targets.filter((t) => t.endpoint.startsWith(FAKE));
       expect(mine.map((t) => t.endpoint).sort()).toEqual([`${FAKE}admin`, `${FAKE}waiter`]);
-      expect(mine.find((t) => t.endpoint === `${FAKE}admin`)).toMatchObject({ p256dh: 'k', auth: 'a', locale: 'de' });
+      expect(mine.find((t) => t.endpoint === `${FAKE}admin`))
+        .toMatchObject({ kind: 'webpush', p256dh: 'k', auth: 'a', locale: 'de' });
     } finally {
       await sql(`update public.profiles set locale = 'tr' where id = '${ids.admin}'`);
     }
+  });
+
+  it('save_fcm_token: FCM jetonu kind=fcm kaydedilir, cihaz el değiştirince yeniden atanır, silinebilir (0013)', async () => {
+    const token = `${FAKE}fcm-${crypto.randomUUID()}`;
+    expect((await waiter.rpc('save_fcm_token', { p_token: token, p_ua: 'Ramos Android' })).error).toBeNull();
+    const row = async () => (await sql<{ user_id: string; kind: string; p256dh: string | null; auth: string | null; user_agent: string }>(
+      `select user_id, kind, p256dh, auth, user_agent from public.push_subscriptions where endpoint = '${token}'`))[0];
+    expect(await row()).toEqual({ user_id: ids.waiter, kind: 'fcm', p256dh: null, auth: null, user_agent: 'Ramos Android' });
+
+    // Aynı tablette mutfak hesabıyla giriş: jeton ona geçer (tekrar kayıt çakışmaz).
+    expect((await kitchen.rpc('save_fcm_token', { p_token: token, p_ua: 'Ramos Android 2' })).error).toBeNull();
+    expect(await row()).toMatchObject({ user_id: ids.kitchen, kind: 'fcm' });
+
+    for (const bad of ['', '   ']) {
+      expect((await waiter.rpc('save_fcm_token', { p_token: bad, p_ua: null })).error?.message).toBe('fcm_token_invalid');
+    }
+    const printer = await clientFor('printer');
+    expect((await printer.rpc('save_fcm_token', { p_token: `${FAKE}fcm-x`, p_ua: null })).error?.message)
+      .toBe('not_authorized');
+
+    // Web Push aboneliği anahtarsız olamaz; FCM satırı olabilir.
+    await expect(sql(`insert into public.push_subscriptions (user_id, endpoint) values ('${ids.waiter}', '${FAKE}nokeys')`))
+      .rejects.toThrow(/push_subscriptions_webpush_keys_check/);
+    await expect(sql(`insert into public.push_subscriptions (user_id, endpoint, kind) values ('${ids.waiter}', '${FAKE}k', 'apns')`))
+      .rejects.toThrow(/push_subscriptions_kind_check/);
+
+    expect((await kitchen.rpc('delete_push_subscription', { p_endpoint: token })).error).toBeNull();
+    expect(await row()).toBeUndefined();
+  });
+
+  it('ready_push_targets FCM hedeflerini kind=fcm ile döner (anahtarlar null)', async () => {
+    const token = `${FAKE}fcm-target-${crypto.randomUUID()}`;
+    await sql(`update public.profiles set on_duty_since = now() where id = '${ids.waiter}'`);
+    expect((await waiter.rpc('save_fcm_token', { p_token: token, p_ua: 'Ramos Android' })).error).toBeNull();
+    const { data, error } = await serviceClient().rpc('ready_push_targets', { p_order_id: crypto.randomUUID() });
+    expect(error).toBeNull();
+    await sql(`delete from public.push_subscriptions where endpoint = '${token}'`);
+    expect((data as Targets).targets.find((t) => t.endpoint === token))
+      .toMatchObject({ kind: 'fcm', p256dh: null, auth: null, locale: expect.any(String) });
   });
 
   it('sipariş bilgisi: masa, numara, yalnız aktif kalemler (içecekler sonda)', async () => {

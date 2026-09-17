@@ -62,7 +62,7 @@ afterAll(async () => {
 });
 
 async function setRoute(route: string) {
-  await sql(`update public.settings set print_route = '${route === 'epson_sdp' ? 'epson_sdp' : 'agent'}' where id = 1`);
+  await sql(`update public.settings set print_route = '${['epson_sdp', 'station'].includes(route) ? route : 'agent'}' where id = 1`);
 }
 
 async function createPrinter(name: string) {

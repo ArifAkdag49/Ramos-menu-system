@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { AlertTriangle, Check, Copy, KeyRound, Plus, Power, Printer } from 'lucide-react';
+import { AlertTriangle, Check, Copy, KeyRound, Plus, Power, Printer, Tablet } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -20,7 +20,15 @@ import { Button } from '../../../ui/Button';
 import type { Tone } from '../../../ui/tone';
 import { agoParts, type AgoUnit } from '../dashboardLogic';
 import { FIELD, Section } from '../menu/fields';
-import { sdpConnection, sdpPrinterUrl, type PrintRoute } from './printRoute';
+import {
+  idleNoteKey,
+  PRINT_ROUTES,
+  ROUTE_TEXT,
+  sdpConnection,
+  sdpPrinterUrl,
+  toPrintRoute,
+  type PrintRoute,
+} from './printRoute';
 
 const AGO_KEY = {
   now: 'admin.ago.now',
@@ -39,8 +47,9 @@ const GUIDE_STEPS = ['step1', 'step2', 'step3', 'step4', 'step5', 'step6'] as co
 const NAME_MAX = 60;
 
 /**
- * Ayarlar > Baskı yolu. Fişi kim basar: restorandaki bilgisayar programı (yazdırma ajanı) ya da
- * internete bağlı Epson yazıcının kendisi (Server Direct Print, `supabase/functions/epson-sdp`).
+ * Ayarlar > Baskı yolu. Fişi kim basar: restorandaki bilgisayar programı (yazdırma ajanı), internete
+ * bağlı Epson yazıcının kendisi (Server Direct Print, `supabase/functions/epson-sdp`) ya da yerel
+ * Android uygulamasındaki tablet yazıcı istasyonu (`features/station`).
  *
  * Sayfanın "Kaydet" çubuğundan bağımsızdır: yol seçimi kendi "Uygula" düğmesiyle, yazıcı işlemleri
  * RPC'lerle hemen yazılır. Yazıcı adresi (anahtar içerir) yalnız oluşturma/yenileme yanıtında bilinir
@@ -62,12 +71,13 @@ export function PrintRouteSection({
   const nameId = useId();
   const listId = useId();
 
-  const saved = (row?.print_route ?? 'agent') as PrintRoute;
+  const saved = toPrintRoute(row?.print_route);
   const [choice, setChoice] = useState<PrintRoute | null>(null);
   const selected = choice ?? saved;
   const [name, setName] = useState('');
   const [secret, setSecret] = useState<(SdpPrinterSecret & { name: string }) | null>(null);
 
+  const idleNote = idleNoteKey(saved);
   const list = printers.data ?? [];
   const hasActive = list.some((p) => p.is_active);
   const now = new Date();
@@ -97,7 +107,10 @@ export function PrintRouteSection({
 
   const rotateToken = (p: SdpPrinter) => {
     if (!window.confirm(t('admin.settings.printRoute.confirmRotate', { name: p.name }))) return;
-    rotate.mutate(p.id, { onSuccess: (s) => setSecret({ ...s, name: p.name }), onError: errorToast });
+    rotate.mutate(p.id, {
+      onSuccess: (s) => setSecret({ ...s, name: p.name }),
+      onError: errorToast,
+    });
   };
 
   const closeSecret = () => {
@@ -129,7 +142,7 @@ export function PrintRouteSection({
         <legend className="mb-1 text-xs font-medium text-muted">
           {t('admin.settings.printRoute.routeLabel')}
         </legend>
-        {(['agent', 'epson_sdp'] as const).map((route) => (
+        {PRINT_ROUTES.map((route) => (
           <label
             key={route}
             className={clsx(
@@ -146,12 +159,8 @@ export function PrintRouteSection({
               className="mt-1 size-5 shrink-0 accent-lime"
             />
             <span className="flex flex-col">
-              <span className="text-sm font-medium">
-                {t(route === 'agent' ? 'admin.settings.printRoute.agent' : 'admin.settings.printRoute.epson')}
-              </span>
-              <span className="text-xs text-muted">
-                {t(route === 'agent' ? 'admin.settings.printRoute.agentHint' : 'admin.settings.printRoute.epsonHint')}
-              </span>
+              <span className="text-sm font-medium">{t(ROUTE_TEXT[route].label)}</span>
+              <span className="text-xs text-muted">{t(ROUTE_TEXT[route].hint)}</span>
             </span>
           </label>
         ))}
@@ -163,7 +172,11 @@ export function PrintRouteSection({
             <AlertTriangle aria-hidden size={18} className="mt-0.5 shrink-0" />
             <span>{t('admin.settings.printRoute.pendingChange')}</span>
           </p>
-          <Button onClick={applyRoute} loading={updateSettings.isPending} icon={<Check aria-hidden size={18} />}>
+          <Button
+            onClick={applyRoute}
+            loading={updateSettings.isPending}
+            icon={<Check aria-hidden size={18} />}
+          >
             {t('admin.settings.printRoute.apply')}
           </Button>
         </div>
@@ -174,9 +187,14 @@ export function PrintRouteSection({
           {t('admin.settings.printRoute.noActivePrinter')}
         </Banner>
       ) : null}
-      {saved === 'epson_sdp' ? (
+      {selected === 'station' ? (
+        <Banner tone="info" icon={<Tablet aria-hidden size={20} />}>
+          {t('admin.settings.printRoute.stationNote')}
+        </Banner>
+      ) : null}
+      {idleNote ? (
         <p role="note" className="text-sm text-muted">
-          {t('admin.settings.printRoute.agentIdleNote')}
+          {t(idleNote)}
         </p>
       ) : null}
 
@@ -205,7 +223,11 @@ export function PrintRouteSection({
                     </p>
                     <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
                       <Badge tone={p.is_active ? 'open' : 'empty'}>
-                        {t(p.is_active ? 'admin.settings.printRoute.active' : 'admin.settings.printRoute.inactive')}
+                        {t(
+                          p.is_active
+                            ? 'admin.settings.printRoute.active'
+                            : 'admin.settings.printRoute.inactive',
+                        )}
                       </Badge>
                       <Badge tone={conn.tone}>{t(conn.key)}</Badge>
                       {parts ? (
@@ -236,10 +258,17 @@ export function PrintRouteSection({
                       icon={<Power aria-hidden size={18} />}
                       disabled={setActive.isPending}
                       onClick={() =>
-                        setActive.mutate({ id: p.id, active: !p.is_active }, { onError: errorToast })
+                        setActive.mutate(
+                          { id: p.id, active: !p.is_active },
+                          { onError: errorToast },
+                        )
                       }
                     >
-                      {t(p.is_active ? 'admin.settings.printRoute.deactivate' : 'admin.settings.printRoute.activate')}
+                      {t(
+                        p.is_active
+                          ? 'admin.settings.printRoute.deactivate'
+                          : 'admin.settings.printRoute.activate',
+                      )}
                     </Button>
                   </div>
                 </li>
@@ -251,7 +280,9 @@ export function PrintRouteSection({
 
       {secret && secretUrl ? (
         <div className="flex flex-col gap-3 rounded-card border border-warning p-3">
-          <p className="text-sm font-semibold">{t('admin.settings.printRoute.secretTitle', { name: secret.name })}</p>
+          <p className="text-sm font-semibold">
+            {t('admin.settings.printRoute.secretTitle', { name: secret.name })}
+          </p>
           <Banner tone="warning" icon={<AlertTriangle aria-hidden size={20} />}>
             {t('admin.settings.printRoute.secretWarning')}
           </Banner>
@@ -259,7 +290,11 @@ export function PrintRouteSection({
             {secretUrl}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" icon={<Copy aria-hidden size={18} />} onClick={() => void copy()}>
+            <Button
+              variant="secondary"
+              icon={<Copy aria-hidden size={18} />}
+              onClick={() => void copy()}
+            >
               {t('admin.settings.printRoute.copy')}
             </Button>
             <Button onClick={closeSecret} icon={<Check aria-hidden size={18} />}>
@@ -303,7 +338,9 @@ export function PrintRouteSection({
       )}
 
       <details className="rounded-control border border-border px-3 py-2">
-        <summary className="cursor-pointer text-sm font-medium">{t('admin.settings.printRoute.guideTitle')}</summary>
+        <summary className="cursor-pointer text-sm font-medium">
+          {t('admin.settings.printRoute.guideTitle')}
+        </summary>
         <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-sm text-muted">
           {GUIDE_STEPS.map((s) => (
             <li key={s}>{t(`admin.settings.printRoute.guide.${s}`)}</li>

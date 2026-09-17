@@ -184,6 +184,16 @@
   },
   "kitchen": {
     "title": "Mutfak",
+    "station": {
+      "label": "Yazıcı istasyonu",
+      "on": "Açık",
+      "onLastPrint": "Açık · son baskı {{time}}",
+      "unreachable": "Yazıcıya ulaşılamıyor",
+      "off": "Kapalı",
+      "noPrinter": "Yazıcı adresi yok — Admin → Ayarlar → Yazıcı bağlantısı",
+      "lastError": "Son hata: {{error}}",
+      "hint": "Ekranı açık tutun, uygulamayı kapatmayın — uygulama arka plandayken fiş basılmaz."
+    },
     "start": {
       "title": "Mutfak ekranını başlat",
       "hint": "Ses ve ekranın açık kalması için dokun",
@@ -604,11 +614,15 @@
         "agentHint": "Restorandaki bilgisayarda çalışan program fişi yazıcıya gönderir",
         "epson": "Epson Server Direct Print",
         "epsonHint": "İnternete bağlı Epson yazıcı (ör. TM-m30III) fişleri bilgisayarsız, doğrudan sunucudan çeker",
+        "station": "Tablet yazıcı istasyonu",
+        "stationHint": "Restorandaki bir tablet (Ramo's Android uygulaması) fişleri aynı Wi-Fi'daki yazıcıya kendisi basar — bilgisayar gerekmez",
+        "stationNote": "Yeni Ramo's Android uygulaması (v2) gerekir. Tablet yazıcıyla aynı Wi-Fi'da olmalı; Mutfak ekranında \"Yazıcı istasyonu\" anahtarını açın. Yazıcı adresi, port ve karakter tablosu aşağıdaki Yazıcı bağlantısı bölümünden alınır. Uygulama kapalıyken ya da arka plandayken fiş basılmaz.",
         "apply": "Baskı yolunu uygula",
         "applied": "Baskı yolu değişti",
         "applyError": "Baskı yolu kaydedilemedi — tekrar deneyin",
         "pendingChange": "Uygulanana kadar fişler eski yoldan basılır",
         "agentIdleNote": "Bilgisayar programı açık kalabilir ama bu yolda fiş basmaz.",
+        "stationIdleNote": "Bu yolda fişleri yalnız tablet istasyonu basar: bilgisayar programı ve Epson Server Direct Print iş almaz.",
         "noActivePrinter": "Etkin Epson yazıcısı yok — aşağıdan yazıcı ekleyin, yoksa fişler basılmaz",
         "printers": "Epson yazıcıları",
         "empty": "Henüz Epson yazıcısı eklenmedi",
@@ -906,12 +920,14 @@
         "enabled": "Açık — sipariş hazır olunca bildirim gelir",
         "disabled": "Kapalı — hazır siparişler için bildirim gelmez",
         "denied": "İzin reddedildi",
-        "unsupported": "Bu cihazda kullanılamıyor"
+        "unsupported": "Bu cihazda kullanılamıyor",
+        "error": "Bildirimler bu sürümde kapalı"
       },
       "hint": {
         "ios_needs_install": "iPhone'da bildirim yalnız ana ekrana eklenen uygulamada çalışır: Safari → Paylaş → Ana Ekrana Ekle, sonra Ramo's'u oradan aç.",
         "denied": "Bildirim izni kapalı. Telefon ayarlarından Ramo's (ya da tarayıcın) için bildirimlere izin ver, sonra buraya dön.",
-        "unsupported": "Bu tarayıcı bildirim desteklemiyor — Android'de Chrome'u ya da Ramo's uygulamasını kullan."
+        "unsupported": "Bu tarayıcı bildirim desteklemiyor — Android'de Chrome'u ya da Ramo's uygulamasını kullan.",
+        "error": "Bu uygulama sürümü bildirim alamıyor. Uygulamayı çalışmaya devam edebilirsin; yeni sürüm yüklenince bildirimleri buradan aç."
       },
       "result": {
         "enabled": "Bildirimler açıldı",
@@ -920,7 +936,8 @@
         "denied": "İzin reddedildi — telefon ayarlarından bildirimlere izin ver",
         "ios_needs_install": "Önce Ramo's'u ana ekrana ekle, sonra uygulamanın içinden bildirimleri aç",
         "unsupported": "Bu tarayıcı bildirim desteklemiyor",
-        "error": "Bildirimler açılamadı — bağlantını kontrol edip tekrar dene"
+        "error": "Bildirimler açılamadı — bağlantını kontrol edip tekrar dene",
+        "unavailable": "Bildirimler bu sürümde kapalı"
       }
     }
   },
@@ -976,6 +993,8 @@
     "job_not_printing": "Bu baskı artık basılmıyor — listeyi tazele",
     "extra_charge_invalid": "Ekstra ücret geçersiz: açıklama 1–40 karakter, tutar 0,01–50,00 €, kalem başına en fazla 5",
     "printer_name_invalid": "Yazıcı adı 1–60 karakter olmalı",
-    "sdp_printer_not_found": "Yazıcı bulunamadı — listeyi tazele"
+    "sdp_printer_not_found": "Yazıcı bulunamadı — listeyi tazele",
+    "station_id_invalid": "Yazıcı istasyonu kimliği geçersiz — uygulamayı yeniden aç",
+    "fcm_token_invalid": "Bildirim kaydı geçersiz — bildirimleri kapatıp yeniden aç"
   }
 }

@@ -60,6 +60,21 @@ describe('anon erişimi (Görev 27)', () => {
     }
   });
 
+  it('0013 fonksiyonları var ve anon için kapalı; internal kuyruk yardımcıları personele de kapalı', async () => {
+    for (const name of ['station_claim_print_job', 'station_complete_print_job', 'station_heartbeat', 'save_fcm_token']) {
+      expect(fns.find((f) => f.proname === name)?.anon_exec, name).toBe(false);
+    }
+    const internal = await sql<{ fn: string; anon: boolean; authenticated: boolean }>(`
+      select p.oid::regprocedure::text as fn,
+             has_function_privilege('anon', p.oid, 'execute') as anon,
+             has_function_privilege('authenticated', p.oid, 'execute') as authenticated
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'internal'
+        and p.proname in ('claim_print_jobs', 'complete_print_job', 'write_printer_heartbeat', 'print_route')`);
+    expect(internal).toHaveLength(4);
+    expect(internal.filter((r) => r.anon || r.authenticated).map((r) => r.fn)).toEqual([]);
+  });
+
   it('public şemadaki hiçbir fonksiyon anon tarafından çağrılamaz (PostgREST)', async () => {
     const failures: string[] = [];
     for (const { proname, in_args } of fns) {

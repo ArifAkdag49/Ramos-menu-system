@@ -15,6 +15,8 @@ export default tseslint.config(
       'docs/**',
       '**/playwright-report/**',
       '**/test-results/**',
+      // Capacitor Android: Gradle derleme çıktısı ve `cap sync`'in kopyaladığı native-bridge.js.
+      'apps/mobile/android/**',
     ],
   },
   js.configs.recommended,

@@ -53,8 +53,13 @@ describe('<PrintRouteSection />', () => {
     useToast.getState().dismiss();
     useAuth.setState({
       profile: {
-        id: 'me', username: 'patron', display_name: 'Patron', role: 'admin', locale: 'tr',
-        is_active: true, on_duty_since: null,
+        id: 'me',
+        username: 'patron',
+        display_name: 'Patron',
+        role: 'admin',
+        locale: 'tr',
+        is_active: true,
+        on_duty_since: null,
       },
     });
   });
@@ -83,7 +88,35 @@ describe('<PrintRouteSection />', () => {
     renderSection();
     expect(screen.getByRole('radio', { name: /Epson Server Direct Print/ })).toBeChecked();
     expect(screen.getByText(/Etkin Epson yazıcısı yok/)).toBeInTheDocument();
-    expect(screen.getByText(/Bilgisayar programı açık kalabilir ama bu yolda fiş basmaz/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Bilgisayar programı açık kalabilir ama bu yolda fiş basmaz/),
+    ).toBeInTheDocument();
+  });
+
+  it('üç yol listelenir; tablet istasyonu seçilince kurulum notu çıkar ve station yazılır', async () => {
+    const user = userEvent.setup();
+    renderSection();
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    expect(screen.queryByText(/Yeni Ramo's Android uygulaması \(v2\) gerekir/)).toBeNull();
+
+    await user.click(screen.getByRole('radio', { name: /Tablet yazıcı istasyonu/ }));
+    expect(screen.getByText(/Yeni Ramo's Android uygulaması \(v2\) gerekir/)).toBeInTheDocument();
+    expect(screen.getByText(/yazıcıyla aynı Wi-Fi'da olmalı/)).toBeInTheDocument();
+    expect(screen.getByText(/Uygulanana kadar fişler eski yoldan basılır/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Baskı yolunu uygula' }));
+    expect(h.updateSettings).toHaveBeenCalledWith(
+      { print_route: 'station', updated_by: 'me' },
+      expect.anything(),
+    );
+  });
+
+  it('kayıtlı yol istasyonsa seçili görünür; ajan ve SDP boşta notu', () => {
+    h.row = { print_route: 'station' } as unknown as SettingsRow;
+    renderSection();
+    expect(screen.getByRole('radio', { name: /Tablet yazıcı istasyonu/ })).toBeChecked();
+    expect(screen.getByText(/yalnız tablet istasyonu basar/)).toBeInTheDocument();
+    expect(screen.queryByText(/Bilgisayar programı açık kalabilir/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Baskı yolunu uygula' })).toBeNull();
   });
 
   it('yazıcı listesi: ad, etkin/pasif, bağlantı durumu, son hata', () => {
@@ -106,7 +139,8 @@ describe('<PrintRouteSection />', () => {
     const writeText = vi.fn(async () => undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     h.create.mockImplementation((_name: string, opts: MutateOpts<{ id: string; token: string }>) =>
-      opts.onSuccess?.({ id: 'p9', token: TOKEN }));
+      opts.onSuccess?.({ id: 'p9', token: TOKEN }),
+    );
     renderSection();
 
     const add = screen.getByRole('button', { name: 'Yazıcı ekle' });
@@ -128,8 +162,12 @@ describe('<PrintRouteSection />', () => {
     const user = userEvent.setup();
     h.printers = [printer()];
     h.rotate.mockImplementation((_id: string, opts: MutateOpts<{ id: string; token: string }>) =>
-      opts.onSuccess?.({ id: 'p1', token: TOKEN }));
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+      opts.onSuccess?.({ id: 'p1', token: TOKEN }),
+    );
+    const confirm = vi
+      .spyOn(window, 'confirm')
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
     renderSection();
 
     await user.click(screen.getByRole('button', { name: 'Anahtarı yenile' }));

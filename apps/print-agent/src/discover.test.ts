@@ -115,11 +115,16 @@ describe('discoverPrinters — gerçek TCP ile', () => {
   });
 
   it('port kapalıysa hiçbir şey bulunmaz', async () => {
-    const server = net.createServer();
-    await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
-    const port = (server.address() as net.AddressInfo).port;
-    await new Promise<void>((r) => server.close(() => r()));
-    const found = await discoverPrinters({ networks: [], extraHosts: ['127.0.0.1'], port, securePort: port + 1, connectMs: 300 });
+    // İki port da gerçekten boş seçilir: `port + 1` paralel koşan başka bir dosyanın sahte yazıcısına denk gelebiliyordu.
+    const closedPort = async () => {
+      const server = net.createServer();
+      await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+      const p = (server.address() as net.AddressInfo).port;
+      await new Promise<void>((r) => server.close(() => r()));
+      return p;
+    };
+    const [port, securePort] = [await closedPort(), await closedPort()];
+    const found = await discoverPrinters({ networks: [], extraHosts: ['127.0.0.1'], port, securePort, connectMs: 300 });
     expect(found).toEqual([]);
   });
 

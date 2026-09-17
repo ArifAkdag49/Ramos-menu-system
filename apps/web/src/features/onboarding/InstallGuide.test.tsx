@@ -77,6 +77,28 @@ describe('<InstallGuide />', () => {
     expect(screen.queryByRole('button', { name: 'Uygulamayı yükle' })).not.toBeInTheDocument();
   });
 
+  it('yerel Android uygulaması (Capacitor) içinde kurulum adımı atlanır; iOS dalı etkilenmez', async () => {
+    (window as Window & { Capacitor?: unknown }).Capacitor = {
+      isNativePlatform: () => true,
+      Plugins: {},
+    };
+    try {
+      render(<InstallGuide />);
+      expect(await screen.findByRole('button', { name: 'Bildirimleri aç' })).toBeInTheDocument();
+      expect(screen.queryByText(/Chrome menüsünden/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Uygulamayı ana ekrana ekle')).not.toBeInTheDocument();
+    } finally {
+      delete (window as Window & { Capacitor?: unknown }).Capacitor;
+    }
+  });
+
+  it('yerel uygulamada bildirim kaydı yapılamadıysa açıklama gösterilir', async () => {
+    setPlatform({ standalone: true });
+    push.pushState.mockResolvedValue('error');
+    render(<InstallGuide />);
+    expect(await screen.findByText(/Bu uygulama sürümü bildirim alamıyor/)).toBeInTheDocument();
+  });
+
   it('bildirim açılınca rehber gizlenir ve bir daha gösterilmez', async () => {
     setPlatform({ standalone: true });
     push.pushState.mockResolvedValueOnce('disabled').mockResolvedValue('enabled');

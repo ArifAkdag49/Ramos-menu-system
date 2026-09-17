@@ -1,15 +1,23 @@
-// notify-ready — sipariş "hazır" olunca mesaideki garson/admin telefonlarına Web Push gönderir.
+// notify-ready — sipariş "hazır" olunca mesaideki garson/admin telefonlarına Web Push (tarayıcı/PWA) ve
+// FCM (yerel Android uygulaması, 0013) bildirimi gönderir.
 // Çağıran: internal.notify_ready() trigger'ı (pg_net). verify_jwt KAPALI; kimlik x-webhook-secret ile doğrulanır.
 // Deno çalışma zamanı; kök ESLint yapılandırması supabase/functions/** klasörünü yoksayar.
 //
 // Kütüphane: jsr:@negrel/webpush — RFC 8291 (aes128gcm) + RFC 8292 (VAPID), yalnız Web Crypto kullanır.
 // Secrets: VAPID_PUBLIC_JWK, VAPID_PRIVATE_JWK, VAPID_SUBJECT, WEBHOOK_SECRET (scripts/setup-push.mjs yazar).
+// FCM_SERVICE_ACCOUNT: Firebase hizmet hesabı JSON'u (tek satır string). Yoksa FCM hedefleri atlanır (log).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import * as webpush from 'jsr:@negrel/webpush@0.5.0';
 import {
+  buildFcmMessage,
   buildNotification,
+  createFcmAccessTokenProvider,
+  fcmOutcome,
+  fcmSendUrl,
   normalizeLocale,
+  parseServiceAccount,
   pushOutcome,
+  splitTargets,
   verifyWebhookSecret,
   type PushTarget,
   type ReadyOrder,
@@ -38,6 +46,30 @@ function loadVapidKeys(): Promise<CryptoKeyPair> {
 
 type Outcome = { id: string; result: 'ok' | 'gone' | 'failed' };
 
+// OAuth erişim jetonu sıcak örnekte önbelleklenir (süresinden 60 sn önce yenilenir).
+const fcmAccessToken = createFcmAccessTokenProvider({ fetch: (url, init) => fetch(url, init), nowMs: () => Date.now() });
+
+async function sendFcm(t: PushTarget, order: ReadyOrder): Promise<Outcome> {
+  const sa = parseServiceAccount(Deno.env.get('FCM_SERVICE_ACCOUNT'))!;
+  try {
+    const accessToken = await fcmAccessToken(sa);
+    const n = buildNotification(order, normalizeLocale(t.locale));
+    const res = await fetch(fcmSendUrl(sa.project_id), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildFcmMessage(t.endpoint, n, order.id)),
+    });
+    const text = await res.text();
+    const result = fcmOutcome(res.status, text);
+    if (result === 'failed') console.warn('fcm_failed', t.id, res.status);
+    return { id: t.id, result };
+  } catch (e) {
+    // Ağ hatası, jeton alınamadı vb.: geçici say, jetonu silme.
+    console.warn('fcm_error', t.id, e instanceof Error ? e.message : String(e));
+    return { id: t.id, result: 'failed' };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
   if (!verifyWebhookSecret(req.headers.get('x-webhook-secret'), Deno.env.get('WEBHOOK_SECRET'))) {
@@ -63,6 +95,10 @@ Deno.serve(async (req) => {
   const { order, targets } = data as { order: ReadyOrder | null; targets: PushTarget[] };
   if (!order || targets.length === 0) return json(200, { sent: 0, removed: 0 });
 
+  const fcmConfigured = parseServiceAccount(Deno.env.get('FCM_SERVICE_ACCOUNT')) !== null;
+  const split = splitTargets(targets, fcmConfigured);
+  if (split.skipped > 0) console.warn('fcm_not_configured', 'skipped', split.skipped);
+
   let appServer: webpush.ApplicationServer;
   try {
     appServer = await webpush.ApplicationServer.new({
@@ -74,12 +110,12 @@ Deno.serve(async (req) => {
     return json(500, { error: 'vapid_not_configured' });
   }
 
-  const outcomes: Outcome[] = await Promise.all(
-    targets.map(async (t): Promise<Outcome> => {
+  const webOutcomes: Promise<Outcome[]> = Promise.all(
+    split.webpush.map(async (t): Promise<Outcome> => {
       const message = JSON.stringify(buildNotification(order, normalizeLocale(t.locale)));
       try {
         await appServer
-          .subscribe({ endpoint: t.endpoint, keys: { p256dh: t.p256dh, auth: t.auth } })
+          .subscribe({ endpoint: t.endpoint, keys: { p256dh: t.p256dh ?? '', auth: t.auth ?? '' } })
           .pushTextMessage(message, { ttl: TTL_SECONDS, urgency: webpush.Urgency.High });
         return { id: t.id, result: 'ok' };
       } catch (e) {
@@ -96,6 +132,8 @@ Deno.serve(async (req) => {
       }
     }),
   );
+  const fcmOutcomes: Promise<Outcome[]> = Promise.all(split.fcm.map((t) => sendFcm(t, order)));
+  const outcomes: Outcome[] = [...(await webOutcomes), ...(await fcmOutcomes)];
 
   const okIds = outcomes.filter((o) => o.result === 'ok').map((o) => o.id);
   const goneIds = outcomes.filter((o) => o.result === 'gone').map((o) => o.id);

@@ -64,6 +64,24 @@ describe('<NotificationsSection />', () => {
     expect(screen.getByText(/Telefon ayarlarından/)).toBeInTheDocument();
   });
 
+  it('yerel uygulamada kayıt yapılamazsa (Firebase yok) sakin durum: "bu sürümde kapalı", düğme yok', async () => {
+    push.enablePush.mockResolvedValue({
+      ok: false,
+      reason: 'unavailable',
+      detail: 'registration_timeout',
+    });
+    push.pushState.mockResolvedValueOnce('disabled').mockResolvedValue('error');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(<NotificationsSection />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Bildirimleri aç' }));
+
+    expect(await screen.findByText('Bildirimler bu sürümde kapalı')).toBeInTheDocument();
+    expect(screen.getByText(/Bu uygulama sürümü bildirim alamıyor/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Bildirimleri aç' })).not.toBeInTheDocument();
+    expect(useToast.getState().message).toBe('Bildirimler bu sürümde kapalı');
+    expect(useToast.getState().tone).toBe('warning');
+  });
+
   it('izin penceresi reddedilirse uyarı mesajı verir', async () => {
     push.enablePush.mockResolvedValue({ ok: false, reason: 'denied' });
     push.pushState.mockResolvedValueOnce('disabled').mockResolvedValue('denied');

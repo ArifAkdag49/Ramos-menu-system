@@ -1,11 +1,11 @@
 // epson-sdp — fiş baytları: yazdırma ajanıyla BİREBİR aynı kod (renderTicket + encodeLines).
 //
-// Bu dosya Deno'ya doğrudan yüklenmez: depo modüllerini (packages/shared, apps/print-agent) ve npm
+// Bu dosya Deno'ya doğrudan yüklenmez: depo modüllerini (packages/shared ticket.ts + escpos.ts) ve npm
 // bağımlılıklarını (@point-of-sale/*) içe aktarır. Yayından önce scripts/build-epson-sdp.mjs onu
 // esbuild ile tek dosyaya (render.bundle.js, git'e girmez) paketler; index.ts paketi kullanır.
 // Testler (Node/Vitest) bu kaynağı doğrudan içe aktarır.
 import { renderTicket, type TicketPayload } from '../../../packages/shared/src/ticket.ts';
-import { encodeLines } from '../../../apps/print-agent/src/escpos.ts';
+import { encodeLines } from '../../../packages/shared/src/escpos.ts';
 
 export function renderEscpos(
   payload: Record<string, unknown>,

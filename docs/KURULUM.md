@@ -3,7 +3,7 @@
 Bu rehber Ramo's Döner & Grill House'un sahibi, yöneticisi ve personeli içindir. Yazıcının bağlanmasından günlük kullanıma ve arızalara kadar her şeyi adım adım anlatır. En sondaki **Ek A** geliştiriciye yöneliktir.
 
 - **Canlı adres:** https://ramos.arxdigitalsevice.com
-- **Android uygulaması:** `C:\Users\PC\Desktop\Ramos APK\ramos-v1.0.0.apk` (bkz. [§5.3](#53-android-uygulaması-apk))
+- **Android uygulaması:** `C:\Users\PC\Desktop\Ramos APK\ramos-v2.0.0.apk` (bkz. [§5.3](#53-android-uygulaması-apk))
 - **Yazıcı kurulum paketi:** masaüstündeki `Ramos Yazıcı Kurulum` klasörü (bkz. [§3](#3-yazdırma-programı-restoran-pcsi))
 
 > Bu belgede parola, PIN ya da anahtar **yazmaz**. Hangi bilginin hangi dosyada durduğu [§13](#13-hesaplar-ve-anahtarlar-nerede-saklanır)'te anlatılır.
@@ -153,6 +153,45 @@ Bilmeniz gerekenler:
 - Kağıt biterse ya da kapak açıksa yazıcı bunu bildirir; ekranda ilgili uyarı çıkar ve fiş kısa aralıklarla yeniden denenir.
 - **Pasifleştir** yazıcının fiş çekmesini hemen durdurur (adres geçerli kalır, **Etkinleştir** ile döner).
 
+### 2.8 Tablet yazıcı istasyonu (bilgisayarsız, Android tablet)
+
+Restorandaki **bir Android tablet** (çoğunlukla mutfak tableti) fişleri aynı Wi-Fi'daki yazıcıya **kendisi** gönderir. Bilgisayar gerekmez; Xprinter (port `9100`) ve şifreli Epson (port `9143`) ile çalışır. Tablette **Ramo's Android uygulamasının yeni sürümü (v2)** kurulu olmalıdır ([§5.3](#53-android-uygulaması-apk)); Chrome'da ya da eski (v1) uygulamada bu anahtar görünmez.
+
+**Gerekenler:**
+
+- Tablet ve yazıcı **aynı Wi-Fi / modem** ağında. Yazıcının IP adresi sabit olmalı (§2.3).
+- Tablette Ramo's v2 uygulaması, **mutfak** (ya da yönetici) hesabıyla giriş.
+- Tablet prize takılı, ekran zaman aşımı **Hiçbir zaman** (§4.1).
+
+**Kurulum:**
+
+1. **Yazıcı bilgisi:** Yönetim panelinde **Ayarlar → Yazıcı bağlantısı**: IP adresi, Port (`9100` Xprinter / `9143` Epson Secure Printing) ve Karakter tablosu doğru olsun → **Kaydet**. İstasyon bu bilgileri kullanır.
+2. **Baskı yolunu seçin:** **Ayarlar → Baskı yolu → Tablet yazıcı istasyonu** → **Baskı yolunu uygula**. Bu andan itibaren fişleri yalnız tablet basar; bilgisayar programı ve Epson Server Direct Print iş almaz.
+3. **Tablette:** Ramo's uygulamasını açın → mutfak hesabıyla giriş → **Mutfak** ekranında başlığın altındaki **Yazıcı istasyonu** anahtarını **açın**. Rozet **Açık** olur; ilk fiş basılınca **Açık · son baskı 14:32** gibi saat görünür.
+4. **Deneyin:** **Ayarlar → Yazıcı bağlantısı → Test fişi bas**. Birkaç saniye içinde tabletten yazıcıya gider. Türkçe harfler bozuksa §2.5.
+
+**Bilmeniz gerekenler:**
+
+- **Uygulama açık ve ekranda olmalı.** Uygulama kapatılırsa, arka plana alınırsa ya da tablet uyursa **fiş basılmaz**; siparişler kaybolmaz, sırada bekler ve uygulama öne gelince hemen basılır. Anahtar tablette hatırlanır; uygulama yeniden açılınca kendiliğinden çalışır.
+- Aynı anda **tek tablet** istasyon olsun. İki tablette anahtar açıksa ikisi de fiş alabilir (aynı fiş iki kez basılmaz, ama hangisinin bastığı karışır).
+- **"Yazıcıya ulaşılamıyor"** rozeti: yazıcı kapalı, kablosu/Wi-Fi'ı kopuk ya da IP değişmiş. Yazıcıyı ve **Ayarlar → Yazıcı bağlantısı**'ndaki adresi kontrol edin. Kağıt bittiyse ya da kapak açıksa şeridin altında **Son hata** yazar; fiş kısa aralıklarla yeniden denenir.
+- **"Yazıcı adresi yok"**: Yazıcı bağlantısında IP boş. 1. adımı yapın.
+- Geri dönmek için baskı yolunu **Bilgisayar programı** yapıp uygulamanız yeterli; tablette anahtar açık kalsa da iş almaz ve şerit kaybolur.
+
+### 2.9 Baskı yolları karşılaştırması
+
+| | Bilgisayar programı (yazdırma ajanı) | Epson Server Direct Print | Tablet yazıcı istasyonu |
+|---|---|---|---|
+| **Kim basar** | Restoran PC'sindeki program (§3) | Epson yazıcının kendisi (§2.7) | Ramo's v2 uygulaması açık Android tablet (§2.8) |
+| **Bilgisayar gerekir mi** | Evet, açık ve uyanık | Hayır | Hayır |
+| **Yazıcı** | Xprinter ve Epson (9100 / 9143) | Yalnız Server Direct Print destekli Epson TM (ör. TM-m30III) | Xprinter ve Epson (9100 / 9143) |
+| **Yazıcının internete çıkması** | Gerekmez (PC çıkar) | **Gerekir** | Gerekmez (tablet çıkar) |
+| **Ne zaman basılmaz** | PC kapalı / uykuda | Yazıcı internete çıkamıyorsa | Uygulama kapalı, arka planda ya da tablet uykuda |
+| **Kurulum** | Kurulum.cmd (§3.2) | Web Config'e adres girmek (§2.7) | Uygulamayı kurup anahtarı açmak (§2.8) |
+| **Seçim** | **Ayarlar → Baskı yolu → Bilgisayar programı** | **… → Epson Server Direct Print** | **… → Tablet yazıcı istasyonu** |
+
+Hangi yol seçilirse seçilsin siparişler kaybolmaz: basılamayan fiş sırada bekler ve yol çalışır hâle gelince sırayla basılır. Aynı anda yalnız seçili yol fiş basar; diğerleri açık kalsa da iş almaz.
+
 ---
 
 ## 3. Yazdırma programı (restoran PC'si)
@@ -253,6 +292,7 @@ Mutfak ekranı açılınca **"Mutfak ekranını başlat"** yazısı çıkar. **B
 - **HAZIR:** Yemek hazır olunca dokunun. Kart sağdaki **Hazır** sütununa geçer ve garsonlara bildirim gider. Yanlışlıkla basıldıysa 30 saniye içinde **Geri al (30 sn)**'a dokunun.
 - **Diğer işlemler → Tekrar bas:** Fiş kaybolduysa ya da basılamadıysa siparişi yeniden bastırır.
 - **Tükendi:** Üstteki düğme bir çekmece açar. Biten ürünü işaretleyin; garson ekranında soluk ve seçilemez görünür. Ürün yeniden gelince işareti kaldırın.
+- **Yazıcı istasyonu** (yalnız Ramo's v2 uygulamasında ve baskı yolu "Tablet yazıcı istasyonu" iken): başlığın altındaki anahtar bu tableti fiş basan cihaz yapar. Açıkken ekranı açık tutun, uygulamayı kapatmayın ([§2.8](#28-tablet-yazıcı-istasyonu-bilgisayarsız-android-tablet)).
 
 <img src="screenshots/m4-kds-soldout-1280.png" alt="Tükendi çekmecesi" width="480"> <img src="screenshots/demo-06-kds-hazir-1280.png" alt="HAZIR işaretlenmiş sipariş" width="480">
 
@@ -288,28 +328,37 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
 
 ### 5.3 Android uygulaması (APK)
 
-**Ramo's** Android uygulaması canlı siteyi tam ekran açar: adres çubuğu yoktur, ana ekranda kendi simgesi vardır. İçerik doğrudan siteden gelir; sitedeki her güncelleme uygulamaya kendiliğinden yansır. Bildirimler telefondaki **Google Chrome** üzerinden gelir, bu yüzden telefonda Chrome kurulu ve güncel olmalıdır.
+**Ramo's** Android uygulaması canlı siteyi tam ekran açar: adres çubuğu yoktur, ana ekranda kendi simgesi vardır. İçerik doğrudan siteden gelir; sitedeki her güncelleme uygulamaya kendiliğinden yansır.
 
 | | |
 |---|---|
-| Dosya | `C:\Users\PC\Desktop\Ramos APK\ramos-v1.0.0.apk` |
+| Dosya | `C:\Users\PC\Desktop\Ramos APK\ramos-v2.0.0.apk` |
 | Uygulama adı / paket | Ramo's / `com.arxdigital.ramos` |
 | Açtığı adres | https://ramos.arxdigitalsevice.com |
 
-**Telefona kurulum:**
+**v2'de ne değişti:** Uygulama siteyi artık Chrome'la değil **kendi içinde** açar. Bildirimler **Firebase** üzerinden gelir (Chrome gerekmez; Firebase kurulumu: [§5.5](#55-android-bildirimleri-için-firebase-bir-kerelik)) ve tablet **yazıcı istasyonu** olabilir ([§2.8](#28-tablet-yazıcı-istasyonu-bilgisayarsız-android-tablet)).
+
+**Telefona kurulum (ilk kez):**
 
 1. APK dosyasını telefona gönderin (USB kablosuyla kopyalayarak, bulut klasörüyle ya da kendinize mesaj olarak).
 2. Telefonda dosyaya dokunun. Android izin isterse **Bilinmeyen kaynaklardan yüklemeye izin ver** (ya da "Bu kaynaktan izin ver") anahtarını, dosyayı açan uygulama için (Dosyalarım, Chrome vb.) açın ve geri dönün.
 3. **Yükle**'ye dokunun. Google Play Protect bir uyarı gösterirse ayrıntılardan **Yine de yükle**'yi seçin.
 4. Uygulamayı açın ve kullanıcı adı + PIN ile giriş yapın.
 5. Kurulum rehberinde ya da **Profil → Bildirimler** bölümünde **Bildirimleri aç**'a dokunun ve Android'in sorusuna **İzin ver** deyin.
-6. Pil ayarı (bildirimlerin gecikmemesi için önerilir): **Ayarlar → Uygulamalar → Ramo's → Pil → Kısıtlanmamış**. Aynısını **Chrome** için de yapın.
+6. Pil ayarı (bildirimlerin gecikmemesi için önerilir): **Ayarlar → Uygulamalar → Ramo's → Pil → Kısıtlanmamış**.
 
-**Güncelleme:** Menü, ekranlar ve düzeltmeler siteden geldiği için APK'yı yeniden kurmak gerekmez. Yeni APK yalnız uygulamanın adı, simgesi ya da Android tarafı değişince üretilir (Ek A.3). Yeni APK eskisinin üzerine kurulur, veriler silinmez.
+**v1'den v2'ye geçiş (eski uygulama kurulu telefon ve tabletler):**
 
-> **İmza anahtarı:** Uygulama, `C:\Users\PC\Desktop\Ramos APK` klasöründeki `ramos-release.keystore` ile imzalanır (parolası aynı klasördeki anahtar notunda). Bu dosyalar **repoda yoktur**. Kaybedilirse telefonlardaki uygulamaya güncelleme kurulamaz: uygulama silinip yeni anahtarla imzalanmış APK kurulmak zorunda kalınır. Klasörün bir yedeğini güvenli bir yerde (ör. şifreli USB bellek) saklayın.
+1. `ramos-v2.0.0.apk`'yı cihaza gönderip dokunun → **Güncelle** (ya da **Yükle**). **Eski uygulamayı silmeyin**: v2 aynı paket adı ve aynı imzayla hazırlandığı için eskisinin **üzerine** kurulur.
+2. Uygulamayı açın. Uygulama artık kendi içinde çalıştığı için **bir kez yeniden giriş** istenebilir (kullanıcı adı + PIN).
+3. **Profil → Bildirimler → Bildirimleri aç** → **İzin ver**. Eski (Chrome) bildirim kaydı v2'de kullanılmaz; bu adım her telefonda bir kez gerekir.
+4. Durum **"Bildirimler bu sürümde kapalı"** görünüyorsa APK Firebase dosyası olmadan derlenmiştir: uygulama normal çalışır, yalnız bildirim gelmez. Firebase kurulduktan sonra üretilen yeni APK'yı aynı şekilde üzerine kurun ([§5.5](#55-android-bildirimleri-için-firebase-bir-kerelik)).
 
-> **Adres çubuğu neden görünmüyor?** Site, `https://ramos.arxdigitalsevice.com/.well-known/assetlinks.json` dosyasıyla bu uygulamanın kendisine ait olduğunu Android'e kanıtlar. Anahtar değişirse bu dosya da güncellenmelidir; yoksa uygulama yine çalışır, ama üstte adres çubuğu görünür (Ek A.3).
+> "Uygulama yüklenmedi" / "paket çakışıyor" hatası çıkarsa cihazdaki uygulama başka bir anahtarla imzalanmıştır. O cihazda eski uygulamayı silip v2'yi kurun: yeniden giriş ve bildirim izni gerekir; siparişler sunucuda olduğu için hiçbir şey kaybolmaz.
+
+**Güncelleme:** Menü, ekranlar ve düzeltmeler siteden geldiği için APK'yı yeniden kurmak gerekmez. Yeni APK yalnız uygulamanın adı, simgesi ya da Android tarafı (bildirim, yazıcı eklentisi) değişince üretilir (Ek A.3). Yeni APK eskisinin üzerine kurulur, veriler silinmez.
+
+> **İmza anahtarı:** Uygulama, `C:\Users\PC\Desktop\Ramos APK` klasöründeki `ramos-release.keystore` ile imzalanır (parolası aynı klasördeki anahtar notunda). Bu dosyalar **repoda yoktur**. Kaybedilirse cihazlardaki uygulamaya güncelleme kurulamaz: uygulama silinip yeni anahtarla imzalanmış APK kurulmak zorunda kalınır. Klasörün bir yedeğini güvenli bir yerde (ör. şifreli USB bellek) saklayın.
 
 ### 5.4 Giriş, mesai ve dil
 
@@ -320,6 +369,25 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
   - Vardiya bitince **Profil → Mesaiyi bitir**.
 - **Dil:** **Profil → Dil** ile Türkçe ya da Almanca. Mutfak fişi her zaman Almanca basılır.
 - **Çıkış:** **Profil → Çıkış**. Paylaşılan bir telefonda vardiya sonunda çıkış yapın.
+
+### 5.5 Android bildirimleri için Firebase (bir kerelik)
+
+v2 uygulaması "Hazır" bildirimlerini Google'ın ücretsiz **Firebase Cloud Messaging** hizmetiyle alır. Bunun için işletmeye ait bir Firebase projesi ve iki dosya gerekir. Hesabı açıp dosyaları indirme işini **siz** yaparsınız (işletmenin Google hesabıyla); dosyaları geliştirici bağlar.
+
+1. Bilgisayarda **https://console.firebase.google.com** adresini açın ve işletmenin Google hesabıyla giriş yapın.
+2. **Proje oluştur** (Create a project) → proje adı örneğin `ramos-siparis` → Google Analytics sorulursa **kapalı** bırakabilirsiniz → **Proje oluştur**.
+3. Proje açılınca **Uygulama ekle → Android** simgesine tıklayın:
+   - **Android paket adı:** `com.arxdigital.ramos` (harfi harfine böyle)
+   - **Uygulama takma adı:** `Ramo's` (isteğe bağlı) · **SHA-1:** boş bırakın
+   - **Uygulamayı kaydet**.
+4. Sonraki adımda **`google-services.json`** dosyasını **indirin**. Firebase'in gösterdiği "SDK ekle" gibi diğer adımları atlayın (İleri → İleri → Konsola devam).
+5. Sol üstteki dişli çark → **Proje ayarları** → **Hizmet hesapları** (Service accounts) sekmesi → **Yeni özel anahtar oluştur** (Generate new private key) → **Anahtar oluştur**. Bir **JSON dosyası** iner (adı `ramos-siparis-firebase-adminsdk-….json` gibi).
+6. Bu **iki dosyayı** şu klasöre koyun (klasör yoksa oluşturun): `C:\Users\PC\Desktop\Ramos APK\firebase\`
+   - `google-services.json`
+   - hizmet hesabı JSON dosyası (adını değiştirmenize gerek yok)
+7. Geliştiriciye (Claude'a) **"Firebase dosyaları klasörde"** diye haber verin. Geliştirici yeni APK'yı üretir ve sunucuya bildirim anahtarını ekler; sonra cihazlara yeni APK kurulur ([§5.3](#53-android-uygulaması-apk)).
+
+> **Bu dosyaları kimseyle paylaşmayın.** Özellikle hizmet hesabı JSON'u, projeniz adına bildirim gönderme yetkisi verir: e-postaya, mesaja, sohbete ya da bulut paylaşımına koymayın; repoya da girmez. Sızdığını düşünürseniz Firebase → Proje ayarları → Hizmet hesapları'ndan anahtarı silip yenisini oluşturun ve geliştiriciye haber verin.
 
 ---
 
@@ -418,6 +486,7 @@ Mutfak ekranındaki **Tükendi** düğmesinden ya da **Menü → ürün → Tük
 | **Genel** | Restoran adı, İş günü başlangıcı |
 | **QR menü** | Müşteri menüsünün bağlantısı, QR önizlemesi ve **SVG indir (10 × 10 cm)** ([§6.10](#610-qr-menü-müşteriler-için)) |
 | **Mutfak fişi** | Fişin **Başlık** ve **Alt yazı** metinleri, örnek siparişle önizleme |
+| **Baskı yolu** | Fişleri kim basar: Bilgisayar programı, Epson Server Direct Print ya da Tablet yazıcı istasyonu ([§2.9](#29-baskı-yolları-karşılaştırması)); kendi **Baskı yolunu uygula** düğmesi vardır |
 | **Yazıcı bağlantısı** | IP adresi, Port, Karakter tablosu, Türkçe harfleri sadeleştir ([§2.4](#24-yönetim-panelinde-yazıcı-ayarı-ve-test-fişi)); Yazıcı kartı ve **Test fişi bas** |
 | **Hızlı notlar** | Garsonun ürün notuna tek dokunuşla eklediği kısa notlar (Almanca fişte, Türkçe ekranda) |
 | **İptal sebepleri** | Kalem iptalinde seçilen sebepler; Almancası iptal fişine basılır |
@@ -516,6 +585,16 @@ Garson ve mutfak ekranında turuncu şerit olarak, yönetim panelinde **Yazdırm
 
 Bu sırada siparişler **kaybolmaz**: mutfak ekranında görünür, fişler sırada bekler ve program çalışınca sırayla basılır.
 
+### Tablet istasyonu fiş basmıyor
+
+Yalnız baskı yolu **Tablet yazıcı istasyonu** iken ([§2.8](#28-tablet-yazıcı-istasyonu-bilgisayarsız-android-tablet)):
+
+1. Tablette Ramo's uygulaması **açık ve ekranda** mı? Arka plandayken basılmaz. Mutfak ekranındaki **Yazıcı istasyonu** anahtarı açık mı?
+2. Rozet **Yazıcıya ulaşılamıyor** diyorsa: yazıcı açık mı, tablet ve yazıcı aynı Wi-Fi'da mı, **Ayarlar → Yazıcı bağlantısı**'ndaki IP ve port doğru mu?
+3. Şerit hiç görünmüyorsa: tablette v2 uygulaması mı kurulu (Chrome'da görünmez) ve baskı yolu gerçekten "Tablet yazıcı istasyonu" mu?
+
+Siparişler kaybolmaz; istasyon çalışınca sırayla basılır.
+
 ### "Yazıcıya ulaşılamıyor — kablosunu kontrol et"
 
 Program çalışıyor ama yazıcıya ulaşamıyor.
@@ -568,7 +647,8 @@ Sırayla kontrol edin:
 
 1. **Mesai açık mı?** Üstte **Mesai açık** yazmalı. Mesai her gün iş günü başında kapanır; her vardiya **Mesaiye başla**'ya dokunun.
 2. **Bildirim izni verildi mi?** **Profil → Bildirimler** bölümünde durum **Açık** olmalı; değilse **Bildirimleri aç**'a dokunun.
-   - **Android:** Ayarlar → Uygulamalar → **Ramo's** → Bildirimler **açık**. Bildirimler Chrome üzerinden geldiği için **Chrome**'un bildirimleri de açık olmalı.
+   - **Android:** Ayarlar → Uygulamalar → **Ramo's** → Bildirimler **açık**. Eski v1 uygulamasında bildirimler Chrome üzerinden geldiği için **Chrome**'un bildirimleri de açık olmalı.
+   - **Android v2:** Durum **"Bildirimler bu sürümde kapalı"** ise kurulu APK Firebase'siz derlenmiştir; Firebase kurulumu ve yeni APK gerekir ([§5.5](#55-android-bildirimleri-için-firebase-bir-kerelik)).
    - **iPhone:** Ayarlar → Bildirimler → **Ramo's** → Bildirimlere İzin Ver.
    - İzin bir kez "Reddet"lendiyse uygulama yeniden soramaz; telefonun ayarlarından açılmalıdır.
 3. **iPhone:** Uygulama ana ekrandaki simgeden mi açılıyor? Safari sekmesinde bildirim gelmez. iOS 16.4 veya üstü gerekir.
@@ -591,7 +671,7 @@ Yeni bir sürüm yayınlandığında ekranda **Yeni sürüm hazır** uyarısı �
 
 ### Android uygulamasında üstte adres çubuğu görünüyor
 
-Uygulama çalışır, ama site ile uygulamanın imza bağlantısı eşleşmiyor. Geliştiriciye iletin (Ek A.3).
+Yalnız eski **v1** uygulamasında olur: uygulama çalışır, ama site ile uygulamanın imza bağlantısı eşleşmiyor. v2'yi kurun ([§5.3](#53-android-uygulaması-apk)); v2'de adres çubuğu yoktur.
 
 ---
 
@@ -667,6 +747,8 @@ Bu tablo **yalnız yerleri** gösterir; değerler hiçbir belgeye, sohbete ya da
 | Edge Function secret'ları | Supabase projesi → Edge Functions → Secrets | `VAPID_PUBLIC_JWK`, `VAPID_PRIVATE_JWK`, `VAPID_SUBJECT`, `WEBHOOK_SECRET` (`admin-staff` ayrıca `STAFF_EMAIL_DOMAIN` okur) |
 | Vault sırları | Supabase projesi → Vault | `notify_ready_url`, `notify_ready_webhook_secret` |
 | Android imza anahtarı | **`C:\Users\PC\Desktop\Ramos APK\ramos-release.keystore`** + aynı klasördeki **`OKU-BENI-anahtar.txt`** (parola) | Repoda yok. Kaybedilirse uygulamaya güncelleme kurulamaz; güvenli bir yedeği tutulmalı |
+| Firebase dosyaları | **`C:\Users\PC\Desktop\Ramos APK\firebase\`**: `google-services.json` + hizmet hesabı JSON'u | Repoda yok, kimseyle paylaşılmaz ([§5.5](#55-android-bildirimleri-için-firebase-bir-kerelik)). Firebase projesinin sahibi işletmenin Google hesabıdır |
+| FCM sunucu anahtarı | Supabase projesi → Edge Functions → Secrets → `FCM_SERVICE_ACCOUNT` | Hizmet hesabı JSON'unun içeriği; `notify-ready` Android bildirimlerini bununla gönderir |
 
 **Kurallar:**
 
@@ -711,14 +793,17 @@ Kurulu bir PC'de aynı komutlar `%LOCALAPPDATA%\RamosPrintAgent` klasöründe `n
 
 ### A.3 Android uygulaması (yeni APK)
 
-1. `apps/android/app/build.gradle` içinde `versionCode`'u artırın ve `versionName`'i güncelleyin (aynı değerleri `apps/android/twa-manifest.json` içindeki `appVersionCode` / `appVersion` alanlarına da yazın).
-2. `powershell -ExecutionPolicy Bypass -File apps/android/build-apk.ps1`. Betik gradle release derlemesi yapar, APK'yı `Desktop\Ramos APK\ramos-release.keystore` ile imzalar ve `Desktop\Ramos APK\ramos-v<sürüm>.apk` olarak yazar. Parola anahtar klasöründeki nottan okunur. Android SDK `%LOCALAPPDATA%\Android\Sdk` altında olmalıdır.
-3. Betik imzanın **SHA-256** parmak izini yazdırır. Bu değer `apps/web/public/.well-known/assetlinks.json` içindekiyle aynı olmalıdır. Anahtar değiştiyse dosyayı güncelleyin ve web'i yeniden yayınlayın (A.1); aksi hâlde uygulamada adres çubuğu görünür.
+v2'den itibaren uygulama `apps/mobile` (Capacitor, uzak URL) altındadır; `apps/android` (TWA, v1) yerini almıştır.
+
+1. `apps/mobile/android/app/build.gradle` içinde `versionCode`'u artırın ve `versionName`'i güncelleyin.
+2. `powershell -ExecutionPolicy Bypass -File apps/mobile/build-apk.ps1`. Betik `Desktop\Ramos APK\firebase\google-services.json` varsa uygulamaya kopyalar (yoksa APK bildirimsiz derlenir ve uyarı yazar), Android derlemesini yapar, `Desktop\Ramos APK\ramos-release.keystore` ile imzalar ve `Desktop\Ramos APK\ramos-v<sürüm>.apk` yazar. Parola anahtar klasöründeki nottan okunur. Android SDK `%LOCALAPPDATA%\Android\Sdk` altında olmalıdır.
+3. Web tarafı (`apps/web/src/native`, `apps/web/src/features/station`) `@capacitor/*` paketlerini içe aktarmaz; uygulamanın enjekte ettiği `window.Capacitor.Plugins` köprüsünü kullanır. Web yayını (A.1) uygulamayı da günceller; APK yalnız yerel eklenti ya da Firebase değişince gerekir.
 
 ### A.4 "Hazır" bildirim hattı
 
 - Parçalar: `supabase/migrations/0010_notify_ready.sql` (HAZIR olunca `pg_net` ile fonksiyonu çağıran trigger), `supabase/functions/notify-ready` (Web Push gönderir), Vault sırları, function secret'ları.
 - İlk kurulum sırası: `node scripts/gen-vapid.mjs` → `node --env-file=.env scripts/setup-push.mjs` → `npm run fn:deploy -- notify-ready --no-verify-jwt` → web'i yeniden derleyip yayınlayın (A.1).
+- **Android (FCM):** Firebase hizmet hesabı JSON'u (`Desktop\Ramos APK\firebase\`) tek satır hâlinde `FCM_SERVICE_ACCOUNT` function secret'ına yazılır, ardından `notify-ready` yeniden yayınlanır. Sır yoksa FCM hedefleri atlanır, Web Push devam eder. JSON içeriği loglanmaz, sohbete yazılmaz.
 - **`gen-vapid.mjs --force` kullanmayın.** VAPID anahtarı değişirse bütün telefonların bildirim aboneliği geçersiz olur; herkes bildirimi yeniden açmak zorunda kalır ve web yeniden yayınlanmalıdır. Betik anahtar zaten varsa bu yüzden durur.
 
 ### A.5 Yayın öncesi temizlik (karar işletme sahibinde)

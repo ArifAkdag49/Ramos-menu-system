@@ -4,5 +4,9 @@
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" }
+  "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": {
+    "@point-of-sale/codepage-encoder": "^3",
+    "@point-of-sale/receipt-printer-encoder": "^3"
+  }
 }

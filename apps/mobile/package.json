@@ -1,0 +1,18 @@
+{
+  "name": "@ramos/mobile",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Ramo's Android uygulaması (Capacitor 7): canlı siteyi WebView'da açar, FCM bildirimleri ve yerel RamosPrinter eklentisi",
+  "scripts": {
+    "sync": "cap sync android",
+    "apk": "powershell -NoProfile -ExecutionPolicy Bypass -File build-apk.ps1"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/push-notifications": "^7.0.7"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.9"
+  }
+}

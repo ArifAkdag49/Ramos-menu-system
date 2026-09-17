@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isNative } from '../../native/capacitor';
 import { useInstallPrompt } from '../../pwa/installPrompt';
 import { detectPlatform } from '../../pwa/platform';
 import { usePush } from '../../pwa/pushStore';
@@ -45,6 +46,7 @@ function writeFlag(value: 'done' | 'dismissed'): void {
  * | iPhone, ana ekranda değil     | Paylaş → Ana Ekrana Ekle → simgeden aç (push henüz yok)  |
  * | Android, yüklenmemiş          | "Uygulamayı yükle" (`beforeinstallprompt`) ya da menü    |
  * | Yüklü PWA / Android uygulaması| Kurulum adımı yok, doğrudan "Bildirimleri aç"            |
+ * | Yerel Android uygulaması      | Kurulum adımı yok (zaten uygulama), bildirim FCM ile     |
  * | Bildirim açık                 | Rehber görünmez                                          |
  *
  * Sayfa içi bir karttır, modal değildir: garson isterse görmezden gelip çalışmaya devam eder,
@@ -76,7 +78,8 @@ export function InstallGuide() {
     setClosed(true);
   };
 
-  const showInstall = !platform.standalone;
+  // Yerel uygulama (Capacitor) zaten yüklü uygulamadır: TWA'daki gibi "yükle" adımı yok.
+  const showInstall = !platform.standalone && !isNative();
 
   let install: ReactNode;
   if (installed) {
@@ -120,6 +123,8 @@ export function InstallGuide() {
     );
   } else if (state === 'denied') {
     notify = <p className="text-sm text-muted">{t('pwa.push.hint.denied')}</p>;
+  } else if (state === 'error') {
+    notify = <p className="text-sm text-muted">{t('pwa.push.hint.error')}</p>;
   } else {
     notify = (
       <p className="text-sm text-muted">

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ramo's koyu tema (web manifest theme/background rengi ile aynı) -->
+    <color name="ramos_bg">#0A0A0A</color>
+    <color name="colorPrimary">#0A0A0A</color>
+    <color name="colorPrimaryDark">#0A0A0A</color>
+    <color name="colorAccent">#D4A437</color>
+</resources>
