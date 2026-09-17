@@ -141,7 +141,7 @@ export function OrderPage() {
     <div className="flex min-h-dvh flex-col overflow-x-clip">
       <div className="sticky top-0 z-10 bg-surface">
         {/* Sipariş girişinde üst blok kompakt: telefonda ürün listesine daha çok yer kalsın. */}
-        <header className="flex h-14 items-center gap-2 border-b border-border px-2">
+        <header className="flex h-[var(--header-h-compact)] items-center gap-2 border-b border-border px-2">
           <IconButton
             label={t('common.back')}
             icon={<ArrowLeft aria-hidden size={22} />}

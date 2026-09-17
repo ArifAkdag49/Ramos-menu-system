@@ -7,10 +7,11 @@ import { productImageUrl, type ImageSize } from '../lib/images';
 // `size-14` gibi genişlik belirleyen sınıflar aynı CSS özelliğini hedeflediğinde Tailwind'in
 // katman sırası çağıran `className`'i garanti geçersiz kılmaz; bu yüzden ölçü burada sabitlenir,
 // çağıran yalnız aspect-ratio'yu BOZMAYAN ek sınıflar (ör. `max-h-60`) geçer.
-const BOX: Record<ImageSize, string> = { thumb: 'size-14 aspect-square', full: 'w-full aspect-[4/3]' };
+// Menü fotoğrafları 1:1 üretilir (1024×1024); kutu da kare olmalı ki `object-cover` hiçbir kenarı kırpmasın.
+const BOX: Record<ImageSize, string> = { thumb: 'size-14 aspect-square', full: 'w-full aspect-square' };
 const DIMENSIONS: Record<ImageSize, { width: number; height: number }> = {
   thumb: { width: 56, height: 56 },
-  full: { width: 640, height: 480 },
+  full: { width: 1024, height: 1024 },
 };
 
 /**

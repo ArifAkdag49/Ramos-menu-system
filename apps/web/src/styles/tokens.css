@@ -60,6 +60,9 @@
      başlıkları. R81 — toast panel açıkken üste taşınıyor; başlığın ÜSTÜNE binmemesi için aynı
      değerden ofset alır. Değer yalnız burada durur, her başlık `var(--header-h)` ile okur. */
   --header-h: 4.5rem;
+  /* Sipariş girişinin kompakt başlığı: telefonda ürün listesine yer açmak için daha alçak. Yine
+     tek kaynak burası — bileşende sabit yükseklik yazılmaz. */
+  --header-h-compact: 3.5rem;
 
   --state-empty: var(--color-muted);
   --state-open: var(--color-lime);

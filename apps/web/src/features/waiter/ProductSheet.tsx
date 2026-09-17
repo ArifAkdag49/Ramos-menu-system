@@ -182,7 +182,9 @@ export function ProductSheet({
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <ProductImage path={product.image_path} size="full" code={product.code} className="max-h-60" />
+          {/* Kare görsel: yükseklik değil genişlik sınırlanır (max-h kareyi bozup kırpardı); geniş
+              ekranda panel çok uzamasın diye ortalanmış en fazla 24 rem. */}
+          <ProductImage path={product.image_path} size="full" code={product.code} className="mx-auto max-w-sm" />
           <div className="flex items-baseline gap-2">
             {product.code ? <span className="tabular text-sm text-muted">{product.code}</span> : null}
             <span className="text-lg font-semibold">{product.name}</span>

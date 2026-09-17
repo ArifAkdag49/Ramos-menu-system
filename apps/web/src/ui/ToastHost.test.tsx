@@ -97,7 +97,9 @@ describe('ToastHost üst konumu sayfa başlığını örtmez (R81)', () => {
     // üst konuma geçiyor. KDS başlığı kendi yüksekliğini ayrı yazarsa toast ya başlığın üstüne
     // biner ya da altında boşluk bırakır — bugün 80 px ile 80 px RASTLANTISAL olarak denk düşüyordu.
     expect(source('src/features/waiter/WaiterLayout.tsx')).toContain('h-[var(--header-h)]');
-    expect(source('src/features/waiter/OrderPage.tsx')).toContain('h-[var(--header-h)]');
+    // Sipariş girişi bilerek kompakt başlık kullanır; o da tokens.css'teki tek değişkenden okur.
+    expect(source('src/features/waiter/OrderPage.tsx')).toContain('h-[var(--header-h-compact)]');
+    expect(source('src/styles/tokens.css')).toMatch(/--header-h-compact:\s*[^;]+;/);
     expect(source('src/features/kitchen/KitchenHeader.tsx')).toContain('h-[var(--header-h)]');
   });
 
