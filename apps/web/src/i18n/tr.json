@@ -492,8 +492,148 @@
         "notFound": "Sipariş bulunamadı — listeyi tazele"
       }
     },
-    "reports": { "title": "Raporlar" },
-    "settings": { "title": "Ayarlar" },
+    "reports": {
+      "title": "Raporlar",
+      "rangeLabel": "Tarih aralığı",
+      "rangeSummary_one": "{{from}} – {{to}} · {{count}} iş günü",
+      "rangeSummary_other": "{{from}} – {{to}} · {{count}} iş günü",
+      "presets": {
+        "label": "Hazır aralıklar",
+        "today": "Bugün",
+        "yesterday": "Dün",
+        "last7": "Son 7 gün",
+        "thisMonth": "Bu ay"
+      },
+      "stats": {
+        "orders": "Sipariş",
+        "items": "Kalem",
+        "revenue": "Ciro",
+        "average": "Sipariş başına {{value}}",
+        "cancelled": "İptal edilen kalem",
+        "cancelledValue": "{{value}} değerinde"
+      },
+      "waiters": {
+        "title": "Garsonlar",
+        "name": "Garson",
+        "orders": "Sipariş",
+        "revenue": "Ciro",
+        "ordersCount_one": "{{count}} sipariş",
+        "ordersCount_other": "{{count}} sipariş",
+        "test": "Test"
+      },
+      "products": {
+        "title": "En çok satan 10 ürün",
+        "rank": "Sıra",
+        "code": "No",
+        "name": "Ürün",
+        "qty": "Adet",
+        "revenue": "Ciro",
+        "qtyCount_one": "{{count}} adet",
+        "qtyCount_other": "{{count}} adet"
+      },
+      "hours": {
+        "title": "Saatlik dağılım",
+        "subtitle": "Siparişlerin verildiği saat — iptaller hariç",
+        "caption": "Saate göre sipariş sayısı",
+        "hour": "Saat",
+        "orders": "Sipariş sayısı",
+        "detail_one": "{{from}}–{{to}} · {{count}} sipariş · {{share}}",
+        "detail_other": "{{from}}–{{to}} · {{count}} sipariş · {{share}}"
+      },
+      "empty": "Bu aralıkta satış yok — başka bir tarih seç",
+      "loadError": "Rapor alınamadı — bağlantını kontrol edip tekrar dene",
+      "csv": {
+        "download": "CSV indir",
+        "done_one": "{{count}} sipariş indirildi",
+        "done_other": "{{count}} sipariş indirildi",
+        "empty": "Bu aralıkta sipariş yok — dosya oluşturulmadı",
+        "error": "Dosya hazırlanamadı — bağlantını kontrol edip tekrar dene"
+      }
+    },
+    "settings": {
+      "title": "Ayarlar",
+      "lastSaved": "Son kayıt: {{at}}",
+      "lastSavedBy": "Son kayıt: {{at}} · {{name}}",
+      "unsaved": "Kaydedilmemiş değişiklik var",
+      "allSaved": "Tüm değişiklikler kayıtlı",
+      "fixErrors": "Kırmızı işaretli alanları düzelt, sonra kaydet",
+      "saved": "Ayarlar kaydedildi",
+      "saveError": "Kaydedilemedi — bağlantını kontrol edip tekrar dene",
+      "discard": "Vazgeç",
+      "reload": "Yeniden yükle",
+      "conflict": "Ayarlar başka bir cihazda değiştirildi. Kaydedersen oradaki değişikliklerin üzerine yazılır; görmek için yeniden yükle.",
+      "removeRow": "Sil – {{index}}. satır",
+      "columns": {
+        "de": "Almanca (fişte)",
+        "tr": "Türkçe (ekranda)"
+      },
+      "general": {
+        "title": "Genel",
+        "description": "Restoran adı ve iş gününün başladığı saat",
+        "restaurantName": "Restoran adı",
+        "dayStart": "İş günü başlangıcı",
+        "dayStartHint": "Bu saatten önce alınan siparişler önceki güne yazılır — raporlar, sipariş geçmişi ve mesai buna göre sayılır."
+      },
+      "ticket": {
+        "title": "Mutfak fişi",
+        "description": "Fişin başında ve sonunda basılan yazılar",
+        "header": "Başlık",
+        "headerHint": "En fazla {{max}} karakter; kısa başlık büyük basılır",
+        "footer": "Alt yazı",
+        "footerHint": "Boş bırakılırsa basılmaz",
+        "preview": "Önizleme (örnek sipariş)"
+      },
+      "printer": {
+        "title": "Yazıcı bağlantısı",
+        "description": "Mutfak yazıcısının ağ adresi ve karakter tablosu",
+        "host": "IP adresi",
+        "hostHint": "Örnek 192.168.1.50 — yazıcının ayar fişinde yazar",
+        "port": "Port",
+        "codepage": "Karakter tablosu",
+        "codepageHint": "Türkçe harfler bozuk çıkarsa diğer Türkçe tabloyu seç, kaydet ve test fişi bas.",
+        "codepages": {
+          "cp857": "CP857 · Türkçe (61) — önerilen",
+          "windows1254": "Windows-1254 · Türkçe (91)",
+          "cp858": "CP858 · Batı Avrupa + € (19)",
+          "cp437": "CP437 · Temel ASCII (0)"
+        },
+        "transliterate": "Türkçe harfleri sadeleştir",
+        "transliterateHint": "Ş→S, Ğ→G, İ→I, ı→i. Yazıcı hiçbir tabloda Türkçe basamıyorsa aç.",
+        "saveBeforeTest": "Test fişi kayıtlı ayarlarla basılır — yeni yazıcı ayarını denemek için önce kaydet."
+      },
+      "quickNotes": {
+        "title": "Hızlı notlar",
+        "description": "Garsonun ürün notuna tek dokunuşla eklediği kısa notlar",
+        "add": "Not ekle",
+        "empty": "Henüz hızlı not yok"
+      },
+      "cancelReasons": {
+        "title": "İptal sebepleri",
+        "description": "Kalem iptal edilirken seçilen sebepler; Almancası iptal fişine basılır",
+        "freeText": "Serbest metin iste",
+        "add": "Sebep ekle",
+        "empty": "Henüz iptal sebebi yok"
+      },
+      "allergens": {
+        "title": "Alerjen lejantı",
+        "description": "Ürünlere atanan alerjen ve katkı maddesi kodları",
+        "code": "Kod",
+        "add": "Alerjen ekle",
+        "empty": "Henüz alerjen yok"
+      },
+      "errors": {
+        "host_invalid": "Adres hatalı — örnek: 192.168.1.50",
+        "port_invalid": "1 ile 65535 arası olmalı (genelde 9100)",
+        "header_empty": "Başlık boş olamaz",
+        "header_too_long": "Başlık en fazla 48 karakter olabilir",
+        "time_invalid": "Saat hatalı — örnek: 05:00",
+        "name_empty": "Restoran adı boş olamaz",
+        "text_empty": "Almanca metin boş olamaz",
+        "code_empty": "Kod boş olamaz",
+        "code_invalid": "Kodda boşluk ya da virgül olamaz",
+        "code_duplicate": "Bu kod listede zaten var"
+      }
+    },
     "nav": {
       "label": "Yönetim",
       "open": "Menüyü aç",
@@ -515,7 +655,7 @@
       "revenue": "Bugünkü ciro",
       "revenueNote": "{{orders}} sipariş · {{items}} kalem",
       "openValueNote": "Açık masalarda {{total}}",
-      "businessDayNote": "İş günü {{date}} — sabah 05:00'te başlar",
+      "businessDayNote": "İş günü {{date}} · başlangıç saati {{time}}",
       "tables": {
         "title": "Açık masalar",
         "table": "Masa",
@@ -653,7 +793,7 @@
       "from": "Başlangıç",
       "to": "Bitiş",
       "today": "Bugün",
-      "note": "İş günü sabah 05:00'te başlar",
+      "note": "İş günü her gün saat {{time}} itibarıyla başlar",
       "errors": {
         "range_invalid": "Bitiş tarihi başlangıçtan önce olamaz — tarihleri düzelt",
         "range_too_long": "En fazla 31 gün seçilebilir — aralığı kısalt"

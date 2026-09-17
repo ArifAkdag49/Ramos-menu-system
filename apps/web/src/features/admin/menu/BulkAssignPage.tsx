@@ -107,7 +107,7 @@ export function BulkAssignPage() {
                   onChange={(e) =>
                     setSelected((s) => (e.target.checked ? [...s, p.id] : s.filter((x) => x !== p.id)))
                   }
-                  className="size-5 shrink-0 accent-[var(--lime)]"
+                  className="size-5 shrink-0 accent-lime"
                 />
                 <span className="tabular w-10 shrink-0 text-xs text-muted">{p.code ?? '—'}</span>
                 <span className="min-w-0 truncate text-sm">{p.name}</span>

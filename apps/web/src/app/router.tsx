@@ -11,6 +11,8 @@ import { MenuLayout } from '../features/admin/menu/MenuLayout';
 import { OptionGroupsPage } from '../features/admin/menu/OptionGroupsPage';
 import { OrdersPage } from '../features/admin/orders/OrdersPage';
 import { ProductsPage } from '../features/admin/menu/ProductsPage';
+import { ReportsPage } from '../features/admin/reports/ReportsPage';
+import { SettingsPage } from '../features/admin/settings/SettingsPage';
 import { StaffPage } from '../features/admin/staff/StaffPage';
 import { TablesAdminPage } from '../features/admin/tables/TablesAdminPage';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -22,7 +24,7 @@ import { TableDetailPage } from '../features/waiter/TableDetailPage';
 import { TablesPage } from '../features/waiter/TablesPage';
 import { WaiterLayout } from '../features/waiter/WaiterLayout';
 import type { Role } from '../lib/auth';
-import { AdminReportsPage, AdminSettingsPage, HomeRedirect } from './pages';
+import { HomeRedirect } from './pages';
 import { RoleGate } from './RoleGate';
 
 const gate = (roles: Role[], element: ReactNode) => <RoleGate roles={roles}>{element}</RoleGate>;
@@ -71,8 +73,8 @@ export const router = createBrowserRouter([
       { path: 'tables', element: <TablesAdminPage /> },
       { path: 'orders', element: <OrdersPage /> },
       { path: 'audit', element: <AuditLogPage /> },
-      { path: 'reports', element: <AdminReportsPage /> },
-      { path: 'settings', element: <AdminSettingsPage /> },
+      { path: 'reports', element: <ReportsPage /> },
+      { path: 'settings', element: <SettingsPage /> },
     ],
   },
 

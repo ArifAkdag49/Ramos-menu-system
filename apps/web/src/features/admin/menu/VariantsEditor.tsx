@@ -95,7 +95,7 @@ export function VariantsEditor({
                   checked={v.is_default}
                   disabled={!v.is_active}
                   onChange={() => setDefault(v.key)}
-                  className="size-4 accent-[var(--lime)]"
+                  className="size-4 accent-lime"
                 />
                 <span>{t('admin.menu.variants.default')}</span>
               </label>

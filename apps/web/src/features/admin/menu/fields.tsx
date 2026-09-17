@@ -22,17 +22,19 @@ export function TextField({
   inputClassName,
   disabled,
   maxLength,
+  inputMode,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   error?: string | null;
   hint?: string;
-  type?: 'text' | 'number' | 'date';
+  type?: 'text' | 'number' | 'date' | 'time';
   placeholder?: string;
   inputClassName?: string;
   disabled?: boolean;
   maxLength?: number;
+  inputMode?: 'text' | 'numeric' | 'decimal' | 'url';
 }) {
   const id = useId();
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
@@ -47,6 +49,7 @@ export function TextField({
         value={value}
         disabled={disabled}
         maxLength={maxLength}
+        inputMode={inputMode}
         placeholder={placeholder}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
@@ -164,7 +167,7 @@ export function Toggle({
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="size-5 shrink-0 disabled:cursor-not-allowed disabled:opacity-50 accent-[var(--lime)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        className="size-5 shrink-0 disabled:cursor-not-allowed disabled:opacity-50 accent-lime focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
       />
       <label htmlFor={id} className="flex flex-col">
         <span className="text-sm">{label}</span>
@@ -177,16 +180,36 @@ export function Toggle({
 export function Section({
   title,
   action,
+  description,
+  level = 3,
   children,
 }: {
   title: string;
   action?: ReactNode;
+  /** Başlığın altında tek satırlık açıklama (ne işe yarar, nerede görünür). */
+  description?: string;
+  /** Sayfanın doğrudan bölümü `2` olur (başlık sırası h1 → h2 atlamasın); editör içi bölüm `3`. */
+  level?: 2 | 3;
   children: ReactNode;
 }) {
+  const id = useId();
+  const Heading = level === 2 ? 'h2' : 'h3';
   return (
-    <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
+    <section
+      // Yalnız sayfa bölümü adlandırılır (bölge işareti olur); editör içi bölümler eskisi gibi kalır.
+      aria-labelledby={level === 2 ? `${id}-title` : undefined}
+      className="flex min-w-0 flex-col gap-3 rounded-card border border-border bg-surface p-4"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <Heading
+            id={`${id}-title`}
+            className={level === 2 ? 'text-base font-semibold' : 'text-sm font-semibold'}
+          >
+            {title}
+          </Heading>
+          {description ? <p className="text-xs text-muted">{description}</p> : null}
+        </div>
         {action}
       </div>
       {children}

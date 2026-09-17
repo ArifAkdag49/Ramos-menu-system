@@ -492,8 +492,148 @@
         "notFound": "Bestellung nicht gefunden — Liste aktualisieren"
       }
     },
-    "reports": { "title": "Berichte" },
-    "settings": { "title": "Einstellungen" },
+    "reports": {
+      "title": "Berichte",
+      "rangeLabel": "Zeitraum",
+      "rangeSummary_one": "{{from}} – {{to}} · {{count}} Geschäftstag",
+      "rangeSummary_other": "{{from}} – {{to}} · {{count}} Geschäftstage",
+      "presets": {
+        "label": "Schnellauswahl",
+        "today": "Heute",
+        "yesterday": "Gestern",
+        "last7": "Letzte 7 Tage",
+        "thisMonth": "Dieser Monat"
+      },
+      "stats": {
+        "orders": "Bestellungen",
+        "items": "Positionen",
+        "revenue": "Umsatz",
+        "average": "{{value}} pro Bestellung",
+        "cancelled": "Stornierte Positionen",
+        "cancelledValue": "im Wert von {{value}}"
+      },
+      "waiters": {
+        "title": "Kellner",
+        "name": "Kellner",
+        "orders": "Bestellungen",
+        "revenue": "Umsatz",
+        "ordersCount_one": "{{count}} Bestellung",
+        "ordersCount_other": "{{count}} Bestellungen",
+        "test": "Test"
+      },
+      "products": {
+        "title": "Top 10 Artikel",
+        "rank": "Rang",
+        "code": "Nr.",
+        "name": "Artikel",
+        "qty": "Menge",
+        "revenue": "Umsatz",
+        "qtyCount_one": "{{count}} Stück",
+        "qtyCount_other": "{{count}} Stück"
+      },
+      "hours": {
+        "title": "Verteilung nach Uhrzeit",
+        "subtitle": "Uhrzeit der Bestellung — ohne Stornos",
+        "caption": "Bestellungen pro Stunde",
+        "hour": "Uhrzeit",
+        "orders": "Bestellungen",
+        "detail_one": "{{from}}–{{to}} Uhr · {{count}} Bestellung · {{share}}",
+        "detail_other": "{{from}}–{{to}} Uhr · {{count}} Bestellungen · {{share}}"
+      },
+      "empty": "Keine Umsätze in diesem Zeitraum — anderen Zeitraum wählen",
+      "loadError": "Bericht konnte nicht geladen werden — Verbindung prüfen und erneut versuchen",
+      "csv": {
+        "download": "CSV herunterladen",
+        "done_one": "{{count}} Bestellung exportiert",
+        "done_other": "{{count}} Bestellungen exportiert",
+        "empty": "Keine Bestellungen in diesem Zeitraum — keine Datei erstellt",
+        "error": "Datei konnte nicht erstellt werden — Verbindung prüfen und erneut versuchen"
+      }
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "lastSaved": "Zuletzt gespeichert: {{at}}",
+      "lastSavedBy": "Zuletzt gespeichert: {{at}} · {{name}}",
+      "unsaved": "Ungespeicherte Änderungen",
+      "allSaved": "Alle Änderungen gespeichert",
+      "fixErrors": "Rot markierte Felder korrigieren, dann speichern",
+      "saved": "Einstellungen gespeichert",
+      "saveError": "Speichern fehlgeschlagen — Verbindung prüfen und erneut versuchen",
+      "discard": "Verwerfen",
+      "reload": "Neu laden",
+      "conflict": "Die Einstellungen wurden auf einem anderen Gerät geändert. Beim Speichern werden diese Änderungen überschrieben; zum Ansehen neu laden.",
+      "removeRow": "Entfernen – Zeile {{index}}",
+      "columns": {
+        "de": "Deutsch (Bon)",
+        "tr": "Türkisch (Bildschirm)"
+      },
+      "general": {
+        "title": "Allgemein",
+        "description": "Name des Restaurants und Beginn des Geschäftstags",
+        "restaurantName": "Name des Restaurants",
+        "dayStart": "Beginn des Geschäftstags",
+        "dayStartHint": "Bestellungen vor dieser Uhrzeit zählen zum Vortag — für Berichte, Bestellverlauf und Dienstzeiten."
+      },
+      "ticket": {
+        "title": "Küchenbon",
+        "description": "Texte am Anfang und Ende des Bons",
+        "header": "Kopfzeile",
+        "headerHint": "Höchstens {{max}} Zeichen; kurze Kopfzeilen werden groß gedruckt",
+        "footer": "Fußzeile",
+        "footerHint": "Leer lassen, um nichts zu drucken",
+        "preview": "Vorschau (Beispielbestellung)"
+      },
+      "printer": {
+        "title": "Druckerverbindung",
+        "description": "Netzwerkadresse und Zeichensatz des Küchendruckers",
+        "host": "IP-Adresse",
+        "hostHint": "Beispiel 192.168.1.50 — steht auf dem Selbsttest-Bon des Druckers",
+        "port": "Port",
+        "codepage": "Zeichensatz",
+        "codepageHint": "Sind türkische Buchstaben falsch, den anderen türkischen Zeichensatz wählen, speichern und Testbon drucken.",
+        "codepages": {
+          "cp857": "CP857 · Türkisch (61) — empfohlen",
+          "windows1254": "Windows-1254 · Türkisch (91)",
+          "cp858": "CP858 · Westeuropa + € (19)",
+          "cp437": "CP437 · Einfaches ASCII (0)"
+        },
+        "transliterate": "Türkische Buchstaben vereinfachen",
+        "transliterateHint": "Ş→S, Ğ→G, İ→I, ı→i. Einschalten, wenn der Drucker Türkisch mit keinem Zeichensatz druckt.",
+        "saveBeforeTest": "Der Testbon nutzt die gespeicherten Einstellungen — zum Testen der neuen Druckereinstellung zuerst speichern."
+      },
+      "quickNotes": {
+        "title": "Schnellnotizen",
+        "description": "Kurze Notizen, die Kellner mit einem Tipp zum Artikel hinzufügen",
+        "add": "Notiz hinzufügen",
+        "empty": "Noch keine Schnellnotizen"
+      },
+      "cancelReasons": {
+        "title": "Stornogründe",
+        "description": "Auswahl beim Stornieren einer Position; der deutsche Text steht auf dem Stornobon",
+        "freeText": "Freitext verlangen",
+        "add": "Grund hinzufügen",
+        "empty": "Noch keine Stornogründe"
+      },
+      "allergens": {
+        "title": "Allergenlegende",
+        "description": "Codes für Allergene und Zusatzstoffe, die Artikeln zugeordnet werden",
+        "code": "Code",
+        "add": "Allergen hinzufügen",
+        "empty": "Noch keine Allergene"
+      },
+      "errors": {
+        "host_invalid": "Adresse ungültig — Beispiel: 192.168.1.50",
+        "port_invalid": "Zahl von 1 bis 65535 (meist 9100)",
+        "header_empty": "Kopfzeile darf nicht leer sein",
+        "header_too_long": "Kopfzeile darf höchstens 48 Zeichen haben",
+        "time_invalid": "Uhrzeit ungültig — Beispiel: 05:00",
+        "name_empty": "Name darf nicht leer sein",
+        "text_empty": "Deutscher Text darf nicht leer sein",
+        "code_empty": "Code darf nicht leer sein",
+        "code_invalid": "Code darf keine Leerzeichen oder Kommas enthalten",
+        "code_duplicate": "Dieser Code ist bereits in der Liste"
+      }
+    },
     "nav": {
       "label": "Verwaltung",
       "open": "Menü öffnen",
@@ -515,7 +655,7 @@
       "revenue": "Umsatz heute",
       "revenueNote": "{{orders}} Bestellungen · {{items}} Positionen",
       "openValueNote": "Auf offenen Tischen {{total}}",
-      "businessDayNote": "Geschäftstag {{date}} — beginnt um 05:00 Uhr",
+      "businessDayNote": "Geschäftstag {{date}} — beginnt um {{time}} Uhr",
       "tables": {
         "title": "Offene Tische",
         "table": "Tisch",
@@ -653,7 +793,7 @@
       "from": "Von",
       "to": "Bis",
       "today": "Heute",
-      "note": "Der Geschäftstag beginnt um 05:00 Uhr",
+      "note": "Der Geschäftstag beginnt um {{time}} Uhr",
       "errors": {
         "range_invalid": "Das Enddatum liegt vor dem Startdatum — Daten korrigieren",
         "range_too_long": "Höchstens 31 Tage wählbar — Zeitraum verkürzen"

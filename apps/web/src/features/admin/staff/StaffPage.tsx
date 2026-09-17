@@ -13,6 +13,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { qk } from '../../../data/keys';
+import { useBusinessDayStart } from '../../../data/settings';
 import { useAdminStaffList } from '../../../data/staff';
 import { useAuth, type Profile } from '../../../lib/auth';
 import { toast } from '../../../lib/toast';
@@ -36,6 +37,7 @@ export function StaffPage() {
   const { data, isPending } = useAdminStaffList();
   const queryClient = useQueryClient();
   const meId = useAuth((s) => s.profile?.id);
+  const dayStart = useBusinessDayStart();
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Profile | null>(null);
   const [pinTarget, setPinTarget] = useState<Profile | null>(null);
@@ -79,7 +81,7 @@ export function StaffPage() {
       ) : (
         <ul className="flex flex-col gap-2">
           {data.map((p) => {
-            const onDuty = p.is_active && isOnDuty(p.on_duty_since, now);
+            const onDuty = p.is_active && isOnDuty(p.on_duty_since, now, dayStart);
             return (
               <li
                 key={p.id}

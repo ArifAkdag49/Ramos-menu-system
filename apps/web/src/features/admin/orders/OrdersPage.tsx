@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useAdminOrders, type AdminOrderItem, type OrderView } from '../../../data/adminOrders';
 import { useAdminTables } from '../../../data/adminTables';
 import type { OrderStatus } from '../../../data/orderMapper';
+import { useBusinessDayStart } from '../../../data/settings';
 import { useAdminStaffList } from '../../../data/staff';
 import { Badge } from '../../../ui/Badge';
 import { Banner } from '../../../ui/Banner';
@@ -12,7 +13,7 @@ import { Button } from '../../../ui/Button';
 import { EmptyState } from '../../../ui/EmptyState';
 import { Spinner } from '../../../ui/Spinner';
 import { CancelItemSheet } from '../../waiter/CancelItemSheet';
-import { businessDate } from '../dashboardLogic';
+import { businessDate, formatDayStart } from '../dashboardLogic';
 import { SelectField, TextField } from '../menu/fields';
 import { OrderDrawer } from './OrderDrawer';
 import {
@@ -28,6 +29,12 @@ import { formatClock, formatDateTime, ORDER_STATUS_ICON, ORDER_STATUS_TONE } fro
 
 const STATUSES: OrderStatus[] = ['in_kitchen', 'ready', 'served', 'cancelled'];
 
+/** Ekrandaki süzgeç: tarih `null` ise "bugünkü iş günü" demektir. */
+type OrdersFilterDraft = Omit<OrdersFilterInput, 'from' | 'to'> & {
+  from: string | null;
+  to: string | null;
+};
+
 /**
  * Admin > Siparişler (spec §8.4). Varsayılan bugünün iş günüdür; filtre değişince sayfa sayısı
  * başa döner. Masaüstünde tablo, telefonda kart listesi (BUILD-PROMPT §10.7: telefonda tablo yok) —
@@ -36,14 +43,18 @@ const STATUSES: OrderStatus[] = ['in_kitchen', 'ready', 'served', 'cancelled'];
 export function OrdersPage() {
   const { t, i18n } = useTranslation();
   const locale: Locale = i18n.language === 'de' ? 'de' : 'tr';
-  const [today] = useState(() => businessDate(new Date()));
-  const [form, setForm] = useState<OrdersFilterInput>({
-    from: today,
-    to: today,
+  const dayStart = useBusinessDayStart();
+  const today = businessDate(new Date(), dayStart);
+  // Tarih seçilmedikçe (null) aralık "bugün"ü izler: iş günü başlangıcı ayardan sayfa açıldıktan
+  // sonra gelebilir (R86) ve ilk çizimdeki 05:00 varsayılanında takılı kalmamalı.
+  const [draft, setDraft] = useState<OrdersFilterDraft>({
+    from: null,
+    to: null,
     tableId: '',
     waiterId: '',
     status: '',
   });
+  const form: OrdersFilterInput = { ...draft, from: draft.from ?? today, to: draft.to ?? today };
   const [pages, setPages] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<AdminOrderItem | null>(null);
@@ -62,8 +73,8 @@ export function OrdersPage() {
   const { orders, hasMore, isPending, isFetching, isError } = useAdminOrders(filter, limit);
   const singleDay = form.from === form.to;
 
-  const update = (patch: Partial<OrdersFilterInput>) => {
-    setForm((f) => ({ ...f, ...patch }));
+  const update = (patch: Partial<OrdersFilterDraft>) => {
+    setDraft((f) => ({ ...f, ...patch }));
     setPages(1);
   };
 
@@ -74,6 +85,7 @@ export function OrdersPage() {
       <Filters
         form={form}
         today={today}
+        dayStart={dayStart}
         locale={locale}
         rangeError={rangeError}
         onChange={update}
@@ -148,15 +160,17 @@ export function OrdersPage() {
 function Filters({
   form,
   today,
+  dayStart,
   locale,
   rangeError,
   onChange,
 }: {
   form: OrdersFilterInput;
   today: string;
+  dayStart: number;
   locale: Locale;
   rangeError: OrdersFilterError['key'] | null;
-  onChange: (patch: Partial<OrdersFilterInput>) => void;
+  onChange: (patch: Partial<OrdersFilterDraft>) => void;
 }) {
   const { t } = useTranslation();
   const tables = useAdminTables().data ?? [];
@@ -216,14 +230,16 @@ function Filters({
             {t(`admin.range.errors.${rangeError}`)}
           </p>
         ) : (
-          <p className="text-xs text-muted">{t('admin.range.note')}</p>
+          <p className="text-xs text-muted">
+            {t('admin.range.note', { time: formatDayStart(dayStart) })}
+          </p>
         )}
         {form.from !== today || form.to !== today ? (
           <Button
             variant="ghost"
             className="px-3"
             icon={<CalendarDays aria-hidden size={18} />}
-            onClick={() => onChange({ from: today, to: today })}
+            onClick={() => onChange({ from: null, to: null })}
           >
             {t('admin.range.today')}
           </Button>

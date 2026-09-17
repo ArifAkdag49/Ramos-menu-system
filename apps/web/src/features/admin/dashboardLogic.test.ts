@@ -6,8 +6,14 @@ import {
   businessDayStartUtc,
   dashboardStats,
   dateRangeError,
+  dayStartMinutes,
+  DEFAULT_DAY_START_MINUTES,
   formatBusinessDay,
+  formatDayStart,
 } from './dashboardLogic';
+
+/** Ayarın varsayılanı (`settings.business_day_start = '05:00'`). */
+const FIVE = DEFAULT_DAY_START_MINUTES;
 
 describe('dashboardStats', () => {
   it('açık masa, mutfak, hazır ve açık tutar toplamı', () => {
@@ -21,28 +27,87 @@ describe('dashboardStats', () => {
   });
 
   it('masa yoksa hepsi sıfır', () =>
-    expect(dashboardStats([])).toEqual({ openTables: 0, inKitchen: 0, ready: 0, openValueCents: 0 }));
+    expect(dashboardStats([])).toEqual({
+      openTables: 0,
+      inKitchen: 0,
+      ready: 0,
+      openValueCents: 0,
+    }));
 });
 
 describe('businessDate (Europe/Berlin + 05:00)', () => {
   // Yaz saati: Berlin = UTC+2. 16 Eylül 02:30 UTC → 04:30 Berlin → hâlâ önceki iş günü.
   it('05:00 öncesi bir önceki güne sayılır', () =>
-    expect(businessDate(new Date('2026-09-16T02:30:00Z'))).toBe('2026-09-15'));
+    expect(businessDate(new Date('2026-09-16T02:30:00Z'), FIVE)).toBe('2026-09-15'));
 
   it('05:00 iş gününü başlatır', () =>
-    expect(businessDate(new Date('2026-09-16T03:00:00Z'))).toBe('2026-09-16'));
+    expect(businessDate(new Date('2026-09-16T03:00:00Z'), FIVE)).toBe('2026-09-16'));
 
   it('gece yarısından hemen sonra da önceki gündür', () =>
-    expect(businessDate(new Date('2026-09-16T22:10:00Z'))).toBe('2026-09-16'));
+    expect(businessDate(new Date('2026-09-16T22:10:00Z'), FIVE)).toBe('2026-09-16'));
 
   // Kış saati: Berlin = UTC+1. 10 Ocak 04:30 UTC → 05:30 Berlin → yeni iş günü.
   it('kış saatinde de Berlin duvar saatine göre hesaplanır', () => {
-    expect(businessDate(new Date('2026-01-10T03:30:00Z'))).toBe('2026-01-09');
-    expect(businessDate(new Date('2026-01-10T04:30:00Z'))).toBe('2026-01-10');
+    expect(businessDate(new Date('2026-01-10T03:30:00Z'), FIVE)).toBe('2026-01-09');
+    expect(businessDate(new Date('2026-01-10T04:30:00Z'), FIVE)).toBe('2026-01-10');
   });
 
   it('ay başında bir gün geri gidince ay da döner', () =>
-    expect(businessDate(new Date('2026-03-01T01:00:00Z'))).toBe('2026-02-28'));
+    expect(businessDate(new Date('2026-03-01T01:00:00Z'), FIVE)).toBe('2026-02-28'));
+});
+
+// R86: iş günü sabit 05:00 değil, `settings.business_day_start`. Sunucu aynı değeri kullanır
+// (`public.business_date`: Berlin duvar saati − başlangıç aralığı), istemci de onu izlemeli.
+describe('iş günü başlangıcı ayardan (R86)', () => {
+  it('dayStartMinutes: `time` sütunu saniyeli gelir, form değeri saniyesiz', () => {
+    expect(dayStartMinutes('05:00:00')).toBe(300);
+    expect(dayStartMinutes('04:30')).toBe(270);
+    expect(dayStartMinutes('00:00:00')).toBe(0);
+    expect(dayStartMinutes('23:59')).toBe(1439);
+  });
+
+  it('dayStartMinutes: ayar gelmeden ya da bozuksa 05:00', () => {
+    expect(dayStartMinutes(undefined)).toBe(300);
+    expect(dayStartMinutes(null)).toBe(300);
+    expect(dayStartMinutes('')).toBe(300);
+    expect(dayStartMinutes('25:00')).toBe(300);
+    expect(dayStartMinutes('5:00')).toBe(300);
+  });
+
+  it('formatDayStart: dakikayı HH:MM yazar', () => {
+    expect(formatDayStart(300)).toBe('05:00');
+    expect(formatDayStart(270)).toBe('04:30');
+    expect(formatDayStart(0)).toBe('00:00');
+    expect(formatDayStart(1439)).toBe('23:59');
+  });
+
+  // Yaz saati: 16 Eylül 02:10 UTC → 04:10 Berlin.
+  it('başlangıç 04:00 ise 04:10 Berlin yeni iş günüdür, 05:00 ise değildir', () => {
+    const at = new Date('2026-09-16T02:10:00Z');
+    expect(businessDate(at, 240)).toBe('2026-09-16');
+    expect(businessDate(at, FIVE)).toBe('2026-09-15');
+  });
+
+  it('dakikalı başlangıç (05:30): 05:29 önceki, 05:30 yeni iş günü', () => {
+    expect(businessDate(new Date('2026-09-16T03:29:00Z'), 330)).toBe('2026-09-15');
+    expect(businessDate(new Date('2026-09-16T03:30:00Z'), 330)).toBe('2026-09-16');
+  });
+
+  it('başlangıç 00:00 ise iş günü takvim günüdür', () => {
+    expect(businessDate(new Date('2026-09-15T22:00:00Z'), 0)).toBe('2026-09-16');
+    expect(businessDate(new Date('2026-09-15T21:59:00Z'), 0)).toBe('2026-09-15');
+  });
+
+  it('businessDayStartUtc başlangıcı izler (yaz 04:30 → 02:30 UTC, kış 06:00 → 05:00 UTC)', () => {
+    expect(businessDayStartUtc('2026-09-17', 270)).toBe('2026-09-17T02:30:00.000Z');
+    expect(businessDayStartUtc('2026-01-10', 360)).toBe('2026-01-10T05:00:00.000Z');
+  });
+
+  it('businessDayStartUtc ile businessDate aynı sınırı çizer (06:15)', () => {
+    const start = new Date(businessDayStartUtc('2026-09-17', 375));
+    expect(businessDate(start, 375)).toBe('2026-09-17');
+    expect(businessDate(new Date(start.getTime() - 1), 375)).toBe('2026-09-16');
+  });
 });
 
 describe('agoParts', () => {
@@ -51,11 +116,14 @@ describe('agoParts', () => {
   it('bir dakikanın altı "az önce"', () =>
     expect(agoParts('2026-09-16T11:59:30Z', now)).toEqual({ unit: 'now', count: 0 }));
 
-  it('dakika', () => expect(agoParts('2026-09-16T11:58:00Z', now)).toEqual({ unit: 'minutes', count: 2 }));
+  it('dakika', () =>
+    expect(agoParts('2026-09-16T11:58:00Z', now)).toEqual({ unit: 'minutes', count: 2 }));
 
-  it('saat', () => expect(agoParts('2026-09-16T09:00:00Z', now)).toEqual({ unit: 'hours', count: 3 }));
+  it('saat', () =>
+    expect(agoParts('2026-09-16T09:00:00Z', now)).toEqual({ unit: 'hours', count: 3 }));
 
-  it('gün', () => expect(agoParts('2026-09-14T12:00:00Z', now)).toEqual({ unit: 'days', count: 2 }));
+  it('gün', () =>
+    expect(agoParts('2026-09-14T12:00:00Z', now)).toEqual({ unit: 'days', count: 2 }));
 
   it('tarih yoksa null', () => expect(agoParts(null, now)).toBeNull());
 
@@ -66,31 +134,35 @@ describe('agoParts', () => {
 
 // M6 kapisi (H3): ekranda tarih her yerde dd.MM.yyyy (BUILD-PROMPT §5); ISO biçim yalnız RPC'ye gider.
 describe('formatBusinessDay', () => {
-  it('ISO tarihi dd.MM.yyyy yapar', () => expect(formatBusinessDay('2026-09-16')).toBe('16.09.2026'));
-  it('beklenmeyen biçimi olduğu gibi bırakır', () => expect(formatBusinessDay('bugün')).toBe('bugün'));
+  it('ISO tarihi dd.MM.yyyy yapar', () =>
+    expect(formatBusinessDay('2026-09-16')).toBe('16.09.2026'));
+  it('beklenmeyen biçimi olduğu gibi bırakır', () =>
+    expect(formatBusinessDay('bugün')).toBe('bugün'));
   it('businessDate çıktısıyla birlikte çalışır', () =>
-    expect(formatBusinessDay(businessDate(new Date('2026-01-10T03:30:00Z')))).toBe('09.01.2026'));
+    expect(formatBusinessDay(businessDate(new Date('2026-01-10T03:30:00Z'), FIVE))).toBe(
+      '09.01.2026',
+    ));
 });
 
 // Görev 23: sipariş ve denetim ekranları tarih aralığını iş günü olarak alır. Denetim kaydında
 // `at` bir zaman damgasıdır; iş gününün sınırı (Berlin 05:00) UTC'ye burada çevrilir.
 describe('businessDayStartUtc (iş günü Berlin 05:00 → UTC)', () => {
   it('yaz saatinde 03:00 UTC', () =>
-    expect(businessDayStartUtc('2026-09-17')).toBe('2026-09-17T03:00:00.000Z'));
+    expect(businessDayStartUtc('2026-09-17', FIVE)).toBe('2026-09-17T03:00:00.000Z'));
 
   it('kış saatinde 04:00 UTC', () =>
-    expect(businessDayStartUtc('2026-01-10')).toBe('2026-01-10T04:00:00.000Z'));
+    expect(businessDayStartUtc('2026-01-10', FIVE)).toBe('2026-01-10T04:00:00.000Z'));
 
   it('yaz saatine geçilen gün (29.03.2026) 05:00 zaten yaz saatidir', () =>
-    expect(businessDayStartUtc('2026-03-29')).toBe('2026-03-29T03:00:00.000Z'));
+    expect(businessDayStartUtc('2026-03-29', FIVE)).toBe('2026-03-29T03:00:00.000Z'));
 
   it('kış saatine dönülen gün (25.10.2026) 05:00 zaten kış saatidir', () =>
-    expect(businessDayStartUtc('2026-10-25')).toBe('2026-10-25T04:00:00.000Z'));
+    expect(businessDayStartUtc('2026-10-25', FIVE)).toBe('2026-10-25T04:00:00.000Z'));
 
   it('businessDate ile tutarlı: sınırın 1 ms öncesi önceki iş günüdür', () => {
-    const start = new Date(businessDayStartUtc('2026-09-17'));
-    expect(businessDate(start)).toBe('2026-09-17');
-    expect(businessDate(new Date(start.getTime() - 1))).toBe('2026-09-16');
+    const start = new Date(businessDayStartUtc('2026-09-17', FIVE));
+    expect(businessDate(start, FIVE)).toBe('2026-09-17');
+    expect(businessDate(new Date(start.getTime() - 1), FIVE)).toBe('2026-09-16');
   });
 });
 

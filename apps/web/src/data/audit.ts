@@ -42,7 +42,10 @@ export interface AuditLogEntry extends AuditEntry {
 }
 
 export interface AuditLogFilter {
-  /** İş günü, `yyyy-MM-dd`. Sınır Berlin 05:00'tir (`businessDayStartUtc`), takvim gece yarısı değil. */
+  /**
+   * İş günü, `yyyy-MM-dd`. Sınır Berlin'de `settings.business_day_start`'tır (`businessDayStartUtc`,
+   * R86), takvim gece yarısı değil.
+   */
   from: string;
   to: string;
   action?: string;
@@ -58,10 +61,13 @@ export const AUDIT_PAGE_SIZE = 50;
  * `range(0, page × 50 − 1)` — sipariş geçmişiyle aynı "Daha fazla" düzeni.
  *
  * Aralık denetimi (`dateRangeError`) ekranın işidir; buraya geçersiz aralık gelirse sorgu gitmez.
+ * `dayStart` iş günü başlangıcıdır (dakika, `useBusinessDayStart`); anahtarın parçasıdır ki ayar
+ * değişince liste yeni sınırla yeniden okunsun.
  */
 export function useAuditLog(
   filter: AuditLogFilter | null,
   page: number,
+  dayStart: number,
 ): {
   entries: AuditLogEntry[];
   hasMore: boolean;
@@ -71,7 +77,7 @@ export function useAuditLog(
 } {
   const limit = Math.max(1, page) * AUDIT_PAGE_SIZE;
   const { data, isPending, isFetching, isError } = useQuery({
-    queryKey: qk.auditLog(filter ?? {}, limit),
+    queryKey: qk.auditLog({ ...filter, dayStart }, limit),
     enabled: filter !== null,
     placeholderData: keepPreviousData,
     queryFn: async (): Promise<AuditLogEntry[]> => {
@@ -79,8 +85,8 @@ export function useAuditLog(
       let q = supabase
         .from('audit_log')
         .select('id, at, actor_id, action, entity, entity_id, details')
-        .gte('at', businessDayStartUtc(f.from))
-        .lt('at', businessDayStartUtc(addDays(f.to, 1)));
+        .gte('at', businessDayStartUtc(f.from, dayStart))
+        .lt('at', businessDayStartUtc(addDays(f.to, 1), dayStart));
       if (f.action) q = q.eq('action', f.action);
       if (f.entity) q = q.eq('entity', f.entity);
       const { data, error } = await q

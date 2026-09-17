@@ -23,7 +23,13 @@ const COLUMNS = 48;
  * Kutu 48 kolonluk tek aralıklı yazıyla çizilir (BUILD-PROMPT §5); ters renkli satırlar (OHNE,
  * NACHBESTELLUNG) yazıcıda olduğu gibi zemin/yazı renkleri değişmiş olarak görünür.
  */
-export function TicketPreview({ product, isBeverage }: { product: MenuProduct; isBeverage: boolean }) {
+export function TicketPreview({
+  product,
+  isBeverage,
+}: {
+  product: MenuProduct;
+  isBeverage: boolean;
+}) {
   const { t } = useTranslation();
   const [qty, setQty] = useState(1);
   const [sel, setSel] = useState<Selection>(() => initialSelection(product));
@@ -36,7 +42,9 @@ export function TicketPreview({ product, isBeverage }: { product: MenuProduct; i
   const toggleOption = (id: string) =>
     setSel((s) => ({
       ...s,
-      optionIds: s.optionIds.includes(id) ? s.optionIds.filter((x) => x !== id) : [...s.optionIds, id],
+      optionIds: s.optionIds.includes(id)
+        ? s.optionIds.filter((x) => x !== id)
+        : [...s.optionIds, id],
     }));
 
   const toggleIngredient = (id: string) =>
@@ -62,7 +70,9 @@ export function TicketPreview({ product, isBeverage }: { product: MenuProduct; i
 
       {product.variants.length > 0 ? (
         <fieldset className="flex flex-col gap-2">
-          <legend className="pb-1 text-xs font-medium text-muted">{t('admin.menu.preview.variant')}</legend>
+          <legend className="pb-1 text-xs font-medium text-muted">
+            {t('admin.menu.preview.variant')}
+          </legend>
           <div className="flex flex-wrap gap-2">
             {product.variants.map((v) => (
               <Chip
@@ -79,7 +89,9 @@ export function TicketPreview({ product, isBeverage }: { product: MenuProduct; i
 
       {product.ingredients.length > 0 ? (
         <fieldset className="flex flex-col gap-2">
-          <legend className="pb-1 text-xs font-medium text-muted">{t('admin.menu.preview.without')}</legend>
+          <legend className="pb-1 text-xs font-medium text-muted">
+            {t('admin.menu.preview.without')}
+          </legend>
           <div className="flex flex-wrap gap-2">
             {product.ingredients.map((ing) => (
               <Chip
@@ -100,7 +112,11 @@ export function TicketPreview({ product, isBeverage }: { product: MenuProduct; i
           <legend className="pb-1 text-xs font-medium text-muted">{g.name_de}</legend>
           <div className="flex flex-wrap gap-2">
             {g.options.map((o) => (
-              <Chip key={o.id} selected={sel.optionIds.includes(o.id)} onClick={() => toggleOption(o.id)}>
+              <Chip
+                key={o.id}
+                selected={sel.optionIds.includes(o.id)}
+                onClick={() => toggleOption(o.id)}
+              >
                 {o.name_de}
               </Chip>
             ))}
@@ -117,7 +133,9 @@ export function TicketPreview({ product, isBeverage }: { product: MenuProduct; i
 function initialSelection(product: MenuProduct): Selection {
   return {
     variantId: (product.variants.find((v) => v.is_default) ?? product.variants[0])?.id ?? null,
-    optionIds: product.groups.flatMap((g) => g.options.filter((o) => o.is_default).map((o) => o.id)),
+    optionIds: product.groups.flatMap((g) =>
+      g.options.filter((o) => o.is_default).map((o) => o.id),
+    ),
     removedIngredientIds: [],
   };
 }
@@ -126,8 +144,18 @@ function initialSelection(product: MenuProduct): Selection {
  * Görev 23: sipariş çekmecesi gerçek bir fiş işinin yükünü aynı kâğıtla gösterir — ürün editöründeki
  * önizleme ile geçmiş siparişin fişi arasında görsel fark olmasın diye çizim tek yerdedir.
  */
-export function TicketPayloadPaper({ payload }: { payload: TicketPayload }) {
-  const lines = useMemo(() => renderTicket(payload, { columns: COLUMNS }), [payload]);
+export function TicketPayloadPaper({
+  payload,
+  transliterate = false,
+}: {
+  payload: TicketPayload;
+  /** Ayarlar önizlemesi: yazıcının transliterasyon anahtarı açıksa kâğıtta "Ş" yerine "S" görünür. */
+  transliterate?: boolean;
+}) {
+  const lines = useMemo(
+    () => renderTicket(payload, { columns: COLUMNS, transliterate }),
+    [payload, transliterate],
+  );
   return <TicketPaper lines={lines} />;
 }
 
@@ -141,9 +169,12 @@ function TicketPaper({ lines }: { lines: Line[] }) {
     <div
       lang="de"
       data-testid="ticket-preview"
-      className="overflow-x-auto rounded-card border border-border bg-[#F5F5F0] p-4 text-[#0A0A0A]"
+      className="@container overflow-x-auto rounded-card border border-border bg-[#F5F5F0] p-4 text-[#0A0A0A]"
     >
-      <pre className="w-max font-mono text-xs leading-[1.45]">
+      {/* Dar kutuda (telefon) yazı kutuya sığacak kadar küçülür, kâğıt yandan kesilmez: en geniş
+          satır çift yükseklikli 48 kolondur (≈ 48 × 0,6 em = 28,8 em). Geniş kutuda boyut
+          `text-xs`/`text-sm`de kalır; kayma yalnız çok dar kutularda son çare olarak kalır. */}
+      <pre className="w-max font-mono text-[length:min(0.75rem,calc(100cqw/33.6))] leading-[1.45]">
         {lines.map((line, i) => {
           const text = linesToText([line], COLUMNS);
           const isText = line.kind === 'text';
@@ -153,7 +184,7 @@ function TicketPaper({ lines }: { lines: Line[] }) {
               className={clsx(
                 'block',
                 isText && line.bold && 'font-bold',
-                isText && line.height === 2 && 'text-sm',
+                isText && line.height === 2 && 'text-[length:min(0.875rem,calc(100cqw/28.8))]',
                 // Çift genişlik: tek aralıklı yazıda harf başına 1ch ek aralık = kâğıttaki 2 kolon.
                 isText && line.width === 2 && 'tracking-[1ch]',
                 isText && line.invert && 'bg-[#0A0A0A] text-[#F5F5F0]',

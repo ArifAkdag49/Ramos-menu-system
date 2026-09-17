@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarDays, ChevronDown, ChevronUp, ScrollText } from 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuditLog, type AuditLogEntry, type AuditLogFilter } from '../../data/audit';
+import { useBusinessDayStart } from '../../data/settings';
 import { useStaffNames } from '../../data/staff';
 import { Banner } from '../../ui/Banner';
 import { Button } from '../../ui/Button';
@@ -16,7 +17,7 @@ import {
   isRowAction,
   type AuditSummaryContext,
 } from './auditLogic';
-import { businessDate, dateRangeError } from './dashboardLogic';
+import { businessDate, dateRangeError, formatDayStart } from './dashboardLogic';
 import { SelectField, TextField } from './menu/fields';
 import { formatDateTime } from './orders/orderView';
 
@@ -41,6 +42,12 @@ const FIELD_KEY = {
   quick_notes: 'admin.audit.fields.quick_notes',
 } as const;
 
+/** Ekrandaki süzgeç: tarih `null` ise "bugünkü iş günü" demektir. */
+type AuditLogForm = Omit<AuditLogFilter, 'from' | 'to'> & {
+  from: string | null;
+  to: string | null;
+};
+
 const ROLE_KEY = {
   admin: 'roles.admin',
   waiter: 'roles.waiter',
@@ -56,28 +63,33 @@ const ROLE_KEY = {
 export function AuditLogPage() {
   const { t, i18n } = useTranslation();
   const locale: Locale = i18n.language === 'de' ? 'de' : 'tr';
-  const [today] = useState(() => businessDate(new Date()));
-  const [form, setForm] = useState<AuditLogFilter>({
-    from: today,
-    to: today,
+  const dayStart = useBusinessDayStart();
+  const today = businessDate(new Date(), dayStart);
+  // Tarih seçilmedikçe (null) aralık "bugün"ü izler: iş günü başlangıcı ayardan sayfa açıldıktan
+  // sonra gelebilir (R86) ve ilk çizimdeki 05:00 varsayılanında takılı kalmamalı.
+  const [form, setForm] = useState<AuditLogForm>({
+    from: null,
+    to: null,
     action: '',
     entity: '',
   });
+  const from = form.from ?? today;
+  const to = form.to ?? today;
   const [page, setPage] = useState(1);
   const staffNames = useStaffNames();
 
-  const rangeError = dateRangeError(form.from, form.to);
+  const rangeError = dateRangeError(from, to);
   const filter: AuditLogFilter | null = rangeError
     ? null
     : {
-        from: form.from,
-        to: form.to,
+        from,
+        to,
         ...(form.action ? { action: form.action } : {}),
         ...(form.entity ? { entity: form.entity } : {}),
       };
-  const { entries, hasMore, isPending, isFetching, isError } = useAuditLog(filter, page);
+  const { entries, hasMore, isPending, isFetching, isError } = useAuditLog(filter, page, dayStart);
 
-  const update = (patch: Partial<AuditLogFilter>) => {
+  const update = (patch: Partial<AuditLogForm>) => {
     setForm((f) => ({ ...f, ...patch }));
     setPage(1);
   };
@@ -102,13 +114,13 @@ export function AuditLogPage() {
           <TextField
             type="date"
             label={t('admin.range.from')}
-            value={form.from}
+            value={from}
             onChange={(from) => update({ from })}
           />
           <TextField
             type="date"
             label={t('admin.range.to')}
-            value={form.to}
+            value={to}
             onChange={(to) => update({ to })}
           />
           <SelectField
@@ -146,14 +158,16 @@ export function AuditLogPage() {
               {t(`admin.range.errors.${rangeError}`)}
             </p>
           ) : (
-            <p className="text-xs text-muted">{t('admin.range.note')}</p>
+            <p className="text-xs text-muted">
+              {t('admin.range.note', { time: formatDayStart(dayStart) })}
+            </p>
           )}
-          {form.from !== today || form.to !== today ? (
+          {from !== today || to !== today ? (
             <Button
               variant="ghost"
               className="px-3"
               icon={<CalendarDays aria-hidden size={18} />}
-              onClick={() => update({ from: today, to: today })}
+              onClick={() => update({ from: null, to: null })}
             >
               {t('admin.range.today')}
             </Button>

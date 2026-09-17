@@ -15,6 +15,9 @@ vi.mock('../../../data/staff', () => ({
   useAdminStaffList: () => ({ isPending: false, data: h.staff }),
 }));
 
+// R86: "Mesaide" rozeti iş günü başlangıcını ayardan okur; testte varsayılan 05:00.
+vi.mock('../../../data/settings', () => ({ useBusinessDayStart: () => 300 }));
+
 // Hata sınıfı gerçek modülden gelir: ekran hatayı `instanceof` ile tanır.
 vi.mock('./adminStaffClient', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./adminStaffClient')>()),

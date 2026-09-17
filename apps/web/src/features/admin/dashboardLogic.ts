@@ -37,17 +37,41 @@ const BERLIN = new Intl.DateTimeFormat('sv-SE', {
   hourCycle: 'h23',
 });
 
-const BUSINESS_DAY_START_HOUR = 5;
+/**
+ * Ayar gelmeden önce kullanılan iş günü başlangıcı (dakika). Sunucudaki varsayılanla aynıdır:
+ * `settings.business_day_start time not null default '05:00'`.
+ */
+export const DEFAULT_DAY_START_MINUTES = 5 * 60;
+
+const TIME_OF_DAY = /^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d(?:\.\d+)?)?$/;
 
 /**
- * İş günü (BUILD-PROMPT §5): Europe/Berlin saatiyle 05:00'ten önce olan her şey bir önceki güne
- * yazılır — sunucudaki `orders.business_date` ile aynı kural. Saat dilimi dönüşümü yaz/kış
- * saatini de kapsasın diye elle ofset eklenmez, `Intl` kullanılır; gün geri alınırken UTC öğlen
- * seçilir, böylece DST geçişinde tarih kaymaz.
+ * R86 — iş gününün başlangıcı sabit değil, `settings.business_day_start` ayarıdır. Postgres `time`
+ * sütunu "05:00:00", form "05:00" verir; ikisi de gece yarısından dakikaya çevrilir. Ayar daha
+ * gelmediyse ya da okunamıyorsa varsayılan 05:00 kullanılır — ekran bekletilmez.
  */
-export function businessDate(now: Date): string {
-  const [date = '', time = '00'] = BERLIN.format(now).split(' ');
-  if (Number(time.slice(0, 2)) >= BUSINESS_DAY_START_HOUR) return date;
+export function dayStartMinutes(value: string | null | undefined): number {
+  const m = TIME_OF_DAY.exec(value ?? '');
+  return m ? Number(m[1]) * 60 + Number(m[2]) : DEFAULT_DAY_START_MINUTES;
+}
+
+/** Dakikayı operatörün gördüğü "05:00" biçimine çevirir (iki dilde aynı, 24 saat). */
+export function formatDayStart(minutes: number): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+}
+
+/**
+ * İş günü (BUILD-PROMPT §5): Europe/Berlin saatiyle iş günü başlangıcından (`dayStart`, dakika;
+ * varsayılan 05:00) önce olan her şey bir önceki güne yazılır — sunucudaki `public.business_date`
+ * ile aynı kural (Berlin duvar saati − başlangıç). Saat dilimi dönüşümü yaz/kış saatini de
+ * kapsasın diye elle ofset eklenmez, `Intl` kullanılır; gün geri alınırken UTC öğlen seçilir,
+ * böylece DST geçişinde tarih kaymaz.
+ */
+export function businessDate(now: Date, dayStart: number): string {
+  const [date = '', time = '00:00'] = BERLIN.format(now).split(' ');
+  const [hour = 0, minute = 0] = time.split(':').map(Number);
+  if (hour * 60 + minute >= dayStart) return date;
   const previous = new Date(`${date}T12:00:00Z`);
   previous.setUTCDate(previous.getUTCDate() - 1);
   return previous.toISOString().slice(0, 10);
@@ -106,13 +130,13 @@ const BERLIN_PARTS = new Intl.DateTimeFormat('en-US', {
 });
 
 /**
- * İş gününün başladığı an (Berlin 05:00) UTC olarak. Denetim kaydı `at` zaman damgasıyla
- * süzülür, `business_date` sütunu yoktur; bu yüzden gün sınırı burada çevrilir. Ofset, tahmin
- * edilen anın **kendisinde** yeniden okunur: geçiş gecesinde 05:00 zaten yeni ofsettedir.
+ * İş gününün başladığı an (Berlin, `dayStart` dakika) UTC olarak. Denetim kaydı `at` zaman
+ * damgasıyla süzülür, `business_date` sütunu yoktur; bu yüzden gün sınırı burada çevrilir. Ofset,
+ * tahmin edilen anın **kendisinde** yeniden okunur: geçiş gecesinde 05:00 zaten yeni ofsettedir.
  */
-export function businessDayStartUtc(isoDate: string): string {
+export function businessDayStartUtc(isoDate: string, dayStart: number): string {
   const [y = 0, m = 1, d = 1] = isoDate.split('-').map(Number);
-  const wall = Date.UTC(y, m - 1, d, BUSINESS_DAY_START_HOUR);
+  const wall = Date.UTC(y, m - 1, d, 0, dayStart);
   const guess = wall - berlinOffsetMinutes(wall) * 60_000;
   return new Date(wall - berlinOffsetMinutes(guess) * 60_000).toISOString();
 }
@@ -137,7 +161,10 @@ const DAY = 24 * HOUR;
  * İstemci saati sunucununkinden birkaç saniye ileride olabilir; negatif fark "az önce" sayılır,
  * yoksa ekranda "-1 dk önce" görünürdü.
  */
-export function agoParts(iso: string | null | undefined, now: Date): { unit: AgoUnit; count: number } | null {
+export function agoParts(
+  iso: string | null | undefined,
+  now: Date,
+): { unit: AgoUnit; count: number } | null {
   if (!iso) return null;
   const diff = now.getTime() - new Date(iso).getTime();
   if (diff < MINUTE) return { unit: 'now', count: 0 };

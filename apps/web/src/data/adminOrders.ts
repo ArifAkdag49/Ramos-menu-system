@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { OrdersFilter } from '../features/admin/orders/ordersQuery';
+import { EXPORT_PAGE_SIZE, readAllPages } from '../features/admin/reports/reportsLogic';
 import { supabase } from '../lib/supabase';
 import { qk } from './keys';
 import {
@@ -54,6 +55,35 @@ export function useAdminOrders(filter: OrdersFilter | null, limit: number) {
     isFetching: query.isFetching,
     isError: query.isError,
   };
+}
+
+/**
+ * CSV dışa aktarma (Raporlar): aralıktaki **bütün** siparişler, liste ekranıyla aynı seçim ve
+ * eşlemeyle (`ORDER_SELECT` + `mapOrders`). PostgREST tek yanıtta en fazla 1000 satır verir; bu
+ * yüzden okuma `range` ile 1000'lik parçalara bölünür. Sıra `created_at, id`: iki sipariş aynı
+ * anda oluşturulsa bile sayfa sınırında satır kaybolmaz ya da iki kez gelmez.
+ *
+ * Bu bir sorgu kancası değil, düğmeye basınca bir kez çalışan okumadır: sonuç önbelleğe
+ * konmaz — dosya her indirmede güncel veriden üretilir.
+ */
+export async function fetchOrdersForExport(
+  from: string,
+  to: string,
+  staffNames: Map<string, string>,
+): Promise<OrderView[]> {
+  const rows = await readAllPages(async (start, end) => {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(ORDER_SELECT)
+      .gte('business_date', from)
+      .lte('business_date', to)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(start, end);
+    if (error) throw error;
+    return (data ?? []) as unknown as OrderRow[];
+  }, EXPORT_PAGE_SIZE);
+  return mapOrders(rows, staffNames);
 }
 
 export interface AdminOrderItem extends OrderItemRow {

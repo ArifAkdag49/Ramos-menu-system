@@ -2,6 +2,7 @@ import { formatEuro, localTableName, type Locale } from '@ramos/shared';
 import { useTranslation } from 'react-i18next';
 import { useRecentAudit, type AuditEntry } from '../../data/audit';
 import { useReportRange } from '../../data/reports';
+import { useBusinessDayStart } from '../../data/settings';
 import { useStaffNames } from '../../data/staff';
 import { useTableOverviewQuery, type TableRow } from '../../data/tables';
 import { Badge } from '../../ui/Badge';
@@ -9,7 +10,7 @@ import { Spinner } from '../../ui/Spinner';
 import type { Tone } from '../../ui/tone';
 import { Elapsed } from '../common/Elapsed';
 import { auditLabelKeys, isRowAction } from './auditLogic';
-import { businessDate, dashboardStats, formatBusinessDay } from './dashboardLogic';
+import { businessDate, dashboardStats, formatBusinessDay, formatDayStart } from './dashboardLogic';
 import { PrinterCard } from './PrinterCard';
 
 const AUDIT_LIMIT = 10;
@@ -36,7 +37,8 @@ export function DashboardPage() {
   const tablesQuery = useTableOverviewQuery();
   const tables = tablesQuery.data ?? [];
   const stats = dashboardStats(tables);
-  const today = businessDate(new Date());
+  const dayStart = useBusinessDayStart();
+  const today = businessDate(new Date(), dayStart);
   const { report, isPending: reportPending } = useReportRange(today, today);
   const { entries: audit, isPending: auditPending } = useRecentAudit(AUDIT_LIMIT);
   const staffNames = useStaffNames();
@@ -49,15 +51,26 @@ export function DashboardPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">{t('admin.dashboard.title')}</h1>
         <p className="text-xs text-muted">
-          {t('admin.dashboard.businessDayNote', { date: formatBusinessDay(today) })}
+          {t('admin.dashboard.businessDayNote', {
+            date: formatBusinessDay(today),
+            time: formatDayStart(dayStart),
+          })}
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label={t('admin.dashboard.openTables')} value={stats.openTables} pending={tablesPending} />
-            <Stat label={t('admin.dashboard.inKitchen')} value={stats.inKitchen} pending={tablesPending} />
+            <Stat
+              label={t('admin.dashboard.openTables')}
+              value={stats.openTables}
+              pending={tablesPending}
+            />
+            <Stat
+              label={t('admin.dashboard.inKitchen')}
+              value={stats.inKitchen}
+              pending={tablesPending}
+            />
             <Stat label={t('admin.dashboard.ready')} value={stats.ready} pending={tablesPending} />
             <Stat
               label={t('admin.dashboard.revenue')}
@@ -102,7 +115,9 @@ function Stat({
     <div className="flex flex-col gap-1 rounded-card border border-border bg-surface px-4 py-3">
       <span className="text-xs font-medium text-muted">{label}</span>
       {/* Veri gelmeden "0" yazmak yanlış bilgidir; tire tarafsızdır ve düzen kaymaz. */}
-      <span className="tabular text-[30px] font-semibold leading-none">{pending ? '—' : value}</span>
+      <span className="tabular text-[30px] font-semibold leading-none">
+        {pending ? '—' : value}
+      </span>
       {note ? <span className="text-xs text-muted">{pending ? ' ' : note}</span> : null}
     </div>
   );
@@ -120,7 +135,10 @@ function Loading() {
 }
 
 /** Masa satırının durumu: hazır (altın) > mutfakta (lime) > açık (gri). Spec §8.5. */
-function rowState(row: TableRow): { tone: Tone; key: 'admin.dashboard.ready' | 'admin.dashboard.inKitchen' | 'admin.dashboard.tables.stateOpen' } {
+function rowState(row: TableRow): {
+  tone: Tone;
+  key: 'admin.dashboard.ready' | 'admin.dashboard.inKitchen' | 'admin.dashboard.tables.stateOpen';
+} {
   if (row.orders_ready > 0) return { tone: 'ready', key: 'admin.dashboard.ready' };
   if (row.orders_in_kitchen > 0) return { tone: 'open', key: 'admin.dashboard.inKitchen' };
   return { tone: 'empty', key: 'admin.dashboard.tables.stateOpen' };
@@ -140,13 +158,18 @@ function OpenTables({
   const { t } = useTranslation();
 
   return (
-    <section aria-labelledby="open-tables-title" className="rounded-card border border-border bg-surface">
+    <section
+      aria-labelledby="open-tables-title"
+      className="rounded-card border border-border bg-surface"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
         <h2 id="open-tables-title" className="text-base font-semibold">
           {t('admin.dashboard.tables.title')}
         </h2>
         <span className="text-xs text-muted">
-          {pending ? ' ' : t('admin.dashboard.openValueNote', { total: formatEuro(openValueCents) })}
+          {pending
+            ? ' '
+            : t('admin.dashboard.openValueNote', { total: formatEuro(openValueCents) })}
         </span>
       </div>
 
@@ -161,9 +184,14 @@ function OpenTables({
             {rows.map((row) => {
               const state = rowState(row);
               return (
-                <li key={row.table_id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <li
+                  key={row.table_id}
+                  className="flex items-center justify-between gap-3 px-4 py-3"
+                >
                   <span className="min-w-0">
-                    <span className="block truncate font-semibold">{localTableName(row.name, locale)}</span>
+                    <span className="block truncate font-semibold">
+                      {localTableName(row.name, locale)}
+                    </span>
                     <span className="block truncate text-xs text-muted">
                       {row.opened_by_name ?? '—'}
                       {row.opened_at ? ' · ' : ''}
@@ -212,7 +240,9 @@ function OpenTables({
                     <td className="tabular px-4 py-2 text-muted">
                       {row.opened_at ? <Elapsed since={row.opened_at} /> : '—'}
                     </td>
-                    <td className="tabular px-4 py-2 text-right font-semibold">{formatEuro(row.total_cents)}</td>
+                    <td className="tabular px-4 py-2 text-right font-semibold">
+                      {formatEuro(row.total_cents)}
+                    </td>
                     <td className="px-4 py-2">
                       <Badge tone={state.tone}>{t(state.key)}</Badge>
                     </td>
