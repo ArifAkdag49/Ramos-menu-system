@@ -29,6 +29,7 @@ import {
   toPrintRoute,
   type PrintRoute,
 } from './printRoute';
+import { StationDevicesList } from './StationDevicesList';
 
 const AGO_KEY = {
   now: 'admin.ago.now',
@@ -49,7 +50,8 @@ const NAME_MAX = 60;
 /**
  * Ayarlar > Baskı yolu. Fişi kim basar: restorandaki bilgisayar programı (yazdırma ajanı), internete
  * bağlı Epson yazıcının kendisi (Server Direct Print, `supabase/functions/epson-sdp`) ya da yerel
- * Android uygulamasındaki tablet yazıcı istasyonu (`features/station`).
+ * Android uygulamasındaki tablet yazıcı istasyonu (`features/station`). İstasyon yolunda arka planda
+ * basan tabletler de listelenir (`StationDevicesList`).
  *
  * Sayfanın "Kaydet" çubuğundan bağımsızdır: yol seçimi kendi "Uygula" düğmesiyle, yazıcı işlemleri
  * RPC'lerle hemen yazılır. Yazıcı adresi (anahtar içerir) yalnız oluşturma/yenileme yanıtında bilinir
@@ -188,9 +190,12 @@ export function PrintRouteSection({
         </Banner>
       ) : null}
       {selected === 'station' ? (
-        <Banner tone="info" icon={<Tablet aria-hidden size={20} />}>
-          {t('admin.settings.printRoute.stationNote')}
-        </Banner>
+        <>
+          <Banner tone="info" icon={<Tablet aria-hidden size={20} />}>
+            {t('admin.settings.printRoute.stationNote')}
+          </Banner>
+          <StationDevicesList />
+        </>
       ) : null}
       {idleNote ? (
         <p role="note" className="text-sm text-muted">

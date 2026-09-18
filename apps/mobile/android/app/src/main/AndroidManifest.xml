@@ -35,6 +35,29 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
+        <!-- Arka plan yazıcı istasyonu: WebView'dan bağımsız fiş basan ön plan servisi. APK Play dışı
+             dağıtılır; specialUse türü + gerekçe özelliği (Android 14+ zorunlu). -->
+        <service
+            android:name=".StationService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Restoran yazıcı istasyonu: sunucudaki sipariş fişlerini alıp yerel ağdaki fiş yazıcısına (TCP 9100 / TLS 9143) sürekli gönderir" />
+        </service>
+
+        <!-- Açılışta / uygulama güncellenince istasyon açık bırakılmışsa servisi yeniden başlatır.
+             Yayınları sistem gönderir: dışa açık olması gerekmez. -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
         <!-- FCM: uygulama arka plandayken gelen "notification" iletileri bu kanal ve ikonla gösterilir.
              Kanal RamosApplication.onCreate'te oluşturulur. -->
         <meta-data
@@ -56,5 +79,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Yeni bildirim gelince titreşim -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Arka plan yazıcı istasyonu: ekran kapalıyken CPU uyanık (PARTIAL_WAKE_LOCK, WifiLock) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Arka plan yazıcı istasyonu (StationService): ön plan servisi, specialUse türü -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Cihaz açılınca istasyonu yeniden başlatmak için -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- "Pil optimizasyonundan muaf tut" isteği (Doze'da uygulama kısıtlanmasın) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 </manifest>

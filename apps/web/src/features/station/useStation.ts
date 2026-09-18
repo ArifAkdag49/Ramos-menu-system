@@ -1,28 +1,26 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSettings } from '../../data/settings';
 import { isNative, nativePlugin } from '../../native/capacitor';
 import { useStationStore } from './stationStore';
-
-function subscribeVisibility(cb: () => void): () => void {
-  document.addEventListener('visibilitychange', cb);
-  return () => document.removeEventListener('visibilitychange', cb);
-}
-
-const isVisible = () => document.visibilityState !== 'hidden';
+import { useDocumentVisible, type StationMode } from './useBackgroundStation';
 
 /**
- * Döngü yalnız şu dördü birlikteyken çalışır: yerel uygulama, `print_route = 'station'`, kullanıcı
- * anahtarı açık (`ramos-station-on`) ve uygulama ön planda. Uygulama arka plana geçince duraklar
- * (WebView zamanlayıcıları zaten kısılır; yarım kalan iş sunucuda 60 sn sonra geri alınır), öne
- * gelince hemen yoklar. Rota başka yola çevrilirse (Realtime `settings`) kendiliğinden durur.
+ * Eski kip (arka plan hizmeti olmayan APK) — WebView'daki JS döngüsü. Döngü yalnız şunlar
+ * birlikteyken çalışır: yerel uygulama, kip `legacy`, `print_route = 'station'`, kullanıcı anahtarı
+ * açık (`ramos-station-on`) ve uygulama ön planda. Uygulama arka plana geçince duraklar (WebView
+ * zamanlayıcıları zaten kısılır; yarım kalan iş sunucuda 60 sn sonra geri alınır), öne gelince hemen
+ * yoklar. Rota başka yola çevrilirse (Realtime `settings`) kendiliğinden durur.
+ *
+ * Kip `background` (yerel hizmet basar) ya da henüz `unknown` iken döngü BAŞLAMAZ: aynı tablette iki
+ * sahiplenici olmasın.
  *
  * Mutfak ekranında TEK yerde çağrılır (`StationStrip`).
  */
-export function useStation(): void {
+export function useStation(mode: StationMode): void {
   const row = useSettings();
   const on = useStationStore((s) => s.on);
-  const visible = useSyncExternalStore(subscribeVisibility, isVisible, () => true);
-  const active = isNative() && row?.print_route === 'station' && on && visible;
+  const visible = useDocumentVisible();
+  const active = mode === 'legacy' && isNative() && row?.print_route === 'station' && on && visible;
 
   const rowRef = useRef(row);
   useEffect(() => {

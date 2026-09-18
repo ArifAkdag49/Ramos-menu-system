@@ -192,7 +192,18 @@
       "off": "Kapalı",
       "noPrinter": "Yazıcı adresi yok — Admin → Ayarlar → Yazıcı bağlantısı",
       "lastError": "Son hata: {{error}}",
-      "hint": "Ekranı açık tutun, uygulamayı kapatmayın — uygulama arka plandayken fiş basılmaz."
+      "hint": "Ekranı açık tutun, uygulamayı kapatmayın — uygulama arka plandayken fiş basılmaz.",
+      "bg": {
+        "running": "Arka planda çalışıyor — uygulama kapalıyken de basar",
+        "notRunning": "Arka plan hizmeti çalışmıyor — birkaç saniyede başlamazsa anahtarı kapatıp yeniden açın",
+        "printed": "Basılan fiş: {{count}}",
+        "routeOff": "Baskı yolu \"Tablet yazıcı istasyonu\" değil — bu tablet fiş basmaz (Admin → Ayarlar → Baskı yolu)",
+        "notificationsHidden": "Bildirim izni kapalı: durum bildirimi görünmez ama fişler basılmaya devam eder.",
+        "notificationsDenied": "Bildirim izni gerekli — Android ayarlarından Ramo's için bildirimlere izin verip yeniden deneyin",
+        "startFailed": "Arka plan hizmeti başlatılamadı ({{detail}}) — tekrar deneyin",
+        "batteryHint": "Android pil tasarrufu arka planda baskıyı durdurabilir.",
+        "battery": "Pil kısıtlamasını kaldır"
+      }
     },
     "start": {
       "title": "Mutfak ekranını başlat",
@@ -616,7 +627,7 @@
         "epsonHint": "İnternete bağlı Epson yazıcı (ör. TM-m30III) fişleri bilgisayarsız, doğrudan sunucudan çeker",
         "station": "Tablet yazıcı istasyonu",
         "stationHint": "Restorandaki bir tablet (Ramo's Android uygulaması) fişleri aynı Wi-Fi'daki yazıcıya kendisi basar — bilgisayar gerekmez",
-        "stationNote": "Yeni Ramo's Android uygulaması (v2) gerekir. Tablet yazıcıyla aynı Wi-Fi'da olmalı; Mutfak ekranında \"Yazıcı istasyonu\" anahtarını açın. Yazıcı adresi, port ve karakter tablosu aşağıdaki Yazıcı bağlantısı bölümünden alınır. Uygulama kapalıyken ya da arka plandayken fiş basılmaz.",
+        "stationNote": "Yeni Ramo's Android uygulaması (v2) gerekir. Tablet yazıcıyla aynı Wi-Fi'da olmalı; Mutfak ekranında \"Yazıcı istasyonu\" anahtarını açın. Yazıcı adresi, port ve karakter tablosu aşağıdaki Yazıcı bağlantısı bölümünden alınır. Güncel uygulama arka planda ve kapalıyken de basar; eski sürümde uygulama açık ve ekranda olmalı.",
         "apply": "Baskı yolunu uygula",
         "applied": "Baskı yolu değişti",
         "applyError": "Baskı yolu kaydedilemedi — tekrar deneyin",
@@ -646,6 +657,13 @@
         "copied": "Adres kopyalandı",
         "copyError": "Kopyalanamadı — adresi elle seçin",
         "done": "Kaydettim, kapat",
+        "devices": "İstasyon tabletleri",
+        "devicesEmpty": "Arka planda basan tablet yok — tablette Mutfak ekranındaki \"Yazıcı istasyonu\" anahtarını açın",
+        "deviceLastPrint": "Son fiş: {{ago}}",
+        "deviceNoPrint": "Henüz fiş basmadı",
+        "removeDevice": "Kaldır",
+        "confirmRemoveDevice": "{{name}} kaldırılsın mı? Tablet arka planda fiş basmayı hemen bırakır; yeniden başlatmak için tablette \"Yazıcı istasyonu\" anahtarını açın.",
+        "deviceRemoved": "Tablet kaldırıldı",
         "guideTitle": "Epson Web Config adımları",
         "guide": {
           "step1": "Tarayıcıda yazıcının IP adresini açın (https://<IP>) ve yönetici olarak girin (varsayılan parola çoğunlukla yazıcının seri numarasıdır).",
@@ -995,6 +1013,8 @@
     "printer_name_invalid": "Yazıcı adı 1–60 karakter olmalı",
     "sdp_printer_not_found": "Yazıcı bulunamadı — listeyi tazele",
     "station_id_invalid": "Yazıcı istasyonu kimliği geçersiz — uygulamayı yeniden aç",
-    "fcm_token_invalid": "Bildirim kaydı geçersiz — bildirimleri kapatıp yeniden aç"
+    "fcm_token_invalid": "Bildirim kaydı geçersiz — bildirimleri kapatıp yeniden aç",
+    "station_device_name_invalid": "Tablet adı 1–60 karakter olmalı",
+    "station_device_not_found": "Tablet bulunamadı — listeyi tazele"
   }
 }

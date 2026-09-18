@@ -866,6 +866,47 @@ export type Database = {
           },
         ]
       }
+      station_devices: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          last_printed_at: string | null
+          last_seen_at: string | null
+          name: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          last_printed_at?: string | null
+          last_seen_at?: string | null
+          name: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          last_printed_at?: string | null
+          last_seen_at?: string | null
+          name?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "station_devices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       table_sessions: {
         Row: {
           closed_at: string | null
@@ -999,9 +1040,11 @@ export type Database = {
       }
       public_menu: { Args: never; Returns: Json }
       ready_push_targets: { Args: { p_order_id: string }; Returns: Json }
+      register_station_device: { Args: { p_name: string }; Returns: Json }
       report_range: { Args: { p_from: string; p_to: string }; Returns: Json }
       reprint_order: { Args: { p_order_id: string }; Returns: undefined }
       retry_print_job: { Args: { p_job_id: string }; Returns: undefined }
+      revoke_station_device: { Args: { p_id: string }; Returns: undefined }
       rotate_sdp_printer_token: { Args: { p_id: string }; Returns: Json }
       save_fcm_token: {
         Args: { p_token: string; p_ua: string }
@@ -1077,6 +1120,26 @@ export type Database = {
           p_station_id?: string
         }
         Returns: undefined
+      }
+      station_feed_claim: { Args: { p_token_hash: string }; Returns: Json }
+      station_feed_complete: {
+        Args: {
+          p_error: string
+          p_job_id: string
+          p_ok: boolean
+          p_token_hash: string
+        }
+        Returns: string
+      }
+      station_feed_heartbeat: {
+        Args: {
+          p_error: string
+          p_reachable: boolean
+          p_state: Json
+          p_token_hash: string
+          p_version: string
+        }
+        Returns: string
       }
       station_heartbeat: {
         Args: {

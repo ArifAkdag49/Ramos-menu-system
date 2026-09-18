@@ -75,6 +75,22 @@ describe('anon erişimi (Görev 27)', () => {
     expect(internal.filter((r) => r.anon || r.authenticated).map((r) => r.fn)).toEqual([]);
   });
 
+  it('0015 fonksiyonları var ve anon için kapalı; station_feed_* personele de kapalı (yalnız service_role)', async () => {
+    for (const name of ['register_station_device', 'revoke_station_device']) {
+      expect(fns.find((f) => f.proname === name)?.anon_exec, name).toBe(false);
+    }
+    const feed = await sql<{ fn: string; anon: boolean; authenticated: boolean; service: boolean }>(`
+      select p.oid::regprocedure::text as fn,
+             has_function_privilege('anon', p.oid, 'execute') as anon,
+             has_function_privilege('authenticated', p.oid, 'execute') as authenticated,
+             has_function_privilege('service_role', p.oid, 'execute') as service
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in ('station_feed_claim', 'station_feed_complete', 'station_feed_heartbeat')`);
+    expect(feed).toHaveLength(3);
+    expect(feed.filter((r) => r.anon || r.authenticated || !r.service).map((r) => r.fn)).toEqual([]);
+  });
+
   it('public şemadaki hiçbir fonksiyon anon tarafından çağrılamaz (PostgREST)', async () => {
     const failures: string[] = [];
     for (const { proname, in_args } of fns) {

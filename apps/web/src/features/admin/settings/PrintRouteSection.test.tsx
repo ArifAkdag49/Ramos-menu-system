@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../../i18n';
 import type { SettingsRow } from '../../../data/settings';
 import type { SdpPrinter } from '../../../data/sdpPrinters';
+import type { StationDevice } from '../../../data/stationDevices';
 
 // Veri katmanı sahte: canlı ayara ve yazıcı kaydına ASLA yazılmaz. Test, ekranın RPC'ye ne
 // gönderdiğini ve dönen tek seferlik adresi nasıl gösterdiğini ölçer.
@@ -11,6 +12,8 @@ type MutateOpts<R> = { onSuccess?: (r: R) => void; onError?: (e: unknown) => voi
 const h = vi.hoisted(() => ({
   row: { print_route: 'agent' } as unknown as SettingsRow,
   printers: [] as SdpPrinter[],
+  devices: [] as StationDevice[],
+  revokeDevice: vi.fn(),
   updateSettings: vi.fn(),
   create: vi.fn(),
   rotate: vi.fn(),
@@ -27,8 +30,13 @@ vi.mock('../../../data/sdpPrinters', () => ({
   useRotateSdpToken: () => ({ mutate: h.rotate, isPending: false, reset: vi.fn() }),
   useSetSdpPrinterActive: () => ({ mutate: h.setActive, isPending: false }),
 }));
+vi.mock('../../../data/stationDevices', () => ({
+  useStationDevices: () => ({ data: h.devices, isLoading: false }),
+  useRevokeStationDevice: () => ({ mutate: h.revokeDevice, isPending: false }),
+}));
 
 import { useAuth } from '../../../lib/auth';
+import { RpcError } from '../../../lib/rpc';
 import { useToast } from '../../../lib/toast';
 import { PrintRouteSection } from './PrintRouteSection';
 
@@ -43,13 +51,24 @@ const printer = (over: Partial<SdpPrinter> = {}): SdpPrinter => ({
   last_error: null,
   ...over,
 });
+const device = (over: Partial<StationDevice> = {}): StationDevice => ({
+  id: 'd1',
+  name: 'Android · SM-X200',
+  created_at: '2026-09-18T08:00:00Z',
+  last_seen_at: null,
+  last_printed_at: null,
+  last_error: null,
+  ...over,
+});
 const renderSection = () => render(<PrintRouteSection supabaseUrl="https://abc.supabase.co" />);
 
 describe('<PrintRouteSection />', () => {
   beforeEach(() => {
     h.row = { print_route: 'agent' } as unknown as SettingsRow;
     h.printers = [];
-    for (const m of [h.updateSettings, h.create, h.rotate, h.setActive]) m.mockReset();
+    h.devices = [];
+    for (const m of [h.updateSettings, h.create, h.rotate, h.setActive, h.revokeDevice])
+      m.mockReset();
     useToast.getState().dismiss();
     useAuth.setState({
       profile: {
@@ -186,6 +205,83 @@ describe('<PrintRouteSection />', () => {
     expect(h.setActive).toHaveBeenCalledWith({ id: 'p1', active: false }, expect.anything());
     await user.click(screen.getByRole('button', { name: 'Etkinleştir' }));
     expect(h.setActive).toHaveBeenCalledWith({ id: 'p2', active: true }, expect.anything());
+  });
+
+  it('istasyon yolu: arka planda basan tabletler listelenir (ad, son görülme, son fiş, son hata)', () => {
+    const now = Date.now();
+    h.row = { print_route: 'station' } as unknown as SettingsRow;
+    h.devices = [
+      device({
+        last_seen_at: new Date(now - 5_000).toISOString(),
+        last_printed_at: new Date(now - 3 * 60_000).toISOString(),
+      }),
+      device({
+        id: 'd2',
+        name: 'Android · Pixel Tablet',
+        last_seen_at: new Date(now - 2 * 3_600_000).toISOString(),
+        last_error: 'paper_end: DLE EOT',
+      }),
+    ];
+    renderSection();
+    const list = within(screen.getByRole('list', { name: 'İstasyon tabletleri' }));
+    const [first, second] = list.getAllByRole('listitem');
+    expect(within(first!).getByText('Android · SM-X200')).toBeInTheDocument();
+    expect(within(first!).getByText('Bağlı')).toBeInTheDocument();
+    expect(within(first!).getByText('Son istek: az önce')).toBeInTheDocument();
+    expect(within(first!).getByText('Son fiş: 3 dk önce')).toBeInTheDocument();
+    expect(within(second!).getByText('Bağlantı yok')).toBeInTheDocument();
+    expect(within(second!).getByText('Son istek: 2 sa önce')).toBeInTheDocument();
+    expect(within(second!).getByText('Henüz fiş basmadı')).toBeInTheDocument();
+    expect(within(second!).getByText('Son hata: paper_end: DLE EOT')).toBeInTheDocument();
+  });
+
+  it('istasyon yolu seçilmemişse tablet listesi yok; seçili ama tablet yoksa boş durum', async () => {
+    const user = userEvent.setup();
+    h.devices = [device()];
+    renderSection();
+    expect(screen.queryByText('İstasyon tabletleri')).toBeNull();
+
+    h.devices = [];
+    await user.click(screen.getByRole('radio', { name: /Tablet yazıcı istasyonu/ }));
+    expect(screen.getByText('İstasyon tabletleri')).toBeInTheDocument();
+    expect(screen.getByText(/Arka planda basan tablet yok/)).toBeInTheDocument();
+  });
+
+  it('tableti kaldır: onay ister, revoke_station_device çağrılır, onay verilmezse çağrılmaz', async () => {
+    const user = userEvent.setup();
+    h.row = { print_route: 'station' } as unknown as SettingsRow;
+    h.devices = [device()];
+    h.revokeDevice.mockImplementation((_id: string, opts: MutateOpts<void>) =>
+      opts.onSuccess?.(undefined),
+    );
+    const confirm = vi
+      .spyOn(window, 'confirm')
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+    renderSection();
+
+    await user.click(screen.getByRole('button', { name: 'Kaldır' }));
+    expect(h.revokeDevice).not.toHaveBeenCalled();
+    expect(confirm).toHaveBeenLastCalledWith(expect.stringContaining('Android · SM-X200'));
+    await user.click(screen.getByRole('button', { name: 'Kaldır' }));
+    expect(h.revokeDevice).toHaveBeenCalledWith('d1', expect.anything());
+    expect(useToast.getState().message).toBe('Tablet kaldırıldı');
+  });
+
+  it('tablet kaldırılamazsa çevrilmiş hata gösterilir', async () => {
+    const user = userEvent.setup();
+    h.row = { print_route: 'station' } as unknown as SettingsRow;
+    h.devices = [device()];
+    h.revokeDevice.mockImplementation((_id: string, opts: MutateOpts<void>) =>
+      opts.onError?.(new RpcError('not_authorized')),
+    );
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderSection();
+    await user.click(screen.getByRole('button', { name: 'Kaldır' }));
+    expect(useToast.getState()).toMatchObject({
+      message: 'Bu işlem için yetkin yok',
+      tone: 'danger',
+    });
   });
 
   it('Web Config rehberi adımları görünür', () => {

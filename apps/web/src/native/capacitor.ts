@@ -40,7 +40,56 @@ export interface RamosPrinterStatusResult {
   message?: string;
 }
 
-/** Sözleşme: `send` asla reddetmez — hata `{ ok: false, error }` olarak döner. */
+/* ---- Arka plan istasyonu (yerel ön plan hizmeti + `station-feed` Edge Function) ---- */
+
+export interface BackgroundStationStartOptions {
+  /** `<SUPABASE_URL>/functions/v1/station-feed` */
+  feedUrl: string;
+  /** `register_station_device` düz anahtarı — yalnız yerel tarafa verilir, web'de saklanmaz. */
+  token: string;
+  /** `station_devices.id` */
+  deviceId: string;
+}
+
+export type BackgroundStationStartError = 'notifications_denied' | 'invalid_args' | 'start_failed';
+
+export interface BackgroundStationStartResult {
+  ok: boolean;
+  error?: BackgroundStationStartError;
+  message?: string;
+}
+
+export interface BackgroundStationStatus {
+  /** Kullanıcı arka plan istasyonunu açtı mı (yerelde kalıcı). */
+  enabled: boolean;
+  /** Hizmet şu an çalışıyor mu. */
+  running: boolean;
+  deviceId: string | null;
+  /** Son başarılı baskı (epoch ms). */
+  lastPrintedAt: number | null;
+  printed: number;
+  /** `<kod>: <mesaj>` — kod `RamosPrinterErrorCode` ya da hizmetin kendi kodu. */
+  lastError: string | null;
+  /** Yazıcıya ulaşıldı mı; `null` = henüz bilinmiyor. */
+  reachable: boolean | null;
+  /** Son `station-feed` yoklaması (epoch ms). */
+  lastPollAt: number | null;
+  /** Sunucudaki ayarda yazıcı adresi yok. */
+  missingPrinter: boolean;
+  /** Sunucunun bildirdiği `settings.print_route`; `null` = henüz bilinmiyor. */
+  route: string | null;
+  notificationsGranted: boolean;
+  ignoringBatteryOptimizations: boolean;
+}
+
+/**
+ * Sözleşme: `send` asla reddetmez — hata `{ ok: false, error }` olarak döner.
+ *
+ * Arka plan yöntemleri yalnız yeni APK'da vardır. Eski APK'da `JSExport` yalnız yerel yöntemleri
+ * dışa aktardığı için yöntem hiç tanımlı olmaz (ya da bir vekil "not implemented" ile reddeder);
+ * bu yüzden isteğe bağlıdır ve yalnız `features/station/backgroundStation` üzerinden çağrılır.
+ * Yeni APK'da bu yöntemler de reddetmez.
+ */
 export interface RamosPrinterPlugin {
   send(options: RamosPrinterSendOptions): Promise<RamosPrinterSendResult>;
   status(options: {
@@ -48,6 +97,12 @@ export interface RamosPrinterPlugin {
     port: number;
     timeoutMs?: number;
   }): Promise<RamosPrinterStatusResult>;
+  startBackgroundStation?(
+    options: BackgroundStationStartOptions,
+  ): Promise<BackgroundStationStartResult>;
+  stopBackgroundStation?(): Promise<{ ok: true }>;
+  getBackgroundStation?(): Promise<BackgroundStationStatus>;
+  openBatteryOptimizationSettings?(): Promise<{ ok: true }>;
 }
 
 /* -------------------------- PushNotifications (@capacitor/push-notifications) -------------------------- */

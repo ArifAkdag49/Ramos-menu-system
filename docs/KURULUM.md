@@ -172,21 +172,30 @@ Restorandaki **bir Android tablet** (çoğunlukla mutfak tableti) fişleri aynı
 
 **Bilmeniz gerekenler:**
 
-- **Uygulama açık ve ekranda olmalı.** Uygulama kapatılırsa, arka plana alınırsa ya da tablet uyursa **fiş basılmaz**; siparişler kaybolmaz, sırada bekler ve uygulama öne gelince hemen basılır. Anahtar tablette hatırlanır; uygulama yeniden açılınca kendiliğinden çalışır.
+- **Uygulama v2.1 ve sonrası arka planda da basar** (aşağıya bakın). Eski v2.0'da uygulama **açık ve ekranda** olmalıdır: kapatılırsa, arka plana alınırsa ya da tablet uyursa fiş basılmaz; siparişler kaybolmaz, sırada bekler ve uygulama öne gelince hemen basılır.
 - Aynı anda **tek tablet** istasyon olsun. İki tablette anahtar açıksa ikisi de fiş alabilir (aynı fiş iki kez basılmaz, ama hangisinin bastığı karışır).
 - **"Yazıcıya ulaşılamıyor"** rozeti: yazıcı kapalı, kablosu/Wi-Fi'ı kopuk ya da IP değişmiş. Yazıcıyı ve **Ayarlar → Yazıcı bağlantısı**'ndaki adresi kontrol edin. Kağıt bittiyse ya da kapak açıksa şeridin altında **Son hata** yazar; fiş kısa aralıklarla yeniden denenir.
 - **"Yazıcı adresi yok"**: Yazıcı bağlantısında IP boş. 1. adımı yapın.
 - Geri dönmek için baskı yolunu **Bilgisayar programı** yapıp uygulamanız yeterli; tablette anahtar açık kalsa da iş almaz ve şerit kaybolur.
 
+**Arka planda baskı (uygulama v2.1+):**
+
+Anahtar açıldığında tablette küçük bir **arka plan hizmeti** başlar. Uygulama arka plandayken, ekran kapalıyken, son uygulamalardan kaydırılıp kapatıldığında ve tablet yeniden açıldığında da fiş basar (giriş yapmak ya da uygulamayı açmak gerekmez; tabletin ekran kilidi/PIN'i varsa açılıştan sonra kilidi bir kez açın).
+
+- **Kalıcı bildirim:** Hizmet çalışırken bildirim alanında sessiz bir **"Ramo's yazıcı istasyonu"** bildirimi durur: *Çalışıyor · son fiş 12:03*, *Yazıcıya ulaşılamıyor*, *Yazıcıda kağıt bitti*, *Yazıcı kapağı açık*, *Yazıcı adresi yok (Admin → Ayarlar)* ya da *Baskı yolu istasyon değil*. Bildirime dokunmak uygulamayı açar; **Durdur** hizmeti kapatır (yeniden açmak için Mutfak ekranındaki anahtar). İlk açılışta Android **bildirim izni** sorar: **İzin ver** deyin. Reddedilirse de fiş basılır, yalnız bildirim görünmez.
+- **Pil ayarı:** Mutfak ekranındaki **Pil kısıtlamasını kaldır** düğmesine basın ve çıkan pencerede **İzin ver** deyin (Android: *Uygulamanın her zaman arka planda çalışmasına izin verilsin mi?*). Bazı markalar (Xiaomi, Huawei, Samsung, Oppo…) ayrıca kendi pil ayarlarıyla arka plandaki uygulamaları kapatır: **Ayarlar → Uygulamalar → Ramo's → Pil** bölümünde **Kısıtlanmamış / Arka planda çalışmaya izin ver** seçin; varsa **Otomatik başlatma**yı açın.
+- **Zorla durdur yapmayın:** *Ayarlar → Uygulamalar → Ramo's → Zorla durdur* hizmeti de kapatır ve tablet yeniden başlatılsa bile uygulama bir kez elle açılana dek çalışmaz. Son uygulamalardan kaydırmak ise sorun değildir.
+- **Tablet kaldırılırsa:** Yönetim panelinde **İstasyon tabletleri → Kaldır** yapılırsa tablet fiş basmayı hemen bırakır ve *"İstasyon kaydı silindi — uygulamadan yeniden açın"* bildirimi çıkar. Yeniden başlatmak için tablette anahtarı tekrar açın.
+
 ### 2.9 Baskı yolları karşılaştırması
 
 | | Bilgisayar programı (yazdırma ajanı) | Epson Server Direct Print | Tablet yazıcı istasyonu |
 |---|---|---|---|
-| **Kim basar** | Restoran PC'sindeki program (§3) | Epson yazıcının kendisi (§2.7) | Ramo's v2 uygulaması açık Android tablet (§2.8) |
+| **Kim basar** | Restoran PC'sindeki program (§3) | Epson yazıcının kendisi (§2.7) | Ramo's uygulaması kurulu Android tablet/telefon (§2.8) |
 | **Bilgisayar gerekir mi** | Evet, açık ve uyanık | Hayır | Hayır |
 | **Yazıcı** | Xprinter ve Epson (9100 / 9143) | Yalnız Server Direct Print destekli Epson TM (ör. TM-m30III) | Xprinter ve Epson (9100 / 9143) |
 | **Yazıcının internete çıkması** | Gerekmez (PC çıkar) | **Gerekir** | Gerekmez (tablet çıkar) |
-| **Ne zaman basılmaz** | PC kapalı / uykuda | Yazıcı internete çıkamıyorsa | Uygulama kapalı, arka planda ya da tablet uykuda |
+| **Ne zaman basılmaz** | PC kapalı / uykuda | Yazıcı internete çıkamıyorsa | Tablet kapalı ya da ağ dışında; marka pil ayarı hizmeti kapatırsa (v2.0'da: uygulama ekranda değilse) |
 | **Kurulum** | Kurulum.cmd (§3.2) | Web Config'e adres girmek (§2.7) | Uygulamayı kurup anahtarı açmak (§2.8) |
 | **Seçim** | **Ayarlar → Baskı yolu → Bilgisayar programı** | **… → Epson Server Direct Print** | **… → Tablet yazıcı istasyonu** |
 
@@ -589,7 +598,7 @@ Bu sırada siparişler **kaybolmaz**: mutfak ekranında görünür, fişler sır
 
 Yalnız baskı yolu **Tablet yazıcı istasyonu** iken ([§2.8](#28-tablet-yazıcı-istasyonu-bilgisayarsız-android-tablet)):
 
-1. Tablette Ramo's uygulaması **açık ve ekranda** mı? Arka plandayken basılmaz. Mutfak ekranındaki **Yazıcı istasyonu** anahtarı açık mı?
+1. Mutfak ekranındaki **Yazıcı istasyonu** anahtarı açık mı? Uygulama **v2.1+** ise bildirim çubuğunda *Ramo's yazıcı istasyonu* görünmeli; görünmüyorsa uygulamayı bir kez açın ve pil ayarını kontrol edin (§2.8, *Arka planda baskı*). Eski **v2.0**'da uygulama açık ve ekranda olmalı, arka plandayken basılmaz.
 2. Rozet **Yazıcıya ulaşılamıyor** diyorsa: yazıcı açık mı, tablet ve yazıcı aynı Wi-Fi'da mı, **Ayarlar → Yazıcı bağlantısı**'ndaki IP ve port doğru mu?
 3. Şerit hiç görünmüyorsa: tablette v2 uygulaması mı kurulu (Chrome'da görünmez) ve baskı yolu gerçekten "Tablet yazıcı istasyonu" mu?
 

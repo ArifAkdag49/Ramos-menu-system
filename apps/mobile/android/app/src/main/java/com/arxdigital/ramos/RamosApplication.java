@@ -8,18 +8,44 @@ import android.media.RingtoneManager;
 import android.os.Build;
 
 /**
- * Uygulama süreci başlarken "ramos_ready" bildirim kanalını oluşturur (Android 8+). FCM, uygulama arka
- * plandayken gelen bildirimleri AndroidManifest'teki default_notification_channel_id ile bu kanala koyar;
- * kanal Activity'den önce, süreç başlar başlamaz var olmalı (FCM servisi Activity açmadan da çalışır).
+ * Uygulama süreci başlarken bildirim kanallarını oluşturur (Android 8+). FCM, uygulama arka plandayken
+ * gelen bildirimleri AndroidManifest'teki default_notification_channel_id ile "ramos_ready" kanalına koyar;
+ * kanallar Activity'den önce, süreç başlar başlamaz var olmalı (FCM servisi ve açılışta başlayan yazıcı
+ * istasyonu servisi Activity açmadan da çalışır).
  */
 public class RamosApplication extends Application {
 
     public static final String CHANNEL_READY = "ramos_ready";
+    /** Arka plan yazıcı istasyonunun kalıcı (sessiz) bildirimi. */
+    public static final String CHANNEL_STATION = "ramos_station";
+    /** İstasyon kendiliğinden durduğunda (ör. kayıt silindi) tek seferlik uyarı. */
+    public static final String CHANNEL_STATION_ALERT = "ramos_station_alert";
 
     @Override
     public void onCreate() {
         super.onCreate();
         createReadyChannel();
+        createStationChannels();
+    }
+
+    private void createStationChannels() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm == null) return;
+        NotificationChannel ch = new NotificationChannel(CHANNEL_STATION, "Yazıcı istasyonu", NotificationManager.IMPORTANCE_LOW);
+        ch.setDescription("Arka planda fiş basan yazıcı istasyonu çalışırken görünen kalıcı bildirim");
+        ch.setShowBadge(false);
+        ch.enableVibration(false);
+        ch.setSound(null, null);
+        nm.createNotificationChannel(ch);
+
+        NotificationChannel alert = new NotificationChannel(
+            CHANNEL_STATION_ALERT,
+            "Yazıcı istasyonu uyarıları",
+            NotificationManager.IMPORTANCE_DEFAULT
+        );
+        alert.setDescription("Yazıcı istasyonu kendiliğinden durduğunda (ör. istasyon kaydı silindi)");
+        nm.createNotificationChannel(alert);
     }
 
     private void createReadyChannel() {

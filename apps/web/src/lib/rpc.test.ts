@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('./supabase', () => ({ supabase: { rpc: vi.fn() } }));
 import { supabase } from './supabase';
-import { callRpc, RpcError } from './rpc';
+import { callRpc, hasRpcErrorKey, RpcError } from './rpc';
 
 const failsWith = (error: Record<string, unknown>) =>
   vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error } as never);
@@ -52,5 +52,20 @@ describe('callRpc', () => {
   it('başarıda veriyi döndürür', async () => {
     vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: { ok: 1 }, error: null } as never);
     await expect(callRpc('x')).resolves.toEqual({ ok: 1 });
+  });
+});
+
+describe('hasRpcErrorKey', () => {
+  it('anahtar eşlenmişse ya da (paylaşılan liste eskiyse) ham mesajda geçiyorsa true', () => {
+    expect(
+      hasRpcErrorKey(new RpcError('station_device_not_found'), 'station_device_not_found'),
+    ).toBe(true);
+    const raw = new RpcError('unknown', 'P0001: station_device_not_found');
+    expect(hasRpcErrorKey(raw, 'station_device_not_found')).toBe(true);
+    expect(hasRpcErrorKey(raw, 'device_not_found')).toBe(false);
+    expect(hasRpcErrorKey(new RpcError('network'), 'station_device_not_found')).toBe(false);
+    expect(hasRpcErrorKey(new Error('station_device_not_found'), 'station_device_not_found')).toBe(
+      false,
+    );
   });
 });

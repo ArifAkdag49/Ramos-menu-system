@@ -1,5 +1,7 @@
 import { create } from 'zustand';
+import type { BackgroundStationStatus } from '../../native/capacitor';
 import type { Tone } from '../../ui/tone';
+import type { BackgroundEnableResult } from './backgroundStation';
 
 /**
  * Tablet yazıcı istasyonunun ekran durumu. Ana pakette yalnız bu küçük dosya durur; fiş kodlayıcı
@@ -49,17 +51,32 @@ function writeStationOn(on: boolean): void {
   }
 }
 
+export type BackgroundEnableFailure = Exclude<BackgroundEnableResult, { ok: true }>;
+
 interface StationStore {
-  /** Kullanıcı anahtarı (cihazda kalıcı). */
+  /** Eski (JS döngüsü) kipin kullanıcı anahtarı (cihazda kalıcı). Arka plan kipinde yalnız taşıma içindir. */
   on: boolean;
   snapshot: StationSnapshot;
+  /** Arka plan kipi: yerel hizmetin son okunan durumu (`getBackgroundStation`). */
+  bg: BackgroundStationStatus | null;
+  /** Arka plan hizmeti açılıyor / kapanıyor. */
+  bgBusy: boolean;
+  /** Son açma denemesinin hatası (bir sonraki denemede temizlenir). */
+  bgError: BackgroundEnableFailure | null;
   setOn(on: boolean): void;
   patch(patch: Partial<StationSnapshot>): void;
+  setBg(bg: BackgroundStationStatus): void;
 }
+
+const sameStatus = (a: BackgroundStationStatus | null, b: BackgroundStationStatus) =>
+  a !== null && (Object.keys(b) as (keyof BackgroundStationStatus)[]).every((k) => a[k] === b[k]);
 
 export const useStationStore = create<StationStore>()((set) => ({
   on: readStationOn(),
   snapshot: INITIAL_SNAPSHOT,
+  bg: null,
+  bgBusy: false,
+  bgError: null,
   setOn(on) {
     writeStationOn(on);
     set({ on });
@@ -73,7 +90,23 @@ export const useStationStore = create<StationStore>()((set) => ({
       return changed ? { snapshot: { ...s.snapshot, ...patch } } : s;
     });
   },
+  setBg(bg) {
+    // 2 sn'lik yoklama çoğunlukla aynı durumu okur: değişiklik yoksa yeniden çizim olmasın.
+    set((s) => (sameStatus(s.bg, bg) ? s : { bg }));
+  },
 }));
+
+/** Arka plan hizmetinin durumu → rozetin anladığı anlık görüntü (`stationBadge`). */
+export function backgroundSnapshot(bg: BackgroundStationStatus): StationSnapshot {
+  return {
+    running: bg.running,
+    reachable: bg.reachable,
+    lastPrintedAt: bg.lastPrintedAt,
+    failures: 0,
+    lastError: bg.lastError,
+    missingPrinter: bg.missingPrinter,
+  };
+}
 
 export type StationBadgeKey =
   | 'kitchen.station.off'

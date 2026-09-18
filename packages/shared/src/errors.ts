@@ -6,7 +6,8 @@ export const RPC_ERROR_KEYS = [
   'order_not_in_kitchen', 'order_not_ready', 'undo_window_expired', 'order_not_open', 'open_orders_in_kitchen',
   'target_table_busy', 'product_not_found', 'session_not_found', 'locale_invalid', 'order_not_found',
   'job_not_failed', 'job_not_found', 'job_not_printing', 'extra_charge_invalid', 'printer_name_invalid',
-  'sdp_printer_not_found', 'station_id_invalid', 'fcm_token_invalid',
+  'sdp_printer_not_found', 'station_id_invalid', 'fcm_token_invalid', 'station_device_name_invalid',
+  'station_device_not_found',
 ] as const;
 export type RpcErrorKey = (typeof RPC_ERROR_KEYS)[number];
 export const isRpcErrorKey = (s: string): s is RpcErrorKey => (RPC_ERROR_KEYS as readonly string[]).includes(s);

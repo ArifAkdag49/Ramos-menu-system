@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YALNIZ debug derlemesi: emülatör testlerinde bilgisayardaki sahte station-feed sunucusuna
+     (10.0.2.2, düz HTTP) izin verir. Release APK'ya girmez. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:networkSecurityConfig="@xml/network_security_config_debug" />
+</manifest>

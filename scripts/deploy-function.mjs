@@ -10,6 +10,11 @@ const PREBUILD = {
     build: async () => (await import('./build-epson-sdp.mjs')).buildEpsonSdp(),
     skip: ['render.ts'],
   },
+  // Aynı fiş paketi (epson-sdp/render.ts) bu klasöre de render.bundle.js olarak kopyalanır.
+  'station-feed': {
+    build: async () => (await import('./build-epson-sdp.mjs')).buildEpsonSdp(),
+    skip: [],
+  },
 };
 const CONTENT_TYPES = { '.ts': 'application/typescript', '.js': 'application/javascript', '.mjs': 'application/javascript' };
 

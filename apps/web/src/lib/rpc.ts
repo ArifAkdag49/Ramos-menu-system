@@ -28,6 +28,16 @@ const CODE_KEYS: Record<string, ErrorKey> = {
 /** Yalnız taşıma katmanı hataları. Belirsiz olduğu için "timeout" sözcüğü kasıtlı olarak yok. */
 const NETWORK_MESSAGE = /failed to fetch|fetch failed|networkerror|network error|load failed/i;
 
+/**
+ * Hata belirli bir RPC anahtarını mı taşıyor. Anahtar paylaşılan `RPC_ERROR_KEYS` listesine henüz
+ * eklenmemişse `callRpc` onu `unknown` yapar; ham mesaj yine `detail`'de (`P0001: <anahtar>`) durur.
+ */
+export function hasRpcErrorKey(e: unknown, key: string): boolean {
+  if (!(e instanceof RpcError)) return false;
+  if ((e.key as string) === key) return true;
+  return new RegExp(`(^|[^a-z_])${key}($|[^a-z_])`).test(e.detail ?? '');
+}
+
 export async function callRpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn as never, args as never);
   if (error) {

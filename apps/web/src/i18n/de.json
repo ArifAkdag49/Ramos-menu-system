@@ -192,7 +192,18 @@
       "off": "Aus",
       "noPrinter": "Keine Druckeradresse — Admin → Einstellungen → Druckerverbindung",
       "lastError": "Letzter Fehler: {{error}}",
-      "hint": "Bildschirm anlassen, App nicht schließen — im Hintergrund wird nicht gedruckt."
+      "hint": "Bildschirm anlassen, App nicht schließen — im Hintergrund wird nicht gedruckt.",
+      "bg": {
+        "running": "Läuft im Hintergrund — druckt auch bei geschlossener App",
+        "notRunning": "Hintergrunddienst läuft nicht — startet er nicht in wenigen Sekunden, Schalter aus- und wieder einschalten",
+        "printed": "Gedruckte Bons: {{count}}",
+        "routeOff": "Druckweg ist nicht „Tablet-Druckstation“ — dieses Tablet druckt nicht (Admin → Einstellungen → Druckweg)",
+        "notificationsHidden": "Benachrichtigungen aus: Die Statusmeldung ist ausgeblendet, gedruckt wird trotzdem.",
+        "notificationsDenied": "Benachrichtigungen nötig — in den Android-Einstellungen für Ramo's erlauben und erneut versuchen",
+        "startFailed": "Hintergrunddienst konnte nicht starten ({{detail}}) — erneut versuchen",
+        "batteryHint": "Der Android-Energiesparmodus kann das Drucken im Hintergrund stoppen.",
+        "battery": "Akku-Beschränkung aufheben"
+      }
     },
     "start": {
       "title": "Küchenbildschirm starten",
@@ -616,7 +627,7 @@
         "epsonHint": "Ein Epson-Drucker mit Internet (z. B. TM-m30III) holt die Bons ohne PC direkt vom Server",
         "station": "Tablet-Druckstation",
         "stationHint": "Ein Tablet im Restaurant (Ramo's-Android-App) druckt die Bons selbst auf dem Drucker im selben WLAN — ohne PC",
-        "stationNote": "Die neue Ramo's-Android-App (v2) ist nötig. Tablet und Drucker müssen im selben WLAN sein; in der Küchenansicht den Schalter „Druckstation“ einschalten. Druckeradresse, Port und Zeichentabelle kommen aus dem Abschnitt Druckerverbindung unten. Ist die App geschlossen oder im Hintergrund, wird nicht gedruckt.",
+        "stationNote": "Die neue Ramo's-Android-App (v2) ist nötig. Tablet und Drucker müssen im selben WLAN sein; in der Küchenansicht den Schalter „Druckstation“ einschalten. Druckeradresse, Port und Zeichentabelle kommen aus dem Abschnitt Druckerverbindung unten. Die aktuelle App druckt auch im Hintergrund und bei geschlossener App; bei der alten Version muss die App geöffnet und im Vordergrund sein.",
         "apply": "Druckweg übernehmen",
         "applied": "Druckweg geändert",
         "applyError": "Druckweg nicht gespeichert — erneut versuchen",
@@ -646,6 +657,13 @@
         "copied": "Adresse kopiert",
         "copyError": "Kopieren fehlgeschlagen — Adresse von Hand markieren",
         "done": "Gespeichert, schließen",
+        "devices": "Stations-Tablets",
+        "devicesEmpty": "Kein Tablet druckt im Hintergrund — am Tablet in der Küchenansicht den Schalter „Druckstation“ einschalten",
+        "deviceLastPrint": "Letzter Bon: {{ago}}",
+        "deviceNoPrint": "Noch kein Bon gedruckt",
+        "removeDevice": "Entfernen",
+        "confirmRemoveDevice": "{{name}} entfernen? Das Tablet druckt sofort nicht mehr im Hintergrund; zum Neustart am Tablet den Schalter „Druckstation“ einschalten.",
+        "deviceRemoved": "Tablet entfernt",
         "guideTitle": "Schritte in Epson Web Config",
         "guide": {
           "step1": "Im Browser die IP-Adresse des Druckers öffnen (https://<IP>) und als Administrator anmelden (Standardpasswort meist die Seriennummer).",
@@ -995,6 +1013,8 @@
     "printer_name_invalid": "Druckername muss 1–60 Zeichen lang sein",
     "sdp_printer_not_found": "Drucker nicht gefunden — Liste aktualisieren",
     "station_id_invalid": "Kennung der Druckstation ungültig — App neu öffnen",
-    "fcm_token_invalid": "Benachrichtigungs-Registrierung ungültig — Benachrichtigungen aus- und wieder einschalten"
+    "fcm_token_invalid": "Benachrichtigungs-Registrierung ungültig — Benachrichtigungen aus- und wieder einschalten",
+    "station_device_name_invalid": "Tablet-Name muss 1–60 Zeichen lang sein",
+    "station_device_not_found": "Tablet nicht gefunden — Liste aktualisieren"
   }
 }
