@@ -1,5 +1,6 @@
 import net from 'node:net';
 import tls from 'node:tls';
+import { eposPrint, eposStatus, isEposPort } from './epos';
 import { blockingProblem, parseStatus, type PrinterState } from './status';
 
 export class PrinterError extends Error {
@@ -18,6 +19,10 @@ const STATUS_QUERY = Uint8Array.from([0x10, 0x04, 0x01, 0x10, 0x04, 0x02, 0x10, 
  * Epson "Secure Printing" (TM-m30III gibi Avrupa/RED modellerinde fabrikadan açık): şifresiz
  * TCP 9100 RAW baskı reddedilir ya da sessizce atılır; aynı ESC/POS baytları TLS ile 9143'ten
  * basılır. Kural sade: port 9143 ise bağlantı TLS'tir, başka her port düz TCP.
+ *
+ * Port 443 / 80 ise yol bambaşkadır: Epson ePOS-Print (yazıcının web servisi, `./epos`). TM-m30III
+ * bazı kurulumlarda 9100'e de 9143'e de hiç cevap vermez; ePOS-Print o durumda çalışır. Kural
+ * tablet istasyonu (PrinterClient.java) ve Ayarlar'daki "Yazıcı türü" ile ortaktır.
  */
 export const EPSON_TLS_PORT = 9143;
 
@@ -166,6 +171,7 @@ export async function queryStatus(
   port: number,
   { connectMs = 3000, replyMs = 1000, tls: tlsFlag }: TransportOptions & { replyMs?: number } = {},
 ): Promise<PrinterState> {
+  if (isEposPort(port)) return eposStatus(host, port, { connectMs, timeoutMs: connectMs + replyMs + 2000 });
   const s = await connect(host, port, { connectMs, tls: tlsFlag });
   try {
     return await readStatus(s, replyMs);
@@ -204,6 +210,7 @@ export async function printWithChecks(
   bytes: Uint8Array,
   { connectMs = 3000, replyMs = 1000, sendMs = 5000, tls: tlsFlag }: TransportOptions & { replyMs?: number; sendMs?: number } = {},
 ): Promise<{ before: PrinterState; after: PrinterState }> {
+  if (isEposPort(port)) return eposPrint(host, port, bytes, { connectMs, timeoutMs: connectMs + sendMs + 2000 });
   const s = await connect(host, port, { connectMs, tls: tlsFlag });
   try {
     const before = await readStatus(s, replyMs);

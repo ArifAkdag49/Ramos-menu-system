@@ -589,7 +589,8 @@ const HELP = `Kullanım: ramos-agent.mjs <komut> [seçenekler]
   site-status                          siteye giriş + son ajan
   probe       --host <ip> [--port <n>]   tek adresi yoklar
   probe-print --host <ip> [--port <n>]   kısa deneme fişi
-Port ${EPSON_TLS_PORT} verilirse bağlantı TLS ile kurulur (Epson TM, Secure Printing açık).`;
+Port ${EPSON_TLS_PORT} verilirse bağlantı TLS ile kurulur (Epson TM, Secure Printing açık).
+Port 443 ya da 80 verilirse fiş Epson ePOS-Print web servisine gönderilir (TM-m30III; HTTPS / HTTP).`;
 
 async function main(): Promise<void> {
   switch (cmd) {

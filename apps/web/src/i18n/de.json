@@ -193,11 +193,13 @@
       "noPrinter": "Keine Druckeradresse — Admin → Einstellungen → Druckerverbindung",
       "lastError": "Letzter Fehler: {{error}}",
       "hint": "Bildschirm anlassen, App nicht schließen — im Hintergrund wird nicht gedruckt.",
+      "routeOffBadge": "Anderer Druckweg",
+      "routeOff": "Druckweg ist nicht „Tablet-Druckstation“ — dieses Tablet druckt nicht. Beheben: Admin → Einstellungen → Druckweg → Tablet-Druckstation → Druckweg anwenden.",
+      "browserHint": "Druckweg ist „Tablet-Druckstation“, aber dieses Gerät ist nicht die Ramo's-Android-App (Chrome/PWA): von hier kann nicht gedruckt werden. Der Schalter „Druckstation“ erscheint nur in der Ramo's-App (v2+).",
       "bg": {
         "running": "Läuft im Hintergrund — druckt auch bei geschlossener App",
         "notRunning": "Hintergrunddienst läuft nicht — startet er nicht in wenigen Sekunden, Schalter aus- und wieder einschalten",
         "printed": "Gedruckte Bons: {{count}}",
-        "routeOff": "Druckweg ist nicht „Tablet-Druckstation“ — dieses Tablet druckt nicht (Admin → Einstellungen → Druckweg)",
         "notificationsHidden": "Benachrichtigungen aus: Die Statusmeldung ist ausgeblendet, gedruckt wird trotzdem.",
         "notificationsDenied": "Benachrichtigungen nötig — in den Android-Einstellungen für Ramo's erlauben und erneut versuchen",
         "startFailed": "Hintergrunddienst konnte nicht starten ({{detail}}) — erneut versuchen",
@@ -695,10 +697,13 @@
         "typeHint": "Die Auswahl füllt Port und Zeichensatz aus; danach speichern.",
         "types": {
           "xprinter": "Xprinter (Port 9100, CP857)",
-          "epson": "Epson TM (verschlüsselt)",
+          "epson": "Epson TM (verschlüsselt, Port 9143)",
+          "epson_epos": "Epson TM-m30III (ePOS-Print, Port 443)",
           "custom": "Benutzerdefiniert (Felder selbst ausfüllen)"
         },
         "epsonHint": "Bei Epson mit aktiviertem Secure Printing wird verschlüsselt über Port 9143 gedruckt; Drucker und Computer müssen im selben Netzwerk sein.",
+        "eposHint": "ePOS-Print: Der Bon geht an den eigenen Webdienst des Druckers (HTTPS, Port 443) — derselbe Weg, über den Epson TM Utility den Testbon druckt. Wählen, wenn der TM-m30III Rohdruck über 9100/9143 nicht annimmt; Drucker und Tablet/PC müssen im selben Netzwerk sein. Port 80 = derselbe Weg unverschlüsselt (HTTP).",
+        "portHint": "9100 = Roh-TCP (Xprinter) · 9143 = Epson verschlüsselt · 443 / 80 = Epson ePOS-Print (HTTPS / HTTP)",
         "codepages": {
           "cp857": "CP857 · Türkisch (61) — Xprinter, empfohlen",
           "windows1254": "Windows-1254 · Türkisch (91) — Xprinter",

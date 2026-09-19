@@ -215,20 +215,25 @@ describe('<StationStrip /> — arka plan kipi (yeni APK)', () => {
     expect(screen.getByText('Yazıcıya ulaşılamıyor')).toBeInTheDocument();
   });
 
-  it('baskı yolu değiştiyse ama hizmet açıksa şerit uyarıyla kalır (kapatılabilsin); kapalıysa gizli', async () => {
+  it('baskı yolu değiştiyse şerit uyarıyla kalır — hizmet açıkken de kapalıyken de (anahtar kaybolmaz)', async () => {
     newApk({ enabled: true, running: true, route: 'agent' });
     h.row = settings('agent');
     const { unmount } = render(<StationStrip />);
     expect(await screen.findByText(/Baskı yolu "Tablet yazıcı istasyonu" değil/)).toBeVisible();
+    // Açık anahtar "Açık" demez: bu yolda bu tablet basmaz.
+    expect(screen.getByText('Baskı yolu farklı')).toBeInTheDocument();
+    expect(screen.queryByText('Açık')).toBeNull();
     unmount();
 
     delete (window as W).Capacitor;
     __resetBackgroundStationForTests();
     useStationStore.setState({ bg: null });
     newApk({ enabled: false, route: 'agent' });
-    const { container } = render(<StationStrip />);
-    await waitFor(() => expect(useStationStore.getState().bg).not.toBeNull());
-    expect(container).toBeEmptyDOMElement();
+    render(<StationStrip />);
+    const toggle = await switchReady();
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByText('Kapalı')).toBeInTheDocument();
+    expect(screen.getByText(/Baskı yolu "Tablet yazıcı istasyonu" değil/)).toBeVisible();
   });
 
   it('hizmet yerelde açık ama sunucu rotası farklıysa da uyarır', async () => {

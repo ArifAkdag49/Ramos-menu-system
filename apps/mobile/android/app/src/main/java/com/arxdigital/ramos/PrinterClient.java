@@ -36,9 +36,11 @@ import org.json.JSONObject;
  * her çağrı bloklar, çağıran kendi arka plan thread'inden çağırmalıdır.
  *
  * Davranış apps/print-agent/src/transport.ts `printWithChecks` ile aynıdır: tek bağlantı üzerinde
- * durum (DLE EOT 1/2/4) → engel varsa göndermeden hata → yaz → durum. Port 9143 ise TLS (Epson Secure
- * Printing), başka her port düz TCP. Durum bitleri packages/shared status.ts `parseStatus` /
- * `blockingProblem` ile aynı; bilinmeyen/cevapsız durum baskıyı ENGELLEMEZ.
+ * durum (DLE EOT 1/2/4) → engel varsa göndermeden hata → yaz → durum. Port kuralı (ajan ve web ile
+ * ortak): 9143 → TLS ham (Epson Secure Printing); 443 → Epson ePOS-Print HTTPS; 80 → ePOS-Print HTTP
+ * ({@link EposClient}: fiş XML zarfta, yazıcı kendi yanıtıyla durum bildirir, DLE EOT yok); başka her
+ * port düz TCP ham. Durum bitleri packages/shared status.ts `parseStatus` / `blockingProblem` ile
+ * aynı; bilinmeyen/cevapsız durum baskıyı ENGELLEMEZ.
  *
  * Yazıcı aynı anda tek oturum kabul eder (R69): baskı ve durum yoklaması {@link #LOCK} ile sırayla
  * yapılır — eklenti ve servis aynı süreçte, aynı kilidi paylaşır.
@@ -46,6 +48,9 @@ import org.json.JSONObject;
 final class PrinterClient {
 
     static final int EPSON_TLS_PORT = 9143;
+    /** Epson ePOS-Print (TM-m30III): 443 HTTPS, 80 HTTP — yazıcının web servisi. */
+    static final int EPOS_HTTPS_PORT = 443;
+    static final int EPOS_HTTP_PORT = 80;
     static final int DEFAULT_TIMEOUT_MS = 8000;
     /** transport.ts: TCP (+TLS el sıkışması) bağlantı zaman aşımı 3 sn. */
     static final int CONNECT_MS = 3000;
@@ -71,6 +76,15 @@ final class PrinterClient {
     });
 
     private PrinterClient() {}
+
+    static boolean isEposPort(int port) {
+        return port == EPOS_HTTPS_PORT || port == EPOS_HTTP_PORT;
+    }
+
+    /** TLS'li portlar: Epson Secure Printing (9143) ve ePOS-Print HTTPS (443). */
+    static boolean usesTls(int port) {
+        return port == EPSON_TLS_PORT || port == EPOS_HTTPS_PORT;
+    }
 
     // ---------------------------------------------------------------- sonuçlar
 
@@ -159,10 +173,12 @@ final class PrinterClient {
     }
 
     static SendResult send(String host, int port, byte[] bytes, int timeoutMs, boolean checkStatus) {
+        // ePOS-Print'te ayrı ön durum sorusu yok: yazıcı engel varsa (kapak/kağıt) işi kendisi reddeder.
+        if (isEposPort(port)) return sendEpos(host, port, usesTls(port), bytes, timeoutMs);
         final AtomicBoolean timedOut = new AtomicBoolean(false);
         Socket s;
         try {
-            s = connect(host, port, Math.min(CONNECT_MS, timeoutMs));
+            s = connect(host, port, usesTls(port), Math.min(CONNECT_MS, timeoutMs));
         } catch (PrinterException e) {
             return SendResult.fail(e.code, e.getMessage());
         }
@@ -211,16 +227,83 @@ final class PrinterClient {
         }
     }
 
+    // ---------------------------------------------------------------- ePOS-Print
+
+    /** Yazıcının işi tamamlamak için beklediği süre: bizim zaman aşımımızdan önce cevap versin. */
+    private static int eposPrinterTimeout(int timeoutMs) {
+        return Math.max(3000, timeoutMs - 2000);
+    }
+
+    /**
+     * ePOS-Print ile baskı. Yanıt okunduysa yazıcının dediği geçerlidir (success / hata kodu + ASB durumu).
+     * İstek tamamen yazıldıktan sonra yanıt hiç gelmezse ham yolla aynı kural: bayt gitti → iş basılmış
+     * sayılır, durum bilinmiyor (yanıt kaybı yüzünden çift fiş basılmasın). Asla fırlatmaz.
+     */
+    static SendResult sendEpos(String host, int port, boolean tls, byte[] bytes, int timeoutMs) {
+        Socket s;
+        try {
+            s = connect(host, port, tls, Math.min(CONNECT_MS, timeoutMs));
+        } catch (PrinterException e) {
+            return SendResult.fail(e.code, e.getMessage());
+        }
+        final Socket sock = s;
+        // Yazma da yazıcı hiç okumazsa sonsuza dek bloklayabilir: bekçi soketi kapatır.
+        ScheduledFuture<?> dog = WATCHDOG.schedule(() -> closeQuietly(sock), timeoutMs + 1000L, TimeUnit.MILLISECONDS);
+        try {
+            EposClient.Response r;
+            try {
+                r = EposClient.exchange(s, host, port, EposClient.document(bytes), eposPrinterTimeout(timeoutMs), timeoutMs);
+            } catch (EposClient.NoResponseException e) {
+                return SendResult.success(null);
+            } catch (IOException e) {
+                return SendResult.fail("io", "epos: " + e.getMessage());
+            }
+            String status = r.asb != null ? hex(EposClient.asbToStatus(r.asb)) : null;
+            if (r.success) return SendResult.success(status);
+            return SendResult.fail(EposClient.errorCode(r.code), "epos: " + r.code, status);
+        } catch (Throwable t) {
+            return SendResult.fail("io", "epos: " + t.getMessage());
+        } finally {
+            dog.cancel(false);
+            closeQuietly(s);
+        }
+    }
+
+    /** ePOS-Print durum sorusu: boş belge; yazıcı ASB durumuyla cevap verir. Asla fırlatmaz. */
+    static StatusResult statusEpos(String host, int port, boolean tls, int timeoutMs) {
+        Socket s = null;
+        try {
+            s = connect(host, port, tls, Math.min(CONNECT_MS, timeoutMs));
+            EposClient.Response r = EposClient.exchange(s, host, port, EposClient.document(new byte[0]),
+                eposPrinterTimeout(timeoutMs), Math.max(REPLY_MS, timeoutMs));
+            String status = r.asb != null ? hex(EposClient.asbToStatus(r.asb)) : null;
+            if (r.httpStatus != 200) {
+                return new StatusResult(false, null, "epos: HTTP " + r.httpStatus + " — ePOS-Print kapalı ya da yanlış cihaz");
+            }
+            // Engel (kapak/kağıt) yanıtta hata koduyla gelir; yazıcı yine ulaşılabilir, durum baytları söyler.
+            return new StatusResult(true, status, r.success ? null : "epos: " + r.code);
+        } catch (PrinterException e) {
+            return new StatusResult(false, null, e.getMessage());
+        } catch (EposClient.NoResponseException e) {
+            return new StatusResult(false, null, "epos: " + e.getMessage());
+        } catch (Throwable t) {
+            return new StatusResult(false, null, "epos: " + t.getMessage());
+        } finally {
+            closeQuietly(s);
+        }
+    }
+
     // ---------------------------------------------------------------- durum yoklaması
 
-    /** Bağlan → DLE EOT → kapat. Asla fırlatmaz. Kilidi ALMAZ (çağıran alır). */
+    /** Bağlan → DLE EOT → kapat (ePOS portlarında ePOS durum sorusu). Asla fırlatmaz. Kilidi ALMAZ (çağıran alır). */
     static StatusResult status(String host, Integer port, int timeoutMs) {
         if (host == null || host.trim().isEmpty() || port == null || port < 1 || port > 65535) {
             return new StatusResult(false, null, "geçersiz host/port");
         }
+        if (isEposPort(port)) return statusEpos(host.trim(), port, usesTls(port), timeoutMs);
         Socket s = null;
         try {
-            s = connect(host.trim(), port, Math.min(CONNECT_MS, timeoutMs));
+            s = connect(host.trim(), port, usesTls(port), Math.min(CONNECT_MS, timeoutMs));
             byte[] reply = readStatus(s, Math.max(100, Math.min(REPLY_MS, timeoutMs)));
             return new StatusResult(
                 true,
@@ -238,7 +321,7 @@ final class PrinterClient {
 
     // ---------------------------------------------------------------- bağlantı
 
-    private static Socket connect(String host, int port, int connectMs) throws PrinterException {
+    private static Socket connect(String host, int port, boolean tls, int connectMs) throws PrinterException {
         long start = System.currentTimeMillis();
         Socket plain = new Socket();
         try {
@@ -251,7 +334,7 @@ final class PrinterClient {
             closeQuietly(plain);
             throw new PrinterException("offline", String.valueOf(e.getMessage()));
         }
-        if (port != EPSON_TLS_PORT) return plain;
+        if (!tls) return plain;
 
         // TLS: zaman aşımı TCP bağlantısı + el sıkışmanın TAMAMINI kapsar (transport.ts connectTls).
         try {

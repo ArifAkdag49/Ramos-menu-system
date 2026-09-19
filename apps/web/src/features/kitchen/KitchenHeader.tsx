@@ -11,8 +11,9 @@ import { soldOutCount } from './kitchenLogic';
  *  (R81): mutfakta bir panel açıkken hata toast'ı üst konuma geçiyor ve ofsetini aynı tokendan
  *  alıyor — başlık kendi yüksekliğini ayrı yazarsa toast ya üstüne biner ya da boşluk bırakır.
  *
- *  Yerel Android uygulamasında ve baskı yolu "Tablet yazıcı istasyonu" iken başlığın altında
- *  "Yazıcı istasyonu" anahtarı ve durumu (`StationStrip`); diğer her durumda o şerit hiç çizilmez. */
+ *  Yerel Android uygulamasında başlığın altında "Yazıcı istasyonu" anahtarı ve durumu
+ *  (`StationStrip`) — baskı yolu ne olursa olsun (yol farklıysa anahtar kalır, neden basmadığı
+ *  yazılır). Tarayıcıda yalnız yol istasyonken "bu cihaz basamaz" uyarısı çizilir. */
 export function KitchenHeader({ onOpenSoldOut }: { onOpenSoldOut: () => void }) {
   const { t } = useTranslation();
   const { products } = useMenu();

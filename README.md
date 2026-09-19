@@ -11,8 +11,8 @@ Ramo's Döner & Grill House (Frankfurt) için masa başı garson sipariş sistem
 | Klasör | İçerik |
 |---|---|
 | `apps/web` | Web uygulaması: `/login`, garson (`/waiter`), mutfak (`/kitchen`), yönetim (`/admin`); Playwright E2E testleri `apps/web/e2e` |
-| `apps/print-agent` | Yazdırma ajanı (ESC/POS, TCP 9100, USB), Windows kurulum sihirbazı (`kurulum/Kurulum.cmd`, `scripts/kurulum.ps1`), paket betiği `scripts/paket-olustur.ps1` |
-| `apps/android` | Android uygulaması (Trusted Web Activity, paket `com.arxdigital.ramos`), imzalı APK betiği `build-apk.ps1` |
+| `apps/print-agent` | Yazdırma ajanı (ESC/POS: TCP 9100, Epson TLS 9143, Epson ePOS-Print 443/80, USB), Windows kurulum sihirbazı (`kurulum/Kurulum.cmd`, `scripts/kurulum.ps1`), paket betiği `scripts/paket-olustur.ps1` |
+| `apps/mobile` | Android uygulaması (Capacitor, paket `com.arxdigital.ramos`): canlı siteyi açar, FCM bildirimleri, `RamosPrinter` eklentisi + arka plan yazıcı istasyonu (`StationService`), imzalı APK betiği `build-apk.ps1` |
 | `packages/shared` | Ortak alan mantığı: tipler, para, fiyat ve seçim kuralları, sepet, hata anahtarları, fiş satır modeli (`renderTicket`) |
 | `supabase` | `migrations/` (şemanın tek kaynağı), `functions/` (`admin-staff`, `notify-ready`), `seed/` (107 ürünlük menü), `tests/` (RLS/RPC testleri) |
 | `deploy` | Plesk yayın betiği `deploy-web.ps1`, Linux/Raspberry Pi systemd birimi, `backup/` (gecelik `pg_dump`, cron, geri yükleme belgesi) |

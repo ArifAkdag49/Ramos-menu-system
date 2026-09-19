@@ -185,10 +185,11 @@ describe('karakter tablosu', () => {
 });
 
 describe('yazıcı türü (hazır seçim)', () => {
-  it('Xprinter 9100 + cp857/61, Epson 9143 + windows1254/48', () => {
+  it('Xprinter 9100 + cp857/61, Epson 9143 + windows1254/48, Epson ePOS-Print 443 + windows1254/48', () => {
     expect(PRINTER_PRESETS).toEqual({
       xprinter: { port: 9100, codepage: 'cp857/61' },
       epson: { port: 9143, codepage: 'windows1254/48' },
+      epson_epos: { port: 443, codepage: 'windows1254/48' },
     });
   });
 
@@ -203,6 +204,11 @@ describe('yazıcı türü (hazır seçim)', () => {
     expect(detectPrinterPreset({ printer_port: '9143', codepage: 'windows1254/91' })).toBe(
       'custom',
     );
+    expect(detectPrinterPreset({ printer_port: '443', codepage: 'windows1254/48' })).toBe(
+      'epson_epos',
+    );
+    // Port 80 da ePOS-Print'tir ama hazır seçim 443'tür: elle girilmiş 80 "özel" görünür.
+    expect(detectPrinterPreset({ printer_port: '80', codepage: 'windows1254/48' })).toBe('custom');
   });
 
   it('seçim port ve tabloyu doldurur, diğer alanlara dokunmaz; özel hiçbir şeyi değiştirmez', () => {
@@ -220,6 +226,10 @@ describe('yazıcı türü (hazır seçim)', () => {
       codepage: 'cp857/61',
     });
     expect(applyPrinterPreset(form, 'custom')).toBe(form);
+    expect(applyPrinterPreset(form, 'epson_epos')).toMatchObject({
+      printer_port: '443',
+      codepage: 'windows1254/48',
+    });
   });
 });
 

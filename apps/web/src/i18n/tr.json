@@ -193,11 +193,13 @@
       "noPrinter": "Yazıcı adresi yok — Admin → Ayarlar → Yazıcı bağlantısı",
       "lastError": "Son hata: {{error}}",
       "hint": "Ekranı açık tutun, uygulamayı kapatmayın — uygulama arka plandayken fiş basılmaz.",
+      "routeOffBadge": "Baskı yolu farklı",
+      "routeOff": "Baskı yolu \"Tablet yazıcı istasyonu\" değil — bu tablet fiş basmaz. Düzeltmek için: Admin → Ayarlar → Baskı yolu → Tablet yazıcı istasyonu → Baskı yolunu uygula.",
+      "browserHint": "Baskı yolu \"Tablet yazıcı istasyonu\" ama bu cihaz Ramo's Android uygulaması değil (Chrome/PWA): buradan fiş basılamaz. Yazıcı istasyonu anahtarı yalnız Ramo's uygulamasında (v2+) görünür.",
       "bg": {
         "running": "Arka planda çalışıyor — uygulama kapalıyken de basar",
         "notRunning": "Arka plan hizmeti çalışmıyor — birkaç saniyede başlamazsa anahtarı kapatıp yeniden açın",
         "printed": "Basılan fiş: {{count}}",
-        "routeOff": "Baskı yolu \"Tablet yazıcı istasyonu\" değil — bu tablet fiş basmaz (Admin → Ayarlar → Baskı yolu)",
         "notificationsHidden": "Bildirim izni kapalı: durum bildirimi görünmez ama fişler basılmaya devam eder.",
         "notificationsDenied": "Bildirim izni gerekli — Android ayarlarından Ramo's için bildirimlere izin verip yeniden deneyin",
         "startFailed": "Arka plan hizmeti başlatılamadı ({{detail}}) — tekrar deneyin",
@@ -695,10 +697,13 @@
         "typeHint": "Seçim port ve karakter tablosunu doldurur; sonra kaydet.",
         "types": {
           "xprinter": "Xprinter (port 9100, CP857)",
-          "epson": "Epson TM (şifreli)",
+          "epson": "Epson TM (şifreli, port 9143)",
+          "epson_epos": "Epson TM-m30III (ePOS-Print, port 443)",
           "custom": "Özel (alanları elle doldur)"
         },
         "epsonHint": "Epson'da Secure Printing açıkken baskı şifreli 9143 portundan yapılır; yazıcı ile bilgisayar aynı ağda olmalı.",
+        "eposHint": "ePOS-Print: fiş yazıcının kendi web servisine (HTTPS, port 443) gönderilir — Epson TM Utility'nin test fişi bastığı yol. TM-m30III'te ham 9100/9143 baskısı kapalıyken bunu seçin; yazıcı ile tablet/bilgisayar aynı ağda olmalı. Port 80 = aynı yol şifresiz (HTTP).",
+        "portHint": "9100 = ham TCP (Xprinter) · 9143 = Epson şifreli · 443 / 80 = Epson ePOS-Print (HTTPS / HTTP)",
         "codepages": {
           "cp857": "CP857 · Türkçe (61) — Xprinter, önerilen",
           "windows1254": "Windows-1254 · Türkçe (91) — Xprinter",

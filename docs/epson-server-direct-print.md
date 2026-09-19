@@ -170,3 +170,17 @@ ConnectionType=SetResponse&ID=<ID>&ResponseFile=<XML>
 3. Web Config "Access Test" Supabase HTTPS adresine geçiyor mu; Server Authentication Enable ile kök sertifika var mı?
 4. Interval alt sınırı (5 sn kabul ediliyor mu), `Name` form alanı, ID alanı uzunluğu.
 5. URL'deki `?t=` sorgu dizgisi yazıcıda korunuyor mu (bazı istemciler sorgu dizgisini atabilir).
+
+## 8. Doğrudan ePOS-Print (Server Direct Print değil)
+
+Aynı `<epos-print>` / `<command>` belgesi, yazıcının **kendi** web servisine de gönderilebilir:
+`POST http(s)://<yazıcı IP>/cgi-bin/epos/service.cgi?devid=local_printer&timeout=<ms>` (SOAP zarfı içinde).
+Yazıcı hemen `<response success="true|false" code="…" status="<ASB>"/>` ile cevap verir; sunucu, aralık ya da
+Web Config ayarı gerekmez — Epson TM Utility'nin test fişi bastığı yol budur. TM-m30III bazı kurulumlarda ham
+9100/9143 baskısına hiç cevap vermezken ePOS-Print çalışır.
+
+Uygulama (2026-09-19): tablet istasyonu (`apps/mobile … EposClient.java`, `PrinterClient.java`) ve yazdırma
+ajanı (`apps/print-agent/src/epos.ts`). Yol seçimi **port** ile: `443` → HTTPS, `80` → HTTP; Ayarlar → Yazıcı
+türü → **Epson TM-m30III (ePOS-Print, port 443)**. `status` özniteliği (ASB, 32 bit) DLE EOT 1/2/4 biçimine
+çevrilir ki durum okuyan her yer tek ayrıştırıcıyla kalsın (`asbToStatus`). İstek tamamen yazıldıktan sonra yanıt
+gelmezse ham yolla aynı kural uygulanır: iş basılmış sayılır (çift fiş olmasın). Kurulum: [KURULUM.md §2.6](KURULUM.md#26-epson-tm-m30iii-secure-printing-ve-epos-print).

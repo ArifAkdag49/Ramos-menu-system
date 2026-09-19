@@ -12,6 +12,8 @@ const { menu } = vi.hoisted(() => ({ menu: { value: [] as { id: string; is_sold_
 vi.mock('../../data/menu', () => ({
   useMenu: () => ({ categories: [], products: menu.value, byId: new Map() }),
 }));
+// Başlığın altındaki yazıcı istasyonu şeridi ayarı okur; bu testlerde ayar yok (şerit boş kalır).
+vi.mock('../../data/settings', () => ({ useSettings: () => undefined }));
 
 import { KitchenHeader } from './KitchenHeader';
 

@@ -16,7 +16,7 @@ export interface AgentEnv {
    * bilgisayarlar (ev / restoran) kendi yazıcılarını kullanabilsin diye. Boşsa site ayarı geçerli.
    */
   PRINTER_HOST?: string;
-  /** `PRINTER_HOST` ile birlikte isteğe bağlı port (boşsa site ayarı). 9143 = Epson şifreli (TLS) baskı. */
+  /** `PRINTER_HOST` ile birlikte isteğe bağlı port (boşsa site ayarı). 9143 = Epson şifreli (TLS) baskı, 443/80 = Epson ePOS-Print. */
   PRINTER_PORT?: number;
   /**
    * Bu PC'nin yazıcısına özel karakter tablosu (kurulum sihirbazı Epson bulunca `windows1254` yazar).
@@ -95,7 +95,7 @@ export function readConfig(env: NodeJS.ProcessEnv): AgentEnv {
   const printerPortRaw = env.PRINTER_PORT?.trim() ?? '';
   const printerPort = printerPortRaw === '' ? undefined : Number(printerPortRaw);
   if (printerPort !== undefined && !(Number.isInteger(printerPort) && printerPort >= 1 && printerPort <= 65535)) {
-    throw new ConfigError(`PRINTER_PORT geçersiz: "${printerPortRaw}". 1–65535 arası bir sayı olmalı (yazıcı için genelde 9100; Epson şifreli baskı 9143).`);
+    throw new ConfigError(`PRINTER_PORT geçersiz: "${printerPortRaw}". 1–65535 arası bir sayı olmalı (yazıcı için genelde 9100; Epson şifreli baskı 9143; Epson ePOS-Print 443).`);
   }
   const codepage = env.PRINTER_CODEPAGE?.trim() ?? '';
   const codepageNumberRaw = env.PRINTER_CODEPAGE_NUMBER?.trim() ?? '';

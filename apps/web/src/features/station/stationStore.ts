@@ -113,14 +113,21 @@ export type StationBadgeKey =
   | 'kitchen.station.on'
   | 'kitchen.station.onLastPrint'
   | 'kitchen.station.unreachable'
-  | 'kitchen.station.noPrinter';
+  | 'kitchen.station.noPrinter'
+  | 'kitchen.station.routeOffBadge';
 
-/** Başlıktaki durum rozeti: Kapalı / yazıcı adresi yok / ulaşılamıyor / Açık (· son baskı saati). */
+/**
+ * Başlıktaki durum rozeti: Kapalı / baskı yolu farklı / yazıcı adresi yok / ulaşılamıyor / Açık
+ * (· son baskı saati). `routeOk = false` (Admin'deki baskı yolu "Tablet yazıcı istasyonu" değil):
+ * anahtar açık olsa da bu tablet iş almaz — rozet "Açık" demesin.
+ */
 export function stationBadge(
   on: boolean,
   s: StationSnapshot,
+  routeOk = true,
 ): { key: StationBadgeKey; tone: Tone; lastPrintedAt?: number } {
   if (!on) return { key: 'kitchen.station.off', tone: 'empty' };
+  if (!routeOk) return { key: 'kitchen.station.routeOffBadge', tone: 'warning' };
   if (s.missingPrinter) return { key: 'kitchen.station.noPrinter', tone: 'warning' };
   if (s.reachable === false) return { key: 'kitchen.station.unreachable', tone: 'danger' };
   if (s.lastPrintedAt !== null)

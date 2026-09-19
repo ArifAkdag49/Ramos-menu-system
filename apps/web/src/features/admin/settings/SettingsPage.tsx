@@ -68,6 +68,7 @@ const CODEPAGE_KEY = {
 const PRINTER_TYPE_KEY = {
   xprinter: 'admin.settings.printer.types.xprinter',
   epson: 'admin.settings.printer.types.epson',
+  epson_epos: 'admin.settings.printer.types.epson_epos',
   custom: 'admin.settings.printer.types.custom',
 } as const satisfies Record<PrinterPresetId, string>;
 
@@ -333,7 +334,7 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
               value={printerType}
               hint={t('admin.settings.printer.typeHint')}
               onChange={choosePrinterType}
-              options={(['xprinter', 'epson', 'custom'] as const).map((id) => ({
+              options={(['xprinter', 'epson', 'epson_epos', 'custom'] as const).map((id) => ({
                 value: id,
                 label: t(PRINTER_TYPE_KEY[id]),
               }))}
@@ -341,6 +342,11 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
             {printerType === 'epson' ? (
               <p role="note" className="text-sm text-muted">
                 {t('admin.settings.printer.epsonHint')}
+              </p>
+            ) : null}
+            {printerType === 'epson_epos' ? (
+              <p role="note" className="text-sm text-muted">
+                {t('admin.settings.printer.eposHint')}
               </p>
             ) : null}
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
@@ -361,6 +367,7 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
                 maxLength={5}
                 inputMode="numeric"
                 error={errorText('printer_port')}
+                hint={t('admin.settings.printer.portHint')}
                 onChange={(v) => set('printer_port', v)}
               />
             </div>

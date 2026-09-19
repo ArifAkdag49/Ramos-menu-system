@@ -58,6 +58,8 @@ vi.mock('../../data/printer', () => ({
   usePrinterStatus: () => ({ status: undefined, problem: null }),
 }));
 vi.mock('../../lib/online', () => ({ useOnline: () => true }));
+// Yazıcı istasyonu şeridi tarayıcıda da ayarı okur (yol istasyonsa uyarı çizer); burada ayar yok.
+vi.mock('../../data/settings', () => ({ useSettings: () => undefined }));
 vi.mock('../../lib/realtime', () => ({ useBroadcastInvalidation: useBroadcastInvalidationSpy }));
 
 import { KitchenPage } from './KitchenPage';

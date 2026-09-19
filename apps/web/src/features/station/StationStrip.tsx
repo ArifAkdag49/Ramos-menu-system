@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { BatteryWarning, Printer } from 'lucide-react';
+import { AlertTriangle, BatteryWarning, Printer } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -26,21 +26,43 @@ import {
 import { useStation } from './useStation';
 
 /**
- * Mutfak ekranı başlığının hemen altındaki "Yazıcı istasyonu" şeridi. Yalnız yerel Android
- * uygulamasında görünür; tarayıcıda hiçbir şey çizmez (ayar sorgusu bile açılmaz).
+ * Mutfak ekranı başlığının hemen altındaki "Yazıcı istasyonu" şeridi.
+ *
+ * Yerel Android uygulamasında **her zaman** görünür — baskı yolu ne olursa olsun. Eskiden yol
+ * "Tablet yazıcı istasyonu" değilken şerit hiç çizilmiyordu; Admin'de yol değiştirilince mutfaktaki
+ * anahtar "kayboluyor" ve neden kaybolduğu anlaşılmıyordu. Şimdi anahtar yerinde kalır, rozet
+ * "Baskı yolu farklı" der ve nereden düzeltileceği yazılır. Tarayıcıda (Chrome/PWA) anahtar yoktur;
+ * ama yol istasyonsa "bu cihaz Ramo's uygulaması değil, fiş basamaz" uyarısı çizilir — aksi hâlde
+ * fişler sessizce sırada beklerdi.
  *
  * İki kip (`useStationMode`):
  * - **Arka plan** (yeni APK): anahtar yerel hizmeti açar/kapatır; fişi uygulama kapalıyken de hizmet
- *   basar. Şerit baskı yolu "Tablet yazıcı istasyonu" iken ya da hizmet açıkken görünür (yol
- *   değiştiyse uyarıyla — tablette hizmet kapatılabilsin).
- * - **Eski** (arka plan yöntemleri olmayan APK): anahtar WebView'daki JS döngüsünü açar; yalnız
- *   baskı yolu istasyonken görünür, uygulama ön plandayken basar.
+ *   basar.
+ * - **Eski** (arka plan yöntemleri olmayan APK): anahtar WebView'daki JS döngüsünü açar; döngü yalnız
+ *   yol istasyonken ve uygulama ön plandayken çalışır (`useStation`).
  *
  * Başlık çubuğunun içine değil altına konur: telefon genişliğinde başlıktaki "Tükendi" ve "Çıkış"
  * düğmeleriyle taşmasın; başlığın `--header-h` yüksekliği (toast ofseti, R81) değişmesin.
  */
 export function StationStrip() {
-  return isNative() ? <NativeStationStrip /> : null;
+  return isNative() ? <NativeStationStrip /> : <BrowserStationHint />;
+}
+
+/** Ayar henüz gelmediyse (`undefined`) yol bilinmiyor sayılır: uyarı çizilmez. */
+const isRouteOff = (route: string | null | undefined) => route !== undefined && route !== 'station';
+
+function BrowserStationHint() {
+  const { t } = useTranslation();
+  const route = useSettings()?.print_route;
+  if (route !== 'station') return null;
+  return (
+    <StripShell>
+      <p role="note" className="flex min-w-0 items-start gap-2 text-sm text-warning">
+        <AlertTriangle aria-hidden size={18} className="mt-0.5 shrink-0" />
+        <span>{t('kitchen.station.browserHint')}</span>
+      </p>
+    </StripShell>
+  );
 }
 
 function NativeStationStrip() {
@@ -50,7 +72,7 @@ function NativeStationStrip() {
   useStation(mode);
   useBackgroundStation(mode === 'background', visible, route);
 
-  if (mode === 'legacy') return route === 'station' ? <LegacyStrip /> : null;
+  if (mode === 'legacy') return <LegacyStrip routeOff={isRouteOff(route)} />;
   if (mode === 'background') return <BackgroundStrip route={route} />;
   return null;
 }
@@ -109,9 +131,17 @@ function StationSwitch({
   );
 }
 
-function StationBadge({ on, snapshot }: { on: boolean; snapshot: StationSnapshot }) {
+function StationBadge({
+  on,
+  snapshot,
+  routeOk,
+}: {
+  on: boolean;
+  snapshot: StationSnapshot;
+  routeOk: boolean;
+}) {
   const { t, i18n } = useTranslation();
-  const badge = stationBadge(on, snapshot);
+  const badge = stationBadge(on, snapshot, routeOk);
   const label =
     badge.lastPrintedAt !== undefined
       ? t('kitchen.station.onLastPrint', {
@@ -124,8 +154,21 @@ function StationBadge({ on, snapshot }: { on: boolean; snapshot: StationSnapshot
   return <Badge tone={badge.tone}>{label}</Badge>;
 }
 
-/** Eski kip: JS döngüsünün anahtarı (`ramos-station-on`) ve durumu — önceki davranışın aynısı. */
-function LegacyStrip() {
+/** Baskı yolu istasyon değil: bu tablet iş almaz — nereden düzeltileceği yazılır. */
+function RouteOffNote() {
+  const { t } = useTranslation();
+  return (
+    <p role="note" className="min-w-0 basis-full text-sm text-warning">
+      {t('kitchen.station.routeOff')}
+    </p>
+  );
+}
+
+/**
+ * Eski kip: JS döngüsünün anahtarı (`ramos-station-on`) ve durumu. Yol istasyon değilken anahtar
+ * yine açılıp kapatılabilir (kalıcı yazılır); döngü yol istasyona dönünce kendiliğinden başlar.
+ */
+function LegacyStrip({ routeOff }: { routeOff: boolean }) {
   const { t } = useTranslation();
   const on = useStationStore((s) => s.on);
   const snapshot = useStationStore((s) => s.snapshot);
@@ -133,13 +176,14 @@ function LegacyStrip() {
   return (
     <StripShell>
       <StationSwitch checked={on} onToggle={() => useStationStore.getState().setOn(!on)} />
-      <StationBadge on={on} snapshot={snapshot} />
-      {on ? (
+      <StationBadge on={on} snapshot={snapshot} routeOk={!routeOff} />
+      {routeOff ? <RouteOffNote /> : null}
+      {on && !routeOff ? (
         <p className="min-w-0 basis-full text-sm text-muted sm:basis-auto">
           {t('kitchen.station.hint')}
         </p>
       ) : null}
-      {on && snapshot.lastError ? (
+      {on && !routeOff && snapshot.lastError ? (
         <p className="min-w-0 basis-full break-all text-xs text-warning">
           {t('kitchen.station.lastError', { error: snapshot.lastError })}
         </p>
@@ -155,7 +199,10 @@ function enableErrorText(t: TFunction, e: BackgroundEnableFailure): string {
   return t('kitchen.station.bg.startFailed', { detail });
 }
 
-/** Arka plan kipi: anahtar yerel hizmeti yönetir; durum 2 sn'de bir yerelden okunur. */
+/**
+ * Arka plan kipi: anahtar yerel hizmeti yönetir; durum 2 sn'de bir yerelden okunur. Yol istasyon
+ * değilken de çizilir: hizmet açıksa kapatılabilsin, kapalıysa neden fiş çıkmadığı görünsün.
+ */
 function BackgroundStrip({ route }: { route: string | null | undefined }) {
   const { t } = useTranslation();
   const bg = useStationStore((s) => s.bg);
@@ -163,10 +210,8 @@ function BackgroundStrip({ route }: { route: string | null | undefined }) {
   const actionError = useStationStore((s) => s.bgError);
   const enabled = bg?.enabled === true;
 
-  // Yol başka ve hizmet kapalı: bu tablette yapılacak bir şey yok.
-  if (route !== 'station' && !enabled) return null;
-
-  const routeOff = route !== 'station' || (bg?.route != null && bg.route !== 'station');
+  // Sunucudaki ayar ya da hizmetin son okuduğu yol istasyon değilse bu tablet iş almaz.
+  const routeOff = isRouteOff(route) || (bg?.route != null && bg.route !== 'station');
   const errorKey = stationErrorKey(bg?.lastError ?? null);
 
   return (
@@ -178,7 +223,12 @@ function BackgroundStrip({ route }: { route: string | null | undefined }) {
         disabled={bg === null}
         onToggle={() => void setBackgroundStation(!enabled)}
       />
-      <StationBadge on={enabled} snapshot={bg ? backgroundSnapshot(bg) : INITIAL_SNAPSHOT} />
+      <StationBadge
+        on={enabled}
+        snapshot={bg ? backgroundSnapshot(bg) : INITIAL_SNAPSHOT}
+        routeOk={!routeOff}
+      />
+      {routeOff ? <RouteOffNote /> : null}
       {enabled && bg ? (
         <>
           <p
@@ -192,11 +242,6 @@ function BackgroundStrip({ route }: { route: string | null | undefined }) {
           <p className="text-sm text-muted tabular">
             {t('kitchen.station.bg.printed', { count: bg.printed })}
           </p>
-          {routeOff ? (
-            <p className="min-w-0 basis-full text-sm text-warning">
-              {t('kitchen.station.bg.routeOff')}
-            </p>
-          ) : null}
           {bg.lastError ? (
             <p className="min-w-0 basis-full break-words text-xs text-warning">
               {errorKey ? t(errorKey) : t('kitchen.station.lastError', { error: bg.lastError })}

@@ -194,6 +194,34 @@ describe('<SettingsPage />', () => {
     });
   });
 
+  it('yazıcı türü: Epson ePOS-Print seçilince port 443 + windows1254/48 dolar ve ePOS açıklaması çıkar', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    const type = screen.getByLabelText('Yazıcı türü');
+    expect(screen.queryByText(/ePOS-Print: fiş yazıcının kendi web servisine/)).toBeNull();
+
+    await user.selectOptions(type, 'epson_epos');
+
+    expect(type).toHaveValue('epson_epos');
+    expect(screen.getByLabelText('Port')).toHaveValue('443');
+    expect(screen.getByLabelText('Karakter tablosu')).toHaveValue('windows1254/48');
+    expect(screen.getByText(/ePOS-Print: fiş yazıcının kendi web servisine/)).toBeInTheDocument();
+    expect(screen.queryByText(/Secure Printing açıkken/)).toBeNull();
+    // Port alanının ipucu üç yolu da söyler: elle 80 yazan da ne olduğunu anlasın.
+    expect(
+      screen.getByText(
+        '9100 = ham TCP (Xprinter) · 9143 = Epson şifreli · 443 / 80 = Epson ePOS-Print (HTTPS / HTTP)',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(saveButton());
+    expect(h.mutate.mock.calls[0]?.[0]).toMatchObject({
+      printer_port: 443,
+      printer_codepage: 'windows1254',
+      printer_codepage_number: 48,
+    });
+  });
+
   it('yazıcı türü: kayıtlı Epson ayarı tanınır; alan elle değişince "Özel" olur; Özel seçimi alanlara dokunmaz', async () => {
     h.row = baseRow({
       printer_port: 9143,

@@ -85,7 +85,12 @@ export function Sheet({
     appRoot?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     // R73: toast, panelin ana eylemini örtmesin diye açık panel sayısını bilmek zorunda.
-    useOverlay.getState().push();
+    // Kapatıcı da kaydedilir: Android geri tuşu (`native/backButton`) en üstteki paneli Esc gibi
+    // kapatır — meşgulken Esc gibi kilitli.
+    const closeFromBack = () => {
+      if (!busyRef.current) onCloseRef.current();
+    };
+    useOverlay.getState().push(closeFromBack);
     panel.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -112,7 +117,7 @@ export function Sheet({
       document.removeEventListener('keydown', onKeyDown);
       appRoot?.removeAttribute('inert');
       document.body.style.overflow = previousOverflow;
-      useOverlay.getState().pop();
+      useOverlay.getState().pop(closeFromBack);
       previous?.focus();
     };
   }, [open]);

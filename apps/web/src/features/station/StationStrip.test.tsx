@@ -52,19 +52,47 @@ afterEach(() => {
 });
 
 describe('<StationStrip />', () => {
-  it('tarayıcıda (yerel uygulama değil) hiçbir şey çizmez', () => {
-    const { container } = render(<StationStrip />);
-    expect(container).toBeEmptyDOMElement();
+  it('tarayıcıda (yerel uygulama değil): anahtar yok; rota istasyonsa "bu cihaz basamaz" uyarısı', () => {
+    render(<StationStrip />);
+    expect(screen.queryByRole('switch')).toBeNull();
+    expect(screen.getByRole('note')).toHaveTextContent(/bu cihaz Ramo's Android uygulaması değil/);
     expect(h.startStation).not.toHaveBeenCalled();
   });
 
-  it('yerel uygulamada ama rota başkaysa görünmez ve döngü başlamaz', () => {
+  it('tarayıcıda rota başkaysa hiçbir şey çizmez', () => {
+    h.row = settings('agent');
+    const { container } = render(<StationStrip />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('yerel uygulamada rota başkaysa anahtar KALIR, rozet "Baskı yolu farklı" der, döngü başlamaz', async () => {
     native();
     h.row = settings('agent');
     useStationStore.setState({ on: true });
-    const { container } = render(<StationStrip />);
-    expect(container).toBeEmptyDOMElement();
+    const user = userEvent.setup();
+    render(<StationStrip />);
+    const toggle = screen.getByRole('switch', { name: /Yazıcı istasyonu/ });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('Baskı yolu farklı')).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent(/Admin → Ayarlar → Baskı yolu/);
+    expect(screen.queryByText(/Ekranı açık tutun/)).toBeNull();
     expect(h.startStation).not.toHaveBeenCalled();
+
+    // Anahtar yine de kapatılıp açılabilir (kalıcı yazılır); döngü hâlâ başlamaz.
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByText('Kapalı')).toBeInTheDocument();
+    await user.click(toggle);
+    expect(localStorage.getItem(STATION_ON_KEY)).toBe('1');
+    expect(h.startStation).not.toHaveBeenCalled();
+  });
+
+  it('ayar henüz gelmediyse (rota bilinmiyor) uyarı çizilmez', () => {
+    native();
+    h.row = undefined;
+    render(<StationStrip />);
+    expect(screen.getByRole('switch')).toBeInTheDocument();
+    expect(screen.queryByRole('note')).toBeNull();
   });
 
   it('rota station: anahtar kapalı görünür; açınca kalıcı yazılır, döngü başlar, ipucu çıkar', async () => {
@@ -129,15 +157,22 @@ describe('<StationStrip />', () => {
     await waitFor(() => expect(h.startStation).toHaveBeenCalledTimes(2));
   });
 
-  it('rota başka yola çevrilince döngü durur ve şerit kaybolur', async () => {
+  it('rota başka yola çevrilince döngü durur; şerit kalır ve nedenini söyler, yol dönünce döngü yeniden başlar', async () => {
     native();
     useStationStore.setState({ on: true });
-    const { rerender, container } = render(<StationStrip />);
+    const { rerender } = render(<StationStrip />);
     await waitFor(() => expect(h.startStation).toHaveBeenCalledOnce());
     h.row = settings('epson_sdp');
     rerender(<StationStrip />);
     expect(h.stop).toHaveBeenCalledOnce();
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('Baskı yolu farklı')).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent(/bu tablet fiş basmaz/);
+
+    h.row = settings('station');
+    rerender(<StationStrip />);
+    await waitFor(() => expect(h.startStation).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('note')).toBeNull();
   });
 
   it('eklentisiz eski APK: döngü başlamaz, neden gösterilir', () => {
@@ -177,6 +212,15 @@ describe('stationBadge', () => {
       lastPrintedAt: 5,
     });
     expect(stationBadge(true, s)).toMatchObject({ key: 'kitchen.station.on', tone: 'open' });
+  });
+
+  it('baskı yolu istasyon değilse açık anahtar "Açık" demez: "Baskı yolu farklı" (uyarı); kapalıysa yine Kapalı', () => {
+    const s = INITIAL_SNAPSHOT;
+    expect(stationBadge(true, { ...s, reachable: true, lastPrintedAt: 5 }, false)).toEqual({
+      key: 'kitchen.station.routeOffBadge',
+      tone: 'warning',
+    });
+    expect(stationBadge(false, s, false)).toMatchObject({ key: 'kitchen.station.off' });
   });
 
   it('store değişmeyen yamada yeni nesne üretmez', () => {

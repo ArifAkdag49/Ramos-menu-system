@@ -135,10 +135,16 @@ export function codepageChoices(current: string): string[] {
  * "Yazıcı türü" hazır seçimleri: port ve karakter tablosunu birlikte doldurur. Epson TM'de
  * (Avrupa modelleri) "Secure Printing" fabrikadan açıktır: şifresiz 9100 baskıyı reddeder, ajan
  * 9143'e TLS ile bağlanır; Epson'un WPC1254 numarası 48'dir (Türkçe + Almanca + €).
+ *
+ * `epson_epos`: TM-m30III'ün ham 9100/9143 baskısına hiç cevap vermediği kurulumlar için ePOS-Print
+ * (yazıcının kendi HTTP(S) web servisi, `/cgi-bin/epos/service.cgi`). Port kuralı yazdırma ajanı ve
+ * tablet istasyonuyla ortaktır: 443 → ePOS-Print HTTPS, 80 → ePOS-Print HTTP, 9143 → TLS ham, diğer
+ * her port düz TCP ham. Fişin ESC/POS baytları aynıdır; yalnız zarf değişir.
  */
 export const PRINTER_PRESETS = {
   xprinter: { port: 9100, codepage: 'cp857/61' },
   epson: { port: 9143, codepage: 'windows1254/48' },
+  epson_epos: { port: 443, codepage: 'windows1254/48' },
 } as const;
 
 export type PrinterPresetId = keyof typeof PRINTER_PRESETS | 'custom';

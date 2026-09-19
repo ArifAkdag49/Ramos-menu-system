@@ -43,7 +43,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Restoran yazıcı istasyonu: sunucudaki sipariş fişlerini alıp yerel ağdaki fiş yazıcısına (TCP 9100 / TLS 9143) sürekli gönderir" />
+                android:value="Restoran yazıcı istasyonu: sunucudaki sipariş fişlerini alıp yerel ağdaki fiş yazıcısına (TCP 9100 / TLS 9143 / Epson ePOS-Print 443) sürekli gönderir" />
         </service>
 
         <!-- Açılışta / uygulama güncellenince istasyon açık bırakılmışsa servisi yeniden başlatır.

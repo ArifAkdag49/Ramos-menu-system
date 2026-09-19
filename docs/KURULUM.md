@@ -111,9 +111,11 @@ TESTDRUCK fişindeki `ÄÖÜ äöü ß · Şş Ğğ İı Çç` satırına bakın
 
 Kurulum.cmd de test fişinden sonra "Bu özel harfler düzgün basılmış mı?" diye sorar. "Hayır" derseniz yalnız o PC için **sade harf** moduna geçer (ä → ae, ß → ss, ş → s; ör. "Drehspiess", "Kuzu Sis").
 
-Epson yazıcıda tablo numaraları farklıdır; bkz. [§2.6](#26-epson-tm-m30iii-secure-printing).
+Epson yazıcıda tablo numaraları farklıdır; bkz. [§2.6](#26-epson-tm-m30iii-secure-printing-ve-epos-print).
 
-### 2.6 Epson TM-m30III (Secure Printing)
+### 2.6 Epson TM-m30III (Secure Printing ve ePOS-Print)
+
+Epson TM-m30III iki yoldan basabilir: **şifreli ham baskı (port 9143)** ya da yazıcının kendi web servisi **ePOS-Print (port 443)**. Yazıcı 9100'e de 9143'e de hiç cevap vermiyorsa (test fişi Epson TM Utility'den çıkıyor ama sistemden çıkmıyorsa) doğrudan **ePOS-Print**'e geçin — aşağıdaki "ePOS-Print" başlığı.
 
 Avrupa'da satılan Epson TM modellerinde (ör. TM-m30III) **Secure Printing** fabrikadan açık gelir. Bu yazıcı şifresiz port `9100`'e gönderilen fişi reddeder ya da hiç basmaz; fişler **şifreli (TLS) port `9143`**'ten basılır. Yazdırma programı port `9143` görünce bağlantıyı kendiliğinden şifreli kurar. Yazıcının sertifikası yazıcının kendi ürettiği sertifikadır; program bunu yerel ağda kabul eder.
 
@@ -127,6 +129,21 @@ Avrupa'da satılan Epson TM modellerinde (ör. TM-m30III) **Secure Printing** fa
 | Karakter tablosu | CP857 = `61`, WPC1254 = `91` | WPC1254 = `48` (önerilen), PC857 = `13` |
 
 > Yazıcı ile PC aynı ağda olmalıdır. Epson durum sorusuna şifreli portta cevap vermezse Yazıcı kartında durum "bilinmiyor" görünebilir; bu baskıyı engellemez. Secure Printing'i kapatıp `9100` ile basmak da mümkündür (yazıcının web ayarı, Epson Web Config), ama gerekmez.
+
+**ePOS-Print (port 443) — 9100/9143 cevap vermiyorsa**
+
+Bazı TM-m30III kurulumlarında yazıcı ham baskı portlarına (9100 ve 9143) hiç cevap vermez; Epson TM Utility'nin telefondan bastığı test fişi ise **ePOS-Print** yoluyla (yazıcının web servisi, HTTPS 443) çıkar. Sistem aynı yolu kullanabilir; yazıcıda hiçbir ayar gerekmez (ePOS-Print fabrikadan açıktır), internet de gerekmez.
+
+1. Yönetim panelinde **Ayarlar → Yazıcı bağlantısı → Yazıcı türü:** **Epson TM-m30III (ePOS-Print, port 443)** seçin. Port `443`, karakter tablosu `Windows-1254 · Türkçe + Almanca + € (48) — Epson` olarak dolar. **IP adresi** yazıcının adresi (ör. `192.168.2.198`). **Kaydet**.
+2. **Baskı yolu** ne ise o cihaz basar: tablet istasyonu (§2.8, uygulama **v2.2+** gerekir) ya da bilgisayar programı (§3). Her ikisi de port 443'ü görünce fişi ePOS-Print ile gönderir.
+3. **Test fişi bas.** `ÄÖÜ äöü ß · Şş Ğğ İı Çç` satırı düzgün çıkmalı; bozuksa `CP857 · Türkçe (13) — Epson`'u deneyin.
+
+Bilmeniz gerekenler:
+
+- Port `80` aynı yolun şifresiz (HTTP) hâlidir; yazıcıda HTTPS kapalıysa kullanılabilir. Yazıcının sertifikası kendi ürettiği sertifikadır, yerel ağda doğrulanmadan kabul edilir (9143'teki gibi).
+- Yazıcı kağıt bitti / kapak açık derse fiş **basılmaz** ve ekranda ilgili uyarı çıkar; sorun giderilince sıradaki fişler kendiliğinden basılır.
+- Yazıcı isteğe hiç cevap vermezse (ağ kopması) fiş **basılmış sayılır** (yazıcı isteği almış olabilir; aynı fiş iki kez çıkmasın). Fiş çıkmadıysa mutfaktan **Tekrar bas**.
+- **Yazıcı kartı "Durum bilinmiyor"** gösteriyorsa istasyon/program henüz durum sormamıştır; baskıyı engellemez.
 
 ### 2.7 Epson Server Direct Print (bilgisayarsız)
 
@@ -155,7 +172,7 @@ Bilmeniz gerekenler:
 
 ### 2.8 Tablet yazıcı istasyonu (bilgisayarsız, Android tablet)
 
-Restorandaki **bir Android tablet** (çoğunlukla mutfak tableti) fişleri aynı Wi-Fi'daki yazıcıya **kendisi** gönderir. Bilgisayar gerekmez; Xprinter (port `9100`) ve şifreli Epson (port `9143`) ile çalışır. Tablette **Ramo's Android uygulamasının yeni sürümü (v2)** kurulu olmalıdır ([§5.3](#53-android-uygulaması-apk)); Chrome'da ya da eski (v1) uygulamada bu anahtar görünmez.
+Restorandaki **bir Android tablet** (çoğunlukla mutfak tableti) fişleri aynı Wi-Fi'daki yazıcıya **kendisi** gönderir. Bilgisayar gerekmez; Xprinter (port `9100`), şifreli Epson (port `9143`) ve Epson ePOS-Print (port `443`, uygulama v2.2+; §2.6) ile çalışır. Tablette **Ramo's Android uygulamasının yeni sürümü (v2)** kurulu olmalıdır ([§5.3](#53-android-uygulaması-apk)); Chrome'da ya da eski (v1) uygulamada bu anahtar görünmez.
 
 **Gerekenler:**
 
@@ -165,7 +182,7 @@ Restorandaki **bir Android tablet** (çoğunlukla mutfak tableti) fişleri aynı
 
 **Kurulum:**
 
-1. **Yazıcı bilgisi:** Yönetim panelinde **Ayarlar → Yazıcı bağlantısı**: IP adresi, Port (`9100` Xprinter / `9143` Epson Secure Printing) ve Karakter tablosu doğru olsun → **Kaydet**. İstasyon bu bilgileri kullanır.
+1. **Yazıcı bilgisi:** Yönetim panelinde **Ayarlar → Yazıcı bağlantısı**: IP adresi, Port (`9100` Xprinter / `9143` Epson Secure Printing / `443` Epson ePOS-Print) ve Karakter tablosu doğru olsun → **Kaydet**. İstasyon bu bilgileri kullanır.
 2. **Baskı yolunu seçin:** **Ayarlar → Baskı yolu → Tablet yazıcı istasyonu** → **Baskı yolunu uygula**. Bu andan itibaren fişleri yalnız tablet basar; bilgisayar programı ve Epson Server Direct Print iş almaz.
 3. **Tablette:** Ramo's uygulamasını açın → mutfak hesabıyla giriş → **Mutfak** ekranında başlığın altındaki **Yazıcı istasyonu** anahtarını **açın**. Rozet **Açık** olur; ilk fiş basılınca **Açık · son baskı 14:32** gibi saat görünür.
 4. **Deneyin:** **Ayarlar → Yazıcı bağlantısı → Test fişi bas**. Birkaç saniye içinde tabletten yazıcıya gider. Türkçe harfler bozuksa §2.5.
@@ -176,7 +193,7 @@ Restorandaki **bir Android tablet** (çoğunlukla mutfak tableti) fişleri aynı
 - Aynı anda **tek tablet** istasyon olsun. İki tablette anahtar açıksa ikisi de fiş alabilir (aynı fiş iki kez basılmaz, ama hangisinin bastığı karışır).
 - **"Yazıcıya ulaşılamıyor"** rozeti: yazıcı kapalı, kablosu/Wi-Fi'ı kopuk ya da IP değişmiş. Yazıcıyı ve **Ayarlar → Yazıcı bağlantısı**'ndaki adresi kontrol edin. Kağıt bittiyse ya da kapak açıksa şeridin altında **Son hata** yazar; fiş kısa aralıklarla yeniden denenir.
 - **"Yazıcı adresi yok"**: Yazıcı bağlantısında IP boş. 1. adımı yapın.
-- Geri dönmek için baskı yolunu **Bilgisayar programı** yapıp uygulamanız yeterli; tablette anahtar açık kalsa da iş almaz ve şerit kaybolur.
+- Geri dönmek için baskı yolunu **Bilgisayar programı** yapıp uygulamanız yeterli; tablette anahtar açık kalsa da iş almaz. Şerit yerinde kalır, rozet **Baskı yolu farklı** der (eski sürümde şerit tamamen kayboluyordu).
 
 **Arka planda baskı (uygulama v2.1+):**
 
@@ -193,7 +210,7 @@ Anahtar açıldığında tablette küçük bir **arka plan hizmeti** başlar. Uy
 |---|---|---|---|
 | **Kim basar** | Restoran PC'sindeki program (§3) | Epson yazıcının kendisi (§2.7) | Ramo's uygulaması kurulu Android tablet/telefon (§2.8) |
 | **Bilgisayar gerekir mi** | Evet, açık ve uyanık | Hayır | Hayır |
-| **Yazıcı** | Xprinter ve Epson (9100 / 9143) | Yalnız Server Direct Print destekli Epson TM (ör. TM-m30III) | Xprinter ve Epson (9100 / 9143) |
+| **Yazıcı** | Xprinter ve Epson (9100 / 9143 / ePOS-Print 443) | Yalnız Server Direct Print destekli Epson TM (ör. TM-m30III) | Xprinter ve Epson (9100 / 9143 / ePOS-Print 443, v2.2+) |
 | **Yazıcının internete çıkması** | Gerekmez (PC çıkar) | **Gerekir** | Gerekmez (tablet çıkar) |
 | **Ne zaman basılmaz** | PC kapalı / uykuda | Yazıcı internete çıkamıyorsa | Tablet kapalı ya da ağ dışında; marka pil ayarı hizmeti kapatırsa (v2.0'da: uygulama ekranda değilse) |
 | **Kurulum** | Kurulum.cmd (§3.2) | Web Config'e adres girmek (§2.7) | Uygulamayı kurup anahtarı açmak (§2.8) |
@@ -301,7 +318,8 @@ Mutfak ekranı açılınca **"Mutfak ekranını başlat"** yazısı çıkar. **B
 - **HAZIR:** Yemek hazır olunca dokunun. Kart sağdaki **Hazır** sütununa geçer ve garsonlara bildirim gider. Yanlışlıkla basıldıysa 30 saniye içinde **Geri al (30 sn)**'a dokunun.
 - **Diğer işlemler → Tekrar bas:** Fiş kaybolduysa ya da basılamadıysa siparişi yeniden bastırır.
 - **Tükendi:** Üstteki düğme bir çekmece açar. Biten ürünü işaretleyin; garson ekranında soluk ve seçilemez görünür. Ürün yeniden gelince işareti kaldırın.
-- **Yazıcı istasyonu** (yalnız Ramo's v2 uygulamasında ve baskı yolu "Tablet yazıcı istasyonu" iken): başlığın altındaki anahtar bu tableti fiş basan cihaz yapar. Açıkken ekranı açık tutun, uygulamayı kapatmayın ([§2.8](#28-tablet-yazıcı-istasyonu-bilgisayarsız-android-tablet)).
+- **Yazıcı istasyonu** (yalnız Ramo's v2 uygulamasında): başlığın altındaki anahtar bu tableti fiş basan cihaz yapar ([§2.8](#28-tablet-yazıcı-istasyonu-bilgisayarsız-android-tablet)). Şerit her zaman görünür; baskı yolu "Tablet yazıcı istasyonu" değilse rozet **Baskı yolu farklı** der ve nereden düzeltileceğini yazar (Admin → Ayarlar → Baskı yolu). Chrome'da anahtar yoktur; yol istasyonken Chrome'da açılan mutfak ekranı "bu cihaz fiş basamaz" uyarısı gösterir.
+- **Geri tuşu (Android uygulaması v2.2+):** açık bir panel varsa (Tükendi, ürün seçenekleri, sepet…) önce onu kapatır; yoksa bir önceki ekrana döner; ana ekranda uygulamayı arka plana alır (kapatmaz). Eski sürümde geri tuşu uygulamayı doğrudan kapatıyordu.
 
 <img src="screenshots/m4-kds-soldout-1280.png" alt="Tükendi çekmecesi" width="480"> <img src="screenshots/demo-06-kds-hazir-1280.png" alt="HAZIR işaretlenmiş sipariş" width="480">
 
@@ -341,7 +359,7 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
 
 | | |
 |---|---|
-| Dosya | `C:\Users\PC\Desktop\Ramos APK\ramos-v2.0.0.apk` |
+| Dosya | `C:\Users\PC\Desktop\Ramos APK\ramos-v2.2.0.apk` (v2.2: geri tuşu, ePOS-Print; v2.1: arka planda baskı) |
 | Uygulama adı / paket | Ramo's / `com.arxdigital.ramos` |
 | Açtığı adres | https://ramos.arxdigitalsevice.com |
 
@@ -496,7 +514,7 @@ Mutfak ekranındaki **Tükendi** düğmesinden ya da **Menü → ürün → Tük
 | **QR menü** | Müşteri menüsünün bağlantısı, QR önizlemesi ve **SVG indir (10 × 10 cm)** ([§6.10](#610-qr-menü-müşteriler-için)) |
 | **Mutfak fişi** | Fişin **Başlık** ve **Alt yazı** metinleri, örnek siparişle önizleme |
 | **Baskı yolu** | Fişleri kim basar: Bilgisayar programı, Epson Server Direct Print ya da Tablet yazıcı istasyonu ([§2.9](#29-baskı-yolları-karşılaştırması)); kendi **Baskı yolunu uygula** düğmesi vardır |
-| **Yazıcı bağlantısı** | IP adresi, Port, Karakter tablosu, Türkçe harfleri sadeleştir ([§2.4](#24-yönetim-panelinde-yazıcı-ayarı-ve-test-fişi)); Yazıcı kartı ve **Test fişi bas** |
+| **Yazıcı bağlantısı** | Yazıcı türü (Xprinter 9100 / Epson şifreli 9143 / Epson ePOS-Print 443 / Özel), IP adresi, Port, Karakter tablosu, Türkçe harfleri sadeleştir ([§2.4](#24-yönetim-panelinde-yazıcı-ayarı-ve-test-fişi), [§2.6](#26-epson-tm-m30iii-secure-printing-ve-epos-print)); Yazıcı kartı ve **Test fişi bas** |
 | **Hızlı notlar** | Garsonun ürün notuna tek dokunuşla eklediği kısa notlar (Almanca fişte, Türkçe ekranda) |
 | **İptal sebepleri** | Kalem iptalinde seçilen sebepler; Almancası iptal fişine basılır |
 | **Alerjen lejantı** | Alerjen ve katkı maddesi kodları |
@@ -600,9 +618,15 @@ Yalnız baskı yolu **Tablet yazıcı istasyonu** iken ([§2.8](#28-tablet-yazı
 
 1. Mutfak ekranındaki **Yazıcı istasyonu** anahtarı açık mı? Uygulama **v2.1+** ise bildirim çubuğunda *Ramo's yazıcı istasyonu* görünmeli; görünmüyorsa uygulamayı bir kez açın ve pil ayarını kontrol edin (§2.8, *Arka planda baskı*). Eski **v2.0**'da uygulama açık ve ekranda olmalı, arka plandayken basılmaz.
 2. Rozet **Yazıcıya ulaşılamıyor** diyorsa: yazıcı açık mı, tablet ve yazıcı aynı Wi-Fi'da mı, **Ayarlar → Yazıcı bağlantısı**'ndaki IP ve port doğru mu?
-3. Şerit hiç görünmüyorsa: tablette v2 uygulaması mı kurulu (Chrome'da görünmez) ve baskı yolu gerçekten "Tablet yazıcı istasyonu" mu?
+3. Rozet **Baskı yolu farklı** diyorsa: Admin → **Ayarlar → Baskı yolu → Tablet yazıcı istasyonu → Baskı yolunu uygula**. (Anahtar açık kalsa da bu yolda tablet iş almaz.)
+4. Şerit hiç görünmüyorsa tablette Ramo's **uygulaması** değil Chrome açıktır: anahtar yalnız uygulamada (v2+) görünür. Chrome'daki mutfak ekranı yol istasyonken "bu cihaz fiş basamaz" uyarısı gösterir.
+5. Epson TM-m30III ile rozet **Yazıcıya ulaşılamıyor** diyor ama Epson TM Utility test fişi basıyorsa: yazıcı ham portlara (9100/9143) cevap vermiyordur. **Ayarlar → Yazıcı bağlantısı → Yazıcı türü: Epson TM-m30III (ePOS-Print, port 443)** → Kaydet (uygulama v2.2+; [§2.6](#26-epson-tm-m30iii-secure-printing-ve-epos-print)).
 
 Siparişler kaybolmaz; istasyon çalışınca sırayla basılır.
+
+### Android uygulamasında geri tuşu çalışmıyor / uygulama kapanıyor
+
+Uygulama **v2.2** öncesinde geri tuşu bir önceki ekrana dönmek yerine uygulamayı kapatıyordu. Çözüm: cihaza `ramos-v2.2.0.apk` (ya da daha yenisini) kurun ([§5.3](#53-android-uygulaması-apk)). v2.2'de geri tuşu önce açık paneli kapatır, sonra bir önceki ekrana döner; ana ekranda uygulamayı arka plana alır.
 
 ### "Yazıcıya ulaşılamıyor — kablosunu kontrol et"
 
