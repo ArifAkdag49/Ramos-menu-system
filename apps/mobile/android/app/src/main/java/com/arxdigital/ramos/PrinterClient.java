@@ -341,16 +341,16 @@ final class PrinterClient {
             int left = (int) Math.max(1, connectMs - (System.currentTimeMillis() - start));
             boolean local = isLocalPrinterHost(host);
             SSLSocketFactory factory = local ? trustAllFactory() : (SSLSocketFactory) SSLSocketFactory.getDefault();
-            SSLSocket tls = (SSLSocket) factory.createSocket(plain, host, port, true);
-            tls.setEnabledProtocols(modernProtocols(tls.getSupportedProtocols()));
-            tls.setSoTimeout(left);
-            tls.startHandshake();
-            if (!local && !HttpsURLConnection.getDefaultHostnameVerifier().verify(host, tls.getSession())) {
-                closeQuietly(tls);
+            SSLSocket ssl = (SSLSocket) factory.createSocket(plain, host, port, true);
+            ssl.setEnabledProtocols(modernProtocols(ssl.getSupportedProtocols()));
+            ssl.setSoTimeout(left);
+            ssl.startHandshake();
+            if (!local && !HttpsURLConnection.getDefaultHostnameVerifier().verify(host, ssl.getSession())) {
+                closeQuietly(ssl);
                 throw new PrinterException("offline", "tls: sertifika adı " + host + " ile eşleşmiyor");
             }
-            tls.setSoTimeout(0);
-            return tls;
+            ssl.setSoTimeout(0);
+            return ssl;
         } catch (PrinterException e) {
             closeQuietly(plain);
             throw e;
