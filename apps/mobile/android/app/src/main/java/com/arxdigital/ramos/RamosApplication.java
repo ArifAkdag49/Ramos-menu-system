@@ -26,6 +26,9 @@ public class RamosApplication extends Application {
         super.onCreate();
         createReadyChannel();
         createStationChannels();
+        // Yazıcı soketleri yerel ağa (Wi-Fi/Ethernet) bağlanır: mobil veri açıkken Android varsayılan ağı
+        // hücresel seçerse yazıcıya yine ulaşılsın (LanNetworks). Eklenti ve arka plan servisi aynı süreçte.
+        PrinterClient.setSocketBinder(LanNetworks.binder(this));
     }
 
     private void createStationChannels() {

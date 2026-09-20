@@ -40,6 +40,46 @@ export interface RamosPrinterStatusResult {
   message?: string;
 }
 
+/* ---- Ağda yazıcı arama (v2.3+ APK, `PrinterDiscovery`) ---- */
+
+/**
+ * `escpos`: 9100'de DLE EOT'ye ESC/POS cevabı (Xprinter vb.) · `epson_secure`: 9143'te TLS + ESC/POS
+ * cevabı (Epson Secure Printing) · `epson_epos`: 443/80'de ePOS-Print yanıtı (TM-m30III) · `open`:
+ * port açık ama cevap yok (aday; deneme fişiyle doğrulanır).
+ */
+export type FoundPrinterKind = 'escpos' | 'epson_secure' | 'epson_epos' | 'open';
+
+export interface FoundPrinter {
+  host: string;
+  port: number;
+  kind: FoundPrinterKind;
+  /** Protokol cevabıyla doğrulandı (fiş yazıcısı olduğu kesin). */
+  confirmed: boolean;
+  /** Son okunan durum baytları (onaltılık). */
+  status?: string;
+  message?: string;
+}
+
+export interface DiscoveredNetwork {
+  address: string;
+  prefix: number;
+  /** `wifi` | `ethernet` */
+  transport: string;
+}
+
+export type PrinterDiscoveryError = 'no_network' | 'busy' | 'io';
+
+export interface PrinterDiscoveryResult {
+  ok: boolean;
+  error?: PrinterDiscoveryError;
+  message?: string;
+  networks?: DiscoveredNetwork[];
+  printers?: FoundPrinter[];
+  /** Taranan adres sayısı. */
+  scanned?: number;
+  durationMs?: number;
+}
+
 /* ---- Arka plan istasyonu (yerel ön plan hizmeti + `station-feed` Edge Function) ---- */
 
 export interface BackgroundStationStartOptions {
@@ -103,6 +143,11 @@ export interface RamosPrinterPlugin {
   stopBackgroundStation?(): Promise<{ ok: true }>;
   getBackgroundStation?(): Promise<BackgroundStationStatus>;
   openBatteryOptimizationSettings?(): Promise<{ ok: true }>;
+  /**
+   * Yerel ağı (Wi-Fi / Ethernet) tarar, fiş yazıcılarını döndürür (v2.3+). `host`: kayıtlı adres — ağ
+   * taramasından önce ilk o denenir. 10–20 sn sürebilir; sürerken istasyon baskısı bekler.
+   */
+  discover?(options?: { host?: string }): Promise<PrinterDiscoveryResult>;
 }
 
 /* -------------------------- PushNotifications (@capacitor/push-notifications) -------------------------- */

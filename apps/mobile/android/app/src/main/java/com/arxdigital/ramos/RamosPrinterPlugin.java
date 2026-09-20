@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.PowerManager;
 import android.provider.Settings;
 import androidx.core.app.NotificationManagerCompat;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
@@ -17,8 +18,11 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONObject;
 
 /**
@@ -37,6 +41,13 @@ import org.json.JSONObject;
  *     lastPollAt, missingPrinter, route, notificationsGranted, ignoringBatteryOptimizations }
  *   openBatteryOptimizationSettings() → { ok: true } | { ok: false, error: 'unavailable', message? }
  *
+ * Ağda yazıcı arama (v2.3 — bilgisayarsız kurulum, {@link PrinterDiscovery}):
+ *   discover({ host? })
+ *     → { ok: true, networks: [{ address, prefix, transport }], printers: [{ host, port, kind, confirmed,
+ *          status?, message? }], scanned, durationMs }
+ *     | { ok: false, error: 'no_network'|'busy'|'io', message? }
+ *   `host`: kayıtlı yazıcı adresi — ağ taramasından önce ilk o denenir (başka alt ağda olsa da).
+ *
  * Metotlar ASLA reject etmez; her hata ok:false / reachable:false olarak döner. Ağ işleri arka plan
  * thread'lerinde çalışır (WebView/ana thread asla bloklanmaz). Baskı/durum mantığı {@link PrinterClient}.
  */
@@ -47,6 +58,9 @@ import org.json.JSONObject;
 public class RamosPrinterPlugin extends Plugin {
 
     static final String NOTIFICATIONS = "notifications";
+
+    /** Aynı anda tek ağ taraması (süreç geneli). */
+    private static final AtomicBoolean DISCOVERING = new AtomicBoolean(false);
 
     private final ExecutorService io = Executors.newCachedThreadPool();
 
@@ -123,6 +137,66 @@ public class RamosPrinterPlugin extends Plugin {
                 r.put("message", String.valueOf(t.getMessage()));
             }
             call.resolve(r);
+        });
+    }
+
+    // ---------------------------------------------------------------- ağda yazıcı arama
+
+    @PluginMethod
+    public void discover(final PluginCall call) {
+        final String knownHost = trimOrNull(call.getString("host"));
+        io.execute(() -> {
+            if (!DISCOVERING.compareAndSet(false, true)) {
+                call.resolve(fail("busy", "ağ taraması zaten sürüyor"));
+                return;
+            }
+            try {
+                List<LanNetworks.Lan> lans = LanNetworks.list(getContext());
+                if (lans.isEmpty()) {
+                    call.resolve(fail("no_network", "Wi-Fi ya da Ethernet bağlantısı yok"));
+                    return;
+                }
+                List<String> extra = new ArrayList<>();
+                if (knownHost != null) extra.add(knownHost);
+                PrinterDiscovery.Result res;
+                // Tarama sürerken istasyon yazıcıya bağlanmasın (tek oturum, R69); baskı taramadan sonra sürer.
+                PrinterClient.LOCK.lock();
+                try {
+                    res = PrinterDiscovery.discover(LanNetworks.discoveryNetworks(lans), extra);
+                } finally {
+                    PrinterClient.LOCK.unlock();
+                }
+                JSObject r = new JSObject();
+                r.put("ok", true);
+                JSArray nets = new JSArray();
+                for (LanNetworks.Lan l : lans) {
+                    JSObject n = new JSObject();
+                    n.put("address", l.address);
+                    n.put("prefix", l.prefix);
+                    n.put("transport", l.transport);
+                    nets.put(n);
+                }
+                r.put("networks", nets);
+                JSArray printers = new JSArray();
+                for (PrinterDiscovery.Found f : res.printers) {
+                    JSObject p = new JSObject();
+                    p.put("host", f.host);
+                    p.put("port", f.port);
+                    p.put("kind", f.kind);
+                    p.put("confirmed", f.confirmed);
+                    if (f.status != null) p.put("status", f.status);
+                    if (f.message != null) p.put("message", f.message);
+                    printers.put(p);
+                }
+                r.put("printers", printers);
+                r.put("scanned", res.scanned);
+                r.put("durationMs", res.durationMs);
+                call.resolve(r);
+            } catch (Throwable t) {
+                call.resolve(fail("io", String.valueOf(t.getMessage())));
+            } finally {
+                DISCOVERING.set(false);
+            }
         });
     }
 

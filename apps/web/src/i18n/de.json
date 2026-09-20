@@ -190,7 +190,7 @@
       "onLastPrint": "An · letzter Druck {{time}}",
       "unreachable": "Drucker nicht erreichbar",
       "off": "Aus",
-      "noPrinter": "Keine Druckeradresse — Admin → Einstellungen → Druckerverbindung",
+      "noPrinter": "Keine Druckeradresse — Admin → Einstellungen → Druckerverbindung → Drucker im Netzwerk suchen",
       "lastError": "Letzter Fehler: {{error}}",
       "hint": "Bildschirm anlassen, App nicht schließen — im Hintergrund wird nicht gedruckt.",
       "routeOffBadge": "Anderer Druckweg",
@@ -714,7 +714,34 @@
         },
         "transliterate": "Türkische Buchstaben vereinfachen",
         "transliterateHint": "Ş→S, Ğ→G, İ→I, ı→i. Einschalten, wenn der Drucker Türkisch mit keinem Zeichensatz druckt.",
-        "saveBeforeTest": "Der Testbon nutzt die gespeicherten Einstellungen — zum Testen der neuen Druckereinstellung zuerst speichern."
+        "saveBeforeTest": "Der Testbon nutzt die gespeicherten Einstellungen — zum Testen der neuen Druckereinstellung zuerst speichern.",
+        "find": {
+          "title": "Drucker im Netzwerk suchen",
+          "description": "Die App sucht selbst nach Bondruckern im WLAN (oder LAN), mit dem dieses Tablet/Telefon verbunden ist; beim Auswählen werden IP, Port und Zeichensatz ausgefüllt. Der Drucker kann per WLAN oder Kabel angeschlossen sein, solange er am selben Router hängt. Kein Computer nötig.",
+          "button": "Drucker im Netzwerk suchen",
+          "running": "Netzwerk wird durchsucht… (10–20 s)",
+          "oldApp": "Die Druckersuche braucht die Ramo's-App ab v2.3 — auf diesem Gerät ist eine ältere Version. Neue APK installieren oder die Adresse von Hand eingeben.",
+          "noNetwork": "Keine WLAN- oder LAN-Verbindung — das Gerät mit dem Netzwerk des Druckers verbinden und erneut versuchen.",
+          "busy": "Suche läuft bereits — ein paar Sekunden warten und erneut versuchen.",
+          "failed": "Suche fehlgeschlagen: {{detail}}",
+          "none": "Kein Drucker im Netzwerk gefunden ({{scanned}} Adressen geprüft · {{network}}). Prüfen, ob der Drucker eingeschaltet und am selben Router wie das Tablet ist; die IP vom Selbsttest-Bon kann auch von Hand eingegeben werden.",
+          "summary": "{{count}} Drucker gefunden · {{scanned}} Adressen geprüft · {{network}}",
+          "transport": {
+            "wifi": "WLAN",
+            "ethernet": "LAN"
+          },
+          "kinds": {
+            "escpos": "Bondrucker · ESC/POS (Port {{port}}) — z. B. Xprinter",
+            "epson_secure": "Epson TM · verschlüsselter Druck (Port {{port}})",
+            "epson_epos": "Epson TM-m30III · ePOS-Print (Port {{port}})",
+            "open": "Port {{port}} offen, keine Statusantwort — könnte ein Drucker sein; auswählen und mit Testbon prüfen"
+          },
+          "confirmed": "Bestätigt",
+          "unconfirmed": "Nicht bestätigt",
+          "current": "Gespeicherte Adresse",
+          "use": "Diesen Drucker verwenden",
+          "applied": "Druckeradresse ausgefüllt — auf Speichern tippen, dann Testbon drucken."
+        }
       },
       "quickNotes": {
         "title": "Schnellnotizen",

@@ -63,6 +63,33 @@ final class PrinterClient {
      */
     static final ReentrantLock LOCK = new ReentrantLock(true);
 
+    /**
+     * Soketi bağlanmadan önce yerel ağa (Wi-Fi / Ethernet) bağlar — {@link LanNetworks#binder}. Telefonda
+     * mobil veri açıkken Android varsayılan ağı hücresel seçebilir (Wi-Fi'ı "internetsiz" sayınca); o zaman
+     * düz {@code new Socket().connect()} yazıcıya hiç ulaşamaz, oysa Epson TM Utility aynı telefondan basar.
+     * Bağlayıcı yoksa (JVM testleri) ya da bağlama başarısızsa varsayılan ağ kullanılır.
+     */
+    interface SocketBinder {
+        void bind(Socket socket, String host) throws IOException;
+    }
+
+    private static volatile SocketBinder binder;
+
+    static void setSocketBinder(SocketBinder b) {
+        binder = b;
+    }
+
+    /** Bağlayıcı varsa soketi yerel ağa bağlar; hata bağlantıyı durdurmaz (varsayılan ağla denenir). */
+    static void bindSocket(Socket socket, String host) {
+        SocketBinder b = binder;
+        if (b == null) return;
+        try {
+            b.bind(socket, host);
+        } catch (Throwable ignored) {
+            // varsayılan ağ
+        }
+    }
+
     // DLE EOT n, n = 1 (yazıcı durumu), 2 (çevrimdışı durumu), 4 (kağıt sensörü).
     private static final byte[] STATUS_QUERY = { 0x10, 0x04, 0x01, 0x10, 0x04, 0x02, 0x10, 0x04, 0x04 };
 
@@ -301,9 +328,14 @@ final class PrinterClient {
             return new StatusResult(false, null, "geçersiz host/port");
         }
         if (isEposPort(port)) return statusEpos(host.trim(), port, usesTls(port), timeoutMs);
+        return statusRaw(host.trim(), port, usesTls(port), timeoutMs);
+    }
+
+    /** Ham (9100 / TLS 9143) durum sorusu: bağlan → DLE EOT → kapat. Bağlantı kurulduysa ulaşılabilir sayılır. */
+    static StatusResult statusRaw(String host, int port, boolean tls, int timeoutMs) {
         Socket s = null;
         try {
-            s = connect(host.trim(), port, usesTls(port), Math.min(CONNECT_MS, timeoutMs));
+            s = connect(host, port, tls, Math.min(CONNECT_MS, timeoutMs));
             byte[] reply = readStatus(s, Math.max(100, Math.min(REPLY_MS, timeoutMs)));
             return new StatusResult(
                 true,
@@ -326,6 +358,7 @@ final class PrinterClient {
         Socket plain = new Socket();
         try {
             plain.setTcpNoDelay(true);
+            bindSocket(plain, host);
             plain.connect(new InetSocketAddress(host, port), connectMs);
         } catch (SocketTimeoutException e) {
             closeQuietly(plain);
@@ -468,6 +501,14 @@ final class PrinterClient {
         if (coverOpen) return "cover_open";
         if (offline) return "offline";
         return null;
+    }
+
+    /**
+     * apps/print-agent discover.ts `looksLikeEscPos` ile aynı: ESC/POS `DLE EOT 1` cevabında bit1 ve bit4
+     * hep 1, bit0 ve bit7 hep 0 (`0x12` normal durum). Ağ taramasında "bu bir fiş yazıcısı" kanıtı.
+     */
+    static boolean looksLikeEscPos(byte[] status) {
+        return status != null && status.length >= 3 && ((status[0] & 0xff) & 0x93) == 0x12;
     }
 
     /** packages/shared/src/status.ts `parseStatus` karşılığı (sunucuya heartbeat `state` olarak gider). */

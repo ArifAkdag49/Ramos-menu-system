@@ -21,6 +21,8 @@ import { FIELD, MoveButtons, Section, SelectField, TextField, Toggle } from '../
 import { TicketPayloadPaper } from '../menu/TicketPreview';
 import { formatDateTime } from '../orders/orderView';
 import { PrinterCard } from '../PrinterCard';
+import { applyFoundPrinter } from './printerDiscovery';
+import { PrinterFinder } from './PrinterFinder';
 import { PrintRouteSection } from './PrintRouteSection';
 import { QrMenuSection } from './QrMenuSection';
 import {
@@ -349,6 +351,15 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
                 {t('admin.settings.printer.eposHint')}
               </p>
             ) : null}
+            <PrinterFinder
+              currentHost={form.printer_host}
+              onPick={(p) => {
+                // Bulunan yazıcı: adres + port + (kanıta göre) karakter tablosu; kayıt yine "Kaydet" ile.
+                setCustomPrinterType(false);
+                setForm((f) => applyFoundPrinter(f, p));
+                toast(t('admin.settings.printer.find.applied'));
+              }}
+            />
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
               <TextField
                 label={t('admin.settings.printer.host')}

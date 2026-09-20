@@ -190,7 +190,7 @@
       "onLastPrint": "Açık · son baskı {{time}}",
       "unreachable": "Yazıcıya ulaşılamıyor",
       "off": "Kapalı",
-      "noPrinter": "Yazıcı adresi yok — Admin → Ayarlar → Yazıcı bağlantısı",
+      "noPrinter": "Yazıcı adresi yok — Admin → Ayarlar → Yazıcı bağlantısı → Ağdaki yazıcıyı bul",
       "lastError": "Son hata: {{error}}",
       "hint": "Ekranı açık tutun, uygulamayı kapatmayın — uygulama arka plandayken fiş basılmaz.",
       "routeOffBadge": "Baskı yolu farklı",
@@ -714,7 +714,34 @@
         },
         "transliterate": "Türkçe harfleri sadeleştir",
         "transliterateHint": "Ş→S, Ğ→G, İ→I, ı→i. Yazıcı hiçbir tabloda Türkçe basamıyorsa aç.",
-        "saveBeforeTest": "Test fişi kayıtlı ayarlarla basılır — yeni yazıcı ayarını denemek için önce kaydet."
+        "saveBeforeTest": "Test fişi kayıtlı ayarlarla basılır — yeni yazıcı ayarını denemek için önce kaydet.",
+        "find": {
+          "title": "Ağdaki yazıcıyı bul",
+          "description": "Uygulama, bu tabletin/telefonun bağlı olduğu Wi-Fi (ya da kablolu) ağdaki fiş yazıcılarını kendisi arar; bulduğunu seçince IP, port ve karakter tablosu dolar. Yazıcı Wi-Fi ile de kabloyla da bağlı olabilir, yeter ki tabletle aynı modemde olsun. Bilgisayar gerekmez.",
+          "button": "Ağdaki yazıcıyı bul",
+          "running": "Ağ taranıyor… (10–20 sn)",
+          "oldApp": "Yazıcı arama için Ramo's uygulamasının v2.3 ve üstü gerekir — bu cihazda eski sürüm var. Yeni APK'yı kurun ya da adresi elle girin.",
+          "noNetwork": "Wi-Fi ya da kablolu ağ bağlantısı yok — cihazı yazıcının bağlı olduğu ağa bağlayıp yeniden deneyin.",
+          "busy": "Tarama zaten sürüyor — birkaç saniye bekleyip yeniden deneyin.",
+          "failed": "Tarama yapılamadı: {{detail}}",
+          "none": "Ağda yazıcı bulunamadı ({{scanned}} adres tarandı · {{network}}). Yazıcının açık ve tabletle aynı modeme bağlı olduğundan emin olun; yazıcının ayar fişindeki IP'yi elle de girebilirsiniz.",
+          "summary": "{{count}} yazıcı bulundu · {{scanned}} adres tarandı · {{network}}",
+          "transport": {
+            "wifi": "Wi-Fi",
+            "ethernet": "Kablolu ağ"
+          },
+          "kinds": {
+            "escpos": "Fiş yazıcısı · ESC/POS (port {{port}}) — Xprinter vb.",
+            "epson_secure": "Epson TM · şifreli baskı (port {{port}})",
+            "epson_epos": "Epson TM-m30III · ePOS-Print (port {{port}})",
+            "open": "Port {{port}} açık, durum cevabı yok — yazıcı olabilir; seçip test fişiyle deneyin"
+          },
+          "confirmed": "Doğrulandı",
+          "unconfirmed": "Doğrulanmadı",
+          "current": "Kayıtlı adres",
+          "use": "Bu yazıcıyı kullan",
+          "applied": "Yazıcı adresi dolduruldu — Kaydet'e basın, sonra Test fişi bas."
+        }
       },
       "quickNotes": {
         "title": "Hızlı notlar",
