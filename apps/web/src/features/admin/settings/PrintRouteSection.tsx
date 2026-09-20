@@ -203,6 +203,10 @@ export function PrintRouteSection({
         </p>
       ) : null}
 
+      {/* Epson Server Direct Print'e özgü kayıt/rehber yalnız o yol seçiliyken: diğer yollarda kafa karıştırıyordu
+          ("yazıcı Epson mu olmak zorunda?") — istasyon ve ajan her ESC/POS ağ yazıcısıyla çalışır. */}
+      {selected === 'epson_sdp' ? (
+        <>
       <div className="flex flex-col gap-2">
         <h3 id={listId} className="text-sm font-semibold">
           {t('admin.settings.printRoute.printers')}
@@ -352,6 +356,8 @@ export function PrintRouteSection({
           ))}
         </ol>
       </details>
+        </>
+      ) : null}
     </Section>
   );
 }

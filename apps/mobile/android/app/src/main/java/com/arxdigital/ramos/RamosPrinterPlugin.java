@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONObject;
 
 /**
@@ -44,9 +43,12 @@ import org.json.JSONObject;
  * Ağda yazıcı arama (v2.3 — bilgisayarsız kurulum, {@link PrinterDiscovery}):
  *   discover({ host? })
  *     → { ok: true, networks: [{ address, prefix, transport }], printers: [{ host, port, kind, confirmed,
- *          status?, message? }], scanned, durationMs }
+ *          status?, message?, name? }], scanned, durationMs }
  *     | { ok: false, error: 'no_network'|'busy'|'io', message? }
- *   `host`: kayıtlı yazıcı adresi — ağ taramasından önce ilk o denenir (başka alt ağda olsa da).
+ *   `host`: kayıtlı yazıcı adresi — ipucu olarak uzun zaman aşımıyla doğrudan sorgulanır (başka alt ağda olsa da).
+ *   `name`: SNMP sysDescr ya da Bonjour hizmet adı (ör. "EPSON TM-m30III").
+ *   getBackgroundStation ayrıca { activeHost, activePort, autoSwitched } döndürür: istasyon kayıtlı adrese
+ *   ulaşamayınca ağda kendisi arar ve tek doğrulanmış yazıcı bulursa ona basar (StationService).
  *
  * Metotlar ASLA reject etmez; her hata ok:false / reachable:false olarak döner. Ağ işleri arka plan
  * thread'lerinde çalışır (WebView/ana thread asla bloklanmaz). Baskı/durum mantığı {@link PrinterClient}.
@@ -58,9 +60,6 @@ import org.json.JSONObject;
 public class RamosPrinterPlugin extends Plugin {
 
     static final String NOTIFICATIONS = "notifications";
-
-    /** Aynı anda tek ağ taraması (süreç geneli). */
-    private static final AtomicBoolean DISCOVERING = new AtomicBoolean(false);
 
     private final ExecutorService io = Executors.newCachedThreadPool();
 
@@ -146,7 +145,7 @@ public class RamosPrinterPlugin extends Plugin {
     public void discover(final PluginCall call) {
         final String knownHost = trimOrNull(call.getString("host"));
         io.execute(() -> {
-            if (!DISCOVERING.compareAndSet(false, true)) {
+            if (!PrinterDiscovery.tryBegin()) {
                 call.resolve(fail("busy", "ağ taraması zaten sürüyor"));
                 return;
             }
@@ -162,7 +161,7 @@ public class RamosPrinterPlugin extends Plugin {
                 // Tarama sürerken istasyon yazıcıya bağlanmasın (tek oturum, R69); baskı taramadan sonra sürer.
                 PrinterClient.LOCK.lock();
                 try {
-                    res = PrinterDiscovery.discover(LanNetworks.discoveryNetworks(lans), extra);
+                    res = LanNetworks.discoverAll(getContext(), lans, extra);
                 } finally {
                     PrinterClient.LOCK.unlock();
                 }
@@ -186,6 +185,7 @@ public class RamosPrinterPlugin extends Plugin {
                     p.put("confirmed", f.confirmed);
                     if (f.status != null) p.put("status", f.status);
                     if (f.message != null) p.put("message", f.message);
+                    if (f.name != null) p.put("name", f.name);
                     printers.put(p);
                 }
                 r.put("printers", printers);
@@ -195,7 +195,7 @@ public class RamosPrinterPlugin extends Plugin {
             } catch (Throwable t) {
                 call.resolve(fail("io", String.valueOf(t.getMessage())));
             } finally {
-                DISCOVERING.set(false);
+                PrinterDiscovery.end();
             }
         });
     }
@@ -289,6 +289,10 @@ public class RamosPrinterPlugin extends Plugin {
         r.put("lastPollAt", s.lastPollAt != null ? (Object) s.lastPollAt : JSONObject.NULL);
         r.put("missingPrinter", s.missingPrinter);
         r.put("route", s.route != null ? s.route : JSONObject.NULL);
+        String activeHost = s.autoHost != null ? s.autoHost : s.printerHost;
+        r.put("activeHost", activeHost != null ? activeHost : JSONObject.NULL);
+        r.put("activePort", s.autoHost != null ? s.autoPort : s.printerPort);
+        r.put("autoSwitched", s.autoHost != null);
         r.put("notificationsGranted", notificationsGranted());
         r.put("ignoringBatteryOptimizations", ignoringBatteryOptimizations());
         call.resolve(r);

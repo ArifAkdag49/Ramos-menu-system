@@ -204,7 +204,8 @@
         "notificationsDenied": "Benachrichtigungen nötig — in den Android-Einstellungen für Ramo's erlauben und erneut versuchen",
         "startFailed": "Hintergrunddienst konnte nicht starten ({{detail}}) — erneut versuchen",
         "batteryHint": "Der Android-Energiesparmodus kann das Drucken im Hintergrund stoppen.",
-        "battery": "Akku-Beschränkung aufheben"
+        "battery": "Akku-Beschränkung aufheben",
+      "autoHost": "Die gespeicherte Adresse {{saved}} antwortet nicht; der Drucker wurde im Netzwerk unter {{host}} gefunden und die Bons gehen dorthin. Dauerhaft übernehmen: Admin → Einstellungen → Druckerverbindung → Drucker im Netzwerk suchen → Diesen Drucker verwenden → Speichern."
       }
     },
     "start": {
@@ -696,7 +697,7 @@
         "type": "Druckertyp",
         "typeHint": "Die Auswahl füllt Port und Zeichensatz aus; danach speichern.",
         "types": {
-          "xprinter": "Xprinter (Port 9100, CP857)",
+          "xprinter": "Netzwerkdrucker · Roh-TCP, Port 9100 (Xprinter u. ä., CP857)",
           "epson": "Epson TM (verschlüsselt, Port 9143)",
           "epson_epos": "Epson TM-m30III (ePOS-Print, Port 443)",
           "custom": "Benutzerdefiniert (Felder selbst ausfüllen)"
@@ -726,7 +727,8 @@
           "failed": "Suche fehlgeschlagen: {{detail}}",
           "none": "Kein Drucker im Netzwerk gefunden ({{scanned}} Adressen geprüft). Prüfen, ob der Drucker eingeschaltet und am selben Router wie das Telefon ist; liegt die IP vom Selbsttest-Bon außerhalb des Bereichs unten, hat der Drucker eine andere Netzwerkeinstellung.",
           "phone": "Dieses Telefon: {{address}} ({{transport}}) · geprüfter Bereich {{range}}",
-          "outsideNetwork": "Die gespeicherte Adresse {{host}} liegt nicht im Netzwerk dieses Telefons ({{network}}) — der Drucker hat eine andere Netzwerkeinstellung. Entweder die IP des Druckers an dieses Netzwerk anpassen (mit dem Tool des Druckers oder im Router) oder das Telefon mit dem WLAN des Druckers verbinden; die Suche sieht nur das eigene Netzwerk des Telefons.",
+          "outsideNetwork": "Die gespeicherte Adresse {{host}} liegt nicht im Netzwerk dieses Telefons ({{network}}); die Suche sieht nur das eigene Netzwerk des Telefons. Leitet der Router zwischen beiden Netzen weiter, kann die Adresse trotzdem funktionieren: Speichern → Testbon drucken. Wenn nicht, hat der Drucker eine andere Netzwerkeinstellung: die IP des Druckers an dieses Netzwerk anpassen (Tool des Druckers oder Router) oder das Telefon mit dem WLAN des Druckers verbinden.",
+          "dhcpNote": "Der Router kann dem Drucker per DHCP bei jedem Einschalten eine andere Adresse geben. Ändert sich die Adresse, findet die Station den Drucker im Netzwerk selbst wieder; am sichersten ist trotzdem eine feste Adresse im Router (DHCP-Reservierung).",
           "summary": "{{count}} Drucker gefunden · {{scanned}} Adressen geprüft",
           "transport": {
             "wifi": "WLAN",

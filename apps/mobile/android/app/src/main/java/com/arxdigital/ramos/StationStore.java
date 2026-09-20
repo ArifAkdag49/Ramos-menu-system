@@ -28,6 +28,8 @@ final class StationStore {
     private static final String K_ROUTE = "route";
     private static final String K_HOST = "printerHost";
     private static final String K_PORT = "printerPort";
+    private static final String K_AUTO_HOST = "autoHost";
+    private static final String K_AUTO_PORT = "autoPort";
 
     private StationStore() {}
 
@@ -102,7 +104,9 @@ final class StationStore {
             .remove(K_MISSING)
             .remove(K_ROUTE)
             .remove(K_HOST)
-            .remove(K_PORT);
+            .remove(K_PORT)
+            .remove(K_AUTO_HOST)
+            .remove(K_AUTO_PORT);
     }
 
     // ---------------------------------------------------------------- durum
@@ -122,6 +126,12 @@ final class StationStore {
         String route;
         String printerHost;
         int printerPort = 9100;
+        /**
+         * Kayıtlı adres ulaşılamayınca istasyonun ağda kendisi bulduğu yazıcı (tek doğrulanmış aday); null =
+         * kayıtlı adres kullanılıyor. Kayıtlı adres yeniden cevap verince ya da bu adres de düşünce silinir.
+         */
+        String autoHost;
+        int autoPort = 9100;
         /** Son okunan yazıcı engeli (paper_end / cover_open / offline) ya da null. Yalnız bellekte. */
         String problem;
 
@@ -138,6 +148,8 @@ final class StationStore {
             s.route = route;
             s.printerHost = printerHost;
             s.printerPort = printerPort;
+            s.autoHost = autoHost;
+            s.autoPort = autoPort;
             s.problem = problem;
             return s;
         }
@@ -188,6 +200,8 @@ final class StationStore {
         s.route = p.getString(K_ROUTE, null);
         s.printerHost = p.getString(K_HOST, null);
         s.printerPort = p.getInt(K_PORT, 9100);
+        s.autoHost = p.getString(K_AUTO_HOST, null);
+        s.autoPort = p.getInt(K_AUTO_PORT, 9100);
         s.running = status.running;
         status = s;
     }
@@ -210,6 +224,9 @@ final class StationStore {
         if (s.printerHost != null) e.putString(K_HOST, s.printerHost);
         else e.remove(K_HOST);
         e.putInt(K_PORT, s.printerPort);
+        if (s.autoHost != null) e.putString(K_AUTO_HOST, s.autoHost);
+        else e.remove(K_AUTO_HOST);
+        e.putInt(K_AUTO_PORT, s.autoPort);
         e.apply();
     }
 }

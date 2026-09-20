@@ -14,7 +14,9 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.Test;
 
 /**
@@ -224,6 +226,52 @@ public class PrinterDiscoveryTest {
         assertEquals(1, r.scanned);
         assertTrue(r.durationMs >= 0);
         assertEquals(0, PrinterDiscovery.discover(Collections.emptyList(), Collections.emptyList(), ports, 300, 8).scanned);
+    }
+
+    @Test
+    public void discover_hintedHost_carriesName_andIsProbedEvenIfScanMissedIt() throws Exception {
+        try (FakeServer raw = new FakeServer(new byte[] { 0x12, 0x12, 0x12 }, false)) {
+            PrinterDiscovery.Ports ports = new PrinterDiscovery.Ports(raw.port(), closedPort(), closedPort(), closedPort());
+            // Adres taranmıyor (ağ yok, ek adres yok); yalnız ipucu kaynağı bildiriyor → yine bulunur, adıyla.
+            Map<String, String> hint = new HashMap<>();
+            hint.put("127.0.0.1", "EPSON TM-m30III · EPSONA1B2C3");
+            PrinterDiscovery.Result r = PrinterDiscovery.discover(Collections.emptyList(), Collections.emptyList(), () -> hint, ports, 300, 8, 0);
+            assertEquals(0, r.scanned);
+            assertEquals(1, r.printers.size());
+            assertEquals(PrinterDiscovery.KIND_ESCPOS, r.printers.get(0).kind);
+            assertEquals("EPSON TM-m30III · EPSONA1B2C3", r.printers.get(0).name);
+            assertTrue(r.printers.get(0).confirmed);
+        }
+    }
+
+    @Test
+    public void discover_hintedHost_printerLikeNameButSilent_isCandidate_otherwiseDropped() throws Exception {
+        PrinterDiscovery.Ports ports = new PrinterDiscovery.Ports(closedPort(), closedPort(), closedPort(), closedPort());
+        Map<String, String> printer = new HashMap<>();
+        printer.put("127.0.0.1", "Star TSP143");
+        PrinterDiscovery.Result r = PrinterDiscovery.discover(Collections.emptyList(), Collections.emptyList(), () -> printer, ports, 300, 8, 0);
+        assertEquals(1, r.printers.size());
+        assertEquals(PrinterDiscovery.KIND_OPEN, r.printers.get(0).kind);
+        assertFalse(r.printers.get(0).confirmed);
+        assertEquals("Star TSP143", r.printers.get(0).name);
+        assertEquals(ports.raw, r.printers.get(0).port);
+
+        Map<String, String> router = new HashMap<>();
+        router.put("127.0.0.1", "FRITZ!Box 7590");
+        router.put("not-an-ip", "Printer");
+        assertTrue(PrinterDiscovery.discover(Collections.emptyList(), Collections.emptyList(), () -> router, ports, 300, 8, 0).printers.isEmpty());
+
+        // İpucu kaynağı patlarsa tarama yine biter.
+        assertTrue(PrinterDiscovery.discover(Collections.emptyList(), LOCALHOST, () -> { throw new IllegalStateException("nsd"); }, ports, 300, 8, 0).printers.isEmpty());
+    }
+
+    @Test
+    public void looksLikePrinter_matchesCommonBrands() {
+        assertTrue(PrinterDiscovery.looksLikePrinter("EPSON TM-m30III"));
+        assertTrue(PrinterDiscovery.looksLikePrinter("Xprinter XP-Q80A"));
+        assertTrue(PrinterDiscovery.looksLikePrinter("80mm Thermal Receipt Printer"));
+        assertFalse(PrinterDiscovery.looksLikePrinter("Synology DS220+"));
+        assertFalse(PrinterDiscovery.looksLikePrinter(null));
     }
 
     @Test

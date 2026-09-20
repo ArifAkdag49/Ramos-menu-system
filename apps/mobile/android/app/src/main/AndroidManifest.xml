@@ -88,4 +88,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- "Pil optimizasyonundan muaf tut" isteği (Doze'da uygulama kısıtlanmasın) -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Ağda yazıcı arama: SNMP yayını ve Bonjour/mDNS cevapları Wi-Fi çoklu yayın süzgecine takılmasın -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 </manifest>

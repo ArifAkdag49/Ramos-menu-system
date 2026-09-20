@@ -6,28 +6,35 @@ import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.wifi.WifiManager;
 import android.util.Log;
+import java.io.IOException;
+import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
- * Cihazın bağlı olduğu yerel ağlar (Wi-Fi ya da kablolu Ethernet) ve yazıcı soketlerinin o ağa bağlanması.
+ * Cihazın bağlı olduğu yerel ağlar (Wi-Fi ya da kablolu Ethernet), yazıcı soketlerinin o ağa bağlanması ve
+ * tam keşif ({@link #discoverAll}: mDNS + SNMP + TCP taraması).
  *
- * Neden: Android'de {@code new Socket().connect()} "varsayılan ağı" kullanır. Telefonda mobil veri açıkken
- * Android, Wi-Fi'ı internetsiz/zayıf sayınca varsayılan ağı hücresel yapabilir; o anda yerel ağdaki yazıcıya
- * giden her bağlantı mobil şebekeye gider ve zaman aşımına düşer — Epson TM Utility ise aynı telefondan basar
- * (Wi-Fi'a açıkça bağlanır). {@link #binder} soketi bağlanmadan önce yazıcının bulunduğu yerel ağa bağlar
- * ({@link Network#bindSocket}); yerel ağ yoksa varsayılan ağla devam edilir.
+ * Neden bağlama: Android'de {@code new Socket().connect()} "varsayılan ağı" kullanır. Telefonda mobil veri
+ * açıkken Android, Wi-Fi'ı internetsiz/zayıf sayınca varsayılan ağı hücresel yapabilir; o anda yerel ağdaki
+ * yazıcıya giden her bağlantı mobil şebekeye gider ve zaman aşımına düşer — Epson TM Utility ise aynı
+ * telefondan basar (Wi-Fi'a açıkça bağlanır). {@link #binder} soketi bağlanmadan önce yazıcının bulunduğu
+ * yerel ağa bağlar ({@link Network#bindSocket}); yerel ağ yoksa varsayılan ağla devam edilir.
  *
- * Ağ listesi ağ taramasına ({@link PrinterDiscovery}) da verilir: adres + önek → taranacak adresler.
  * VPN ağları sayılmaz (yazıcı VPN'in arkasında olmaz, tarama uzar).
  */
 final class LanNetworks {
 
     private static final String TAG = "RamosLan";
+    /** mDNS dinleme penceresi; TCP taramasıyla paralel çalıştığı için toplam süreyi uzatmaz. */
+    static final long NSD_WINDOW_MS = 4000;
 
     static final class Lan {
         final Network network;
@@ -118,9 +125,57 @@ final class LanNetworks {
     /** Ağ listesi en çok 2 sn eski olabilir (Wi-Fi değişince bir sonraki bağlantı yeni ağı görür). */
     static PrinterClient.SocketBinder binder(Context ctx) {
         final Context app = ctx.getApplicationContext();
-        return (socket, host) -> {
-            Lan lan = pick(listCached(app), host);
-            if (lan != null) lan.network.bindSocket(socket);
+        return new PrinterClient.SocketBinder() {
+            @Override
+            public void bind(Socket socket, String host) throws IOException {
+                Lan lan = pick(listCached(app), host);
+                if (lan != null) lan.network.bindSocket(socket);
+            }
+
+            @Override
+            public void bindDatagram(DatagramSocket socket) throws IOException {
+                List<Lan> lans = listCached(app);
+                if (!lans.isEmpty()) lans.get(0).network.bindSocket(socket);
+            }
         };
+    }
+
+    /**
+     * Tam keşif: Bonjour/mDNS ({@link NsdProbe}) + SNMP yayını + TCP taraması, Wi-Fi çoklu yayın kilidi
+     * altında (yayın/mDNS cevapları filtrelenmesin). Kilit ({@link PrinterClient#LOCK}) ve tekil tarama
+     * ({@link PrinterDiscovery#tryBegin()}) çağıranındır. Asla fırlatmaz.
+     */
+    static PrinterDiscovery.Result discoverAll(Context ctx, List<Lan> lans, List<String> extraHosts) {
+        final Context app = ctx.getApplicationContext();
+        WifiManager.MulticastLock lock = null;
+        try {
+            WifiManager wm = (WifiManager) app.getSystemService(Context.WIFI_SERVICE);
+            if (wm != null) {
+                lock = wm.createMulticastLock("ramos:discover");
+                lock.setReferenceCounted(false);
+                lock.acquire();
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "multicast lock: " + t);
+        }
+        try {
+            return PrinterDiscovery.discover(
+                discoveryNetworks(lans),
+                extraHosts,
+                () -> {
+                    Map<String, String> m = NsdProbe.discover(app, NSD_WINDOW_MS);
+                    if (!m.isEmpty()) Log.i(TAG, "mDNS: " + m);
+                    return m;
+                },
+                PrinterDiscovery.Ports.DEFAULT,
+                PrinterDiscovery.DEFAULT_CONNECT_MS,
+                PrinterDiscovery.DEFAULT_CONCURRENCY,
+                PrinterDiscovery.DEFAULT_SNMP_WAIT_MS
+            );
+        } finally {
+            try {
+                if (lock != null && lock.isHeld()) lock.release();
+            } catch (Throwable ignored) {}
+        }
     }
 }

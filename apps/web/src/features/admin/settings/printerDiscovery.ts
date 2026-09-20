@@ -71,6 +71,7 @@ export function normalizeDiscovery(raw: unknown): DiscoveryOutcome {
       confirmed: p.confirmed === true,
       status: str(p.status),
       message: str(p.message),
+      name: str(p.name)?.trim(),
     });
   }
   const networks: DiscoveredNetwork[] = [];

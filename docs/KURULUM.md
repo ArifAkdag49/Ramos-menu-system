@@ -193,6 +193,9 @@ Restorandaki **bir Android tablet** (çoğunlukla mutfak tableti) fişleri aynı
 - Aynı anda **tek tablet** istasyon olsun. İki tablette anahtar açıksa ikisi de fiş alabilir (aynı fiş iki kez basılmaz, ama hangisinin bastığı karışır).
 - **"Yazıcıya ulaşılamıyor"** rozeti: yazıcı kapalı, kablosu/Wi-Fi'ı kopuk ya da IP değişmiş. Yazıcıyı kontrol edin ve **Ayarlar → Yazıcı bağlantısı → Ağdaki yazıcıyı bul** ile adresi yeniden bulup kaydedin. Kağıt bittiyse ya da kapak açıksa şeridin altında **Son hata** yazar; fiş kısa aralıklarla yeniden denenir.
 - **"Yazıcı adresi yok"**: Yazıcı bağlantısında IP boş. 1. adımı yapın.
+- **Yazıcının IP'si değişirse (uygulama v2.3.2+):** modem yazıcıya DHCP ile her açılışta farklı adres verebilir (yazıcının ağ fişinde "DHCP: Enable"). Kayıtlı adres 20 saniye cevap vermeyince istasyon ağı kendisi tarar; tek yazıcı bulursa fişleri oraya basmaya devam eder, mutfak şeridinde ve bildirimde "yazıcı … (kendisi buldu)" yazar. Kalıcı olması için Admin'de **Ağdaki yazıcıyı bul → Bu yazıcıyı kullan → Kaydet**. En sağlamı: modemde yazıcıya sabit adres (DHCP rezervasyonu) tanımlamak, ya da yazıcının kendi ayarında DHCP'yi kapatıp modemin ağından boş bir adres vermek.
+- **Arama nasıl çalışır:** telefon kendi ağındaki 254 adreste yazıcı portlarını dener (9100 / 9143 / 443 / 80), aynı anda ağa SNMP ve Bonjour sorusu yollar (Epson, Star, Bixolon gibi yazıcılar adıyla cevap verir; uyuyan Wi-Fi yazıcı da yakalanır). Sonuçta doğrulanmış yazıcılar adıyla listelenir; yalnız portu açık ama cevap vermeyen cihaz "Doğrulanmadı" olarak listelenir, seçip test fişiyle denenir.
+- **Kablolu yazıcı başka ağdaysa:** yazıcının kendi test fişindeki IP telefonun ağından farklıysa (ör. yazıcı `192.168.1.100`, telefon `192.168.2.x`) tarama onu göremez. Adresi elle girip **Kaydet → Test fişi bas** deneyin; çalışmazsa yazıcının IP'sini modemin ağına göre değiştirin (yazıcının aracı, ya da yazıcıda DHCP'yi açmak) — §2.3.
 - **Telefonda mobil veri açıkken:** Android, Wi-Fi'ı "internetsiz" sayarsa bağlantıları mobil şebekeye yönlendirir; o zaman yerel ağdaki yazıcıya ulaşılamaz (Epson TM Utility ise Wi-Fi'a doğrudan bağlandığı için basar). **Uygulama v2.3+** yazıcı bağlantılarını her zaman Wi-Fi / kablolu ağ üzerinden kurar. Eski sürümde mobil veriyi geçici olarak kapatın.
 - Geri dönmek için baskı yolunu **Bilgisayar programı** yapıp uygulamanız yeterli; tablette anahtar açık kalsa da iş almaz. Şerit yerinde kalır, rozet **Baskı yolu farklı** der (eski sürümde şerit tamamen kayboluyordu).
 
@@ -360,7 +363,7 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
 
 | | |
 |---|---|
-| Dosya | `Desktop\Ramos APK\ramos-v2.3.1.apk` (v2.3: ağda yazıcı bulma, yazıcı bağlantısı Wi-Fi üzerinden; v2.2: geri tuşu, ePOS-Print; v2.1: arka planda baskı). `ramos-v2.3.1-dahili.apk`: site APK'nın içinde gömülü sürüm (sunucuya yayın olmadan deneme, aşağıya bakın) |
+| Dosya | `Desktop\Ramos APK\ramos-v2.3.2.apk` (v2.3: ağda yazıcı bulma, yazıcı bağlantısı Wi-Fi üzerinden; v2.2: geri tuşu, ePOS-Print; v2.1: arka planda baskı). `ramos-v2.3.2-dahili.apk`: site APK'nın içinde gömülü sürüm (sunucuya yayın olmadan deneme, aşağıya bakın) |
 | Uygulama adı / paket | Ramo's / `com.arxdigital.ramos` |
 | Açtığı adres | https://ramos.arxdigitalsevice.com |
 
@@ -384,9 +387,9 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
 
 > "Uygulama yüklenmedi" / "paket çakışıyor" hatası çıkarsa cihazdaki uygulama başka bir anahtarla imzalanmıştır. O cihazda eski uygulamayı silip v2'yi kurun: yeniden giriş ve bildirim izni gerekir; siparişler sunucuda olduğu için hiçbir şey kaybolmaz.
 
-**v2.3'e geçiş (20.09.2026 — imza anahtarı yenilendi):** v2.3 ve sonrası **yeni** bir anahtarla imzalanır (eski restoran PC'sindeki anahtar artık kullanılmıyor). Bu yüzden v2.2 ve öncesi kurulu her telefon/tablette **bir kez** eski Ramo's uygulamasını silin, sonra `ramos-v2.3.1.apk`'yı kurun, giriş yapın ve bildirim iznini yeniden verin. Siparişler, menü ve ayarlar sunucuda olduğu için hiçbir şey kaybolmaz. Bundan sonraki sürümler yine üst üste kurulur.
+**v2.3'e geçiş (20.09.2026 — imza anahtarı yenilendi):** v2.3 ve sonrası **yeni** bir anahtarla imzalanır (eski restoran PC'sindeki anahtar artık kullanılmıyor). Bu yüzden v2.2 ve öncesi kurulu her telefon/tablette **bir kez** eski Ramo's uygulamasını silin, sonra `ramos-v2.3.2.apk`'yı kurun, giriş yapın ve bildirim iznini yeniden verin. Siparişler, menü ve ayarlar sunucuda olduğu için hiçbir şey kaybolmaz. Bundan sonraki sürümler yine üst üste kurulur.
 
-**Sunucuya yayın olmadan deneme (`-dahili` APK):** Normal APK siteyi canlı adresten açar; sitedeki yeni bir özellik telefonda ancak site sunucuya yayınlanınca görünür. `ramos-v2.3.1-dahili.apk` ise sitenin o anki derlemesini **kendi içinde** taşır: sunucuya dokunmadan kurulup denenir (Ağdaki yazıcıyı bul dahil), internet yalnız Supabase için gerekir. Bedeli: bu kipte web değişiklikleri yeni APK gerektirir, bildirime dokununca açılan sayfa canlı siteden gelir. Deneme bitince normal APK'yı üzerine kurmak yeterlidir (aynı paket, aynı imza).
+**Sunucuya yayın olmadan deneme (`-dahili` APK):** Normal APK siteyi canlı adresten açar; sitedeki yeni bir özellik telefonda ancak site sunucuya yayınlanınca görünür. `ramos-v2.3.2-dahili.apk` ise sitenin o anki derlemesini **kendi içinde** taşır: sunucuya dokunmadan kurulup denenir (Ağdaki yazıcıyı bul dahil), internet yalnız Supabase için gerekir. Bedeli: bu kipte web değişiklikleri yeni APK gerektirir, bildirime dokununca açılan sayfa canlı siteden gelir. Deneme bitince normal APK'yı üzerine kurmak yeterlidir (aynı paket, aynı imza).
 
 **Güncelleme:** Menü, ekranlar ve düzeltmeler siteden geldiği için APK'yı yeniden kurmak gerekmez. Yeni APK yalnız uygulamanın adı, simgesi ya da Android tarafı (bildirim, yazıcı eklentisi) değişince üretilir (Ek A.3). Yeni APK eskisinin üzerine kurulur, veriler silinmez.
 

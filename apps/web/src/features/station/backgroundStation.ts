@@ -61,6 +61,9 @@ function normalizeStatus(raw: unknown): BackgroundStationStatus | null {
     lastPollAt: num(r.lastPollAt),
     missingPrinter: r.missingPrinter === true,
     route: str(r.route),
+    activeHost: str(r.activeHost),
+    activePort: num(r.activePort),
+    autoSwitched: r.autoSwitched === true,
     // Bilinmiyorsa uyarı gösterilmesin.
     notificationsGranted: r.notificationsGranted !== false,
     ignoringBatteryOptimizations: r.ignoringBatteryOptimizations !== false,

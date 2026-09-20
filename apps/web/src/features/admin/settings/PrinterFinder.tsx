@@ -150,6 +150,7 @@ function Outcome({
       </p>
       {phone ? <p className="text-xs text-muted">{phone}</p> : null}
       {outside}
+      <p className="text-xs text-muted">{t('admin.settings.printer.find.dhcpNote')}</p>
       <ul className="flex flex-col gap-2">
         {outcome.printers.map((p) => (
           <li
@@ -157,6 +158,7 @@ function Outcome({
             className="flex flex-col gap-2 rounded-control border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex min-w-0 flex-col gap-1">
+              {p.name ? <p className="break-words text-sm font-semibold">{p.name}</p> : null}
               <p className="font-mono text-sm font-medium">
                 {p.host}:{p.port}
               </p>

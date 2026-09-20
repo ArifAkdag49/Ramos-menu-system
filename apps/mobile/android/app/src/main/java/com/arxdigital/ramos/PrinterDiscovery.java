@@ -4,37 +4,42 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Yerel ağda fiş yazıcısı arama — apps/print-agent/src/discover.ts'in Android karşılığı (bilgisayarsız
  * kurulum: yazıcıyı telefon/tablet kendisi bulur). Saf Java (Android'e bağımlı değil; JVM testleri
- * {@code PrinterDiscoveryTest}). Ağ listesini ve soket bağlamayı {@link LanNetworks} verir.
+ * {@code PrinterDiscoveryTest}). Ağ listesini, mDNS ipuçlarını ve soket bağlamayı {@link LanNetworks} verir.
  *
- * İki aşama:
+ * Üç kaynak, sonra kimlik:
  * <ol>
- * <li><b>Kapı taraması:</b> her adreste dört port paralel denenir (yalnız TCP bağlantısı, veri yok):
- *     9100 düz ham, 9143 Epson şifreli ham, 443 / 80 Epson ePOS-Print. Cevapsız adres bağlantı zaman
- *     aşımı kadar bekletir; 254 adres × 4 port, 64 eşzamanlı → tipik 5–12 sn.</li>
- * <li><b>Kimlik:</b> açık port bulunan her adrese protokol sorusu sorulur (adres başına sırayla — yazıcı
- *     aynı anda tek bağlantı kabul eder, R69). 443/80: ePOS durum belgesi; yalnız gerçek ePOS yanıtı
- *     ({@code <response …>}) yazıcı sayılır — modem/NAS/kamera gibi 443'ü açık her cihaz elenir. 9143:
- *     TLS + DLE EOT, cevap ESC/POS biçimindeyse "epson_secure" (o zaman 9100 yok sayılır: Secure Printing
- *     açık Epson'da 9100 açık görünür ama basmaz). 9100: DLE EOT; ESC/POS cevap → "escpos" (doğrulanmış),
- *     cevapsız → "open" (aday; Xprinter bazen durum sorusuna cevap vermez, deneme fişiyle doğrulanır).</li>
+ * <li><b>Kapı taraması:</b> her adreste dört port paralel denenir (yalnız TCP bağlantısı): 9100 düz ham,
+ *     9143 Epson şifreli ham, 443 / 80 Epson ePOS-Print. 254 adres × 4 port, 96 eşzamanlı, 1 sn → ≤ 11 sn.</li>
+ * <li><b>İpuçları:</b> aynı anda SNMP yayını ({@link SnmpProbe}: sysDescr → cihaz adı) ve Bonjour/mDNS
+ *     ({@code NsdProbe}, Android). Wi-Fi'da uyuyan yazıcı TCP taramasının 1 sn'lik sınırına takılabilir ama
+ *     yayın paketine cevap verir. Kayıtlı adres de ipucu sayılır. İpuçlu adresler tarama sonucundan bağımsız,
+ *     uzun zaman aşımıyla (3 sn) doğrudan sorgulanır.</li>
+ * <li><b>Kimlik:</b> adres başına sırayla (yazıcı tek bağlantı kabul eder, R69). 443/80: ePOS durum belgesi;
+ *     yalnız gerçek ePOS yanıtı yazıcı sayılır (modem/NAS elenir). 9143: TLS + DLE EOT, ESC/POS cevap →
+ *     "epson_secure" (o zaman 9100 yok sayılır: Secure Printing açık Epson'da 9100 basmaz). 9100: DLE EOT;
+ *     ESC/POS → "escpos" (doğrulanmış), bağlanıp cevapsız → "open" (aday). İpuçlu adres hiçbir protokole cevap
+ *     vermezse ama adı yazıcıya benziyorsa yine aday olarak listelenir (deneme fişiyle doğrulanır).</li>
  * </ol>
- * Sonuç: doğrulanmışlar önce (ePOS &gt; Epson şifreli &gt; ESC/POS &gt; aday), sonra adres sırası. Bir
- * adres birden fazla portla listelenebilir (ör. TM-m30III: 443 ePOS + 9143); yönetici seçer.
+ * Sonuç: doğrulanmışlar önce (ePOS &gt; Epson şifreli &gt; ESC/POS &gt; aday), sonra adres sırası.
  */
 final class PrinterDiscovery {
 
@@ -43,18 +48,40 @@ final class PrinterDiscovery {
     static final String KIND_EPSON_EPOS = "epson_epos";
     static final String KIND_OPEN = "open";
 
-    /** Wi-Fi'da ilk ARP + bağlantı 500 ms'yi aşabiliyor (discover.ts ile aynı gerekçe). */
-    static final int DEFAULT_CONNECT_MS = 700;
-    static final int DEFAULT_CONCURRENCY = 64;
+    /** Kapı taraması bağlantı sınırı. Wi-Fi'da ilk ARP + bağlantı 500 ms'yi aşabiliyor; uyuyan yazıcı için ipuçları var. */
+    static final int DEFAULT_CONNECT_MS = 1000;
+    static final int DEFAULT_CONCURRENCY = 96;
     /** Tek ağdan taranacak en fazla adres: /22'den geniş ağlarda yalnız cihazın kendi /24'ü taranır. */
     static final int MAX_HOSTS_PER_NETWORK = 1022;
-    /** Kimlik sorusu (bağlantı + cevap) üst süresi. */
+    /** Taramada açık bulunan porta kimlik sorusu (bağlantı + cevap). */
     static final int STATUS_TIMEOUT_MS = 2500;
-    /** Kapı taramasının tamamı için üst sınır (ağ çok yavaşsa yarım sonuçla döner). */
+    /** İpuçlu adres (SNMP / mDNS / kayıtlı): bağlantı 3 sn — Wi-Fi'da uyuyan yazıcı. */
+    static final int HINT_TIMEOUT_MS = 3500;
+    static final int DEFAULT_SNMP_WAIT_MS = SnmpProbe.DEFAULT_WAIT_MS;
     static final long MAX_SCAN_MS = 45_000;
-    static final long MAX_IDENTIFY_MS = 30_000;
+    static final long MAX_IDENTIFY_MS = 40_000;
+    static final long HINT_SOURCE_WAIT_MS = 6_000;
+
+    static final Pattern PRINTER_NAME = Pattern.compile(
+        "(?i)printer|drucker|yazıcı|epson|tm-?[a-z]?\\d|\\bstar\\b|xprinter|bixolon|citizen|zebra|\\bpos\\b|receipt|thermal|zjiang|gprinter|rongta|sewoo|brother|kyocera|ricoh|hp laserjet|canon"
+    );
+
+    /** Süreç genelinde tek tarama: Ayarlar'daki düğme ile istasyonun kendi araması çakışmasın. */
+    private static final AtomicBoolean BUSY = new AtomicBoolean(false);
 
     private PrinterDiscovery() {}
+
+    static boolean tryBegin() {
+        return BUSY.compareAndSet(false, true);
+    }
+
+    static void end() {
+        BUSY.set(false);
+    }
+
+    static boolean looksLikePrinter(String name) {
+        return name != null && PRINTER_NAME.matcher(name).find();
+    }
 
     // ---------------------------------------------------------------- tipler
 
@@ -103,14 +130,17 @@ final class PrinterDiscovery {
         /** Son okunan durum baytları (onaltılık) ya da null. */
         final String status;
         final String message;
+        /** SNMP sysDescr ya da mDNS hizmet adı (ör. "EPSON TM-m30III"); yoksa null. */
+        final String name;
 
-        Found(String host, int port, String kind, boolean confirmed, String status, String message) {
+        Found(String host, int port, String kind, boolean confirmed, String status, String message, String name) {
             this.host = host;
             this.port = port;
             this.kind = kind;
             this.confirmed = confirmed;
             this.status = status;
             this.message = message;
+            this.name = name == null || name.trim().isEmpty() ? null : name.trim();
         }
     }
 
@@ -180,53 +210,85 @@ final class PrinterDiscovery {
     // ---------------------------------------------------------------- tarama
 
     static Result discover(List<Network> networks, List<String> extraHosts) {
-        return discover(networks, extraHosts, Ports.DEFAULT, DEFAULT_CONNECT_MS, DEFAULT_CONCURRENCY);
+        return discover(networks, extraHosts, null, Ports.DEFAULT, DEFAULT_CONNECT_MS, DEFAULT_CONCURRENCY, DEFAULT_SNMP_WAIT_MS);
+    }
+
+    /** Testler: ipucu kaynağı ve SNMP yayını yok. */
+    static Result discover(List<Network> networks, List<String> extraHosts, Ports ports, int connectMs, int concurrency) {
+        return discover(networks, extraHosts, null, ports, connectMs, concurrency, 0);
     }
 
     /**
-     * Ağ taraması + kimlik. Asla fırlatmaz (bireysel bağlantı hataları "kapalı" sayılır). Çağıran
-     * {@link PrinterClient#LOCK} kilidini almalıdır: tarama sürerken istasyon baskısı yazıcıya
-     * bağlanmasın (yazıcı tek oturum kabul eder).
+     * Ağ taraması + ipuçları + kimlik. Asla fırlatmaz (bireysel bağlantı hataları "kapalı" sayılır). Çağıran
+     * {@link PrinterClient#LOCK} kilidini almalı ve {@link #tryBegin()} ile tek taramayı sağlamalıdır.
+     *
+     * @param hintSource ek ipucu kaynağı (mDNS): adres → ad; taramayla paralel çalıştırılır, null olabilir
+     * @param snmpWaitMs SNMP yayınının bekleme süresi; 0 → yayın yok
      */
-    static Result discover(List<Network> networks, List<String> extraHosts, Ports ports, int connectMs, int concurrency) {
+    static Result discover(
+        List<Network> networks,
+        List<String> extraHosts,
+        Callable<Map<String, String>> hintSource,
+        Ports ports,
+        int connectMs,
+        int concurrency,
+        int snmpWaitMs
+    ) {
         long started = System.currentTimeMillis();
-        Set<String> hostSet = new LinkedHashSet<>();
+        Set<String> extras = new LinkedHashSet<>();
         if (extraHosts != null) {
             for (String h : extraHosts) {
-                if (h != null && !h.trim().isEmpty()) hostSet.add(h.trim());
+                if (h != null && !h.trim().isEmpty()) extras.add(h.trim());
             }
         }
+        Set<String> hostSet = new LinkedHashSet<>(extras);
         if (networks != null) {
             for (Network n : networks) hostSet.addAll(scanTargets(n.address, n.prefix, MAX_HOSTS_PER_NETWORK));
         }
         List<String> hosts = new ArrayList<>(hostSet);
-        if (hosts.isEmpty()) return new Result(Collections.emptyList(), 0, System.currentTimeMillis() - started);
+
+        // İpucu kaynakları taramayla paralel.
+        ExecutorService side = Executors.newFixedThreadPool(2, daemon("ramos-discover-hints"));
+        Future<Map<String, String>> snmpFuture = null;
+        Future<Map<String, String>> hintFuture = null;
+        if (snmpWaitMs > 0 && networks != null && !networks.isEmpty()) {
+            final int wait = snmpWaitMs;
+            final List<Network> nets = networks;
+            snmpFuture = side.submit(() -> SnmpProbe.query(SnmpProbe.broadcastTargets(nets), SnmpProbe.PORT, wait, true));
+        }
+        if (hintSource != null) hintFuture = side.submit(hintSource);
+        side.shutdown();
 
         // 1) kapı taraması
         int[] portList = ports.all();
         Set<String> open = ConcurrentHashMap.newKeySet();
-        ExecutorService pool = Executors.newFixedThreadPool(Math.max(1, Math.min(concurrency, hosts.size() * portList.length)), r -> {
-            Thread t = new Thread(r, "ramos-discover");
-            t.setDaemon(true);
-            return t;
-        });
-        for (String host : hosts) {
-            for (int port : portList) {
-                pool.execute(() -> {
-                    if (isOpen(host, port, connectMs)) open.add(key(host, port));
-                });
+        if (!hosts.isEmpty()) {
+            ExecutorService pool = Executors.newFixedThreadPool(
+                Math.max(1, Math.min(concurrency, hosts.size() * portList.length)), daemon("ramos-discover"));
+            for (String host : hosts) {
+                for (int port : portList) {
+                    pool.execute(() -> {
+                        if (isOpen(host, port, connectMs)) open.add(key(host, port));
+                    });
+                }
+            }
+            pool.shutdown();
+            try {
+                if (!pool.awaitTermination(MAX_SCAN_MS, TimeUnit.MILLISECONDS)) pool.shutdownNow();
+            } catch (InterruptedException e) {
+                pool.shutdownNow();
+                Thread.currentThread().interrupt();
             }
         }
-        pool.shutdown();
-        try {
-            if (!pool.awaitTermination(MAX_SCAN_MS, TimeUnit.MILLISECONDS)) pool.shutdownNow();
-        } catch (InterruptedException e) {
-            pool.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
 
-        // 2) kimlik — adresler paralel, adres içinde sırayla
-        List<String> candidates = new ArrayList<>();
+        // 2) ipuçları: kayıtlı adres(ler) + mDNS + SNMP (adres → ad)
+        Map<String, String> hints = new LinkedHashMap<>();
+        for (String h : extras) hints.put(h, null);
+        merge(hints, hintFuture, HINT_SOURCE_WAIT_MS);
+        merge(hints, snmpFuture, snmpWaitMs + 2000L);
+
+        // 3) kimlik — adresler paralel, adres içinde sırayla
+        Set<String> candidates = new LinkedHashSet<>(hints.keySet());
         for (String host : hosts) {
             for (int port : portList) {
                 if (open.contains(key(host, port))) {
@@ -237,13 +299,13 @@ final class PrinterDiscovery {
         }
         List<Found> found = new ArrayList<>();
         if (!candidates.isEmpty()) {
-            ExecutorService ident = Executors.newFixedThreadPool(Math.min(8, candidates.size()), r -> {
-                Thread t = new Thread(r, "ramos-identify");
-                t.setDaemon(true);
-                return t;
-            });
+            ExecutorService ident = Executors.newFixedThreadPool(Math.min(8, candidates.size()), daemon("ramos-identify"));
             List<Future<List<Found>>> futures = new ArrayList<>();
-            for (String host : candidates) futures.add(ident.submit(() -> identify(host, open, ports)));
+            for (final String host : candidates) {
+                final boolean hinted = hints.containsKey(host);
+                final String name = hints.get(host);
+                futures.add(ident.submit(() -> hinted ? identifyHinted(host, name, open, ports) : identify(host, open, ports)));
+            }
             ident.shutdown();
             long deadline = System.currentTimeMillis() + MAX_IDENTIFY_MS;
             for (Future<List<Found>> f : futures) {
@@ -264,6 +326,32 @@ final class PrinterDiscovery {
             return Integer.compare(a.port, b.port);
         });
         return new Result(found, hosts.size(), System.currentTimeMillis() - started);
+    }
+
+    private static java.util.concurrent.ThreadFactory daemon(String name) {
+        return r -> {
+            Thread t = new Thread(r, name);
+            t.setDaemon(true);
+            return t;
+        };
+    }
+
+    private static void merge(Map<String, String> hints, Future<Map<String, String>> f, long waitMs) {
+        if (f == null) return;
+        Map<String, String> m;
+        try {
+            m = f.get(Math.max(1, waitMs), TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            f.cancel(true);
+            return;
+        }
+        if (m == null) return;
+        for (Map.Entry<String, String> e : m.entrySet()) {
+            String host = e.getKey();
+            if (host == null || !isIpv4(host)) continue;
+            String name = e.getValue() == null || e.getValue().trim().isEmpty() ? null : e.getValue().trim();
+            if (!hints.containsKey(host) || (hints.get(host) == null && name != null)) hints.put(host, name);
+        }
     }
 
     private static int rank(Found f) {
@@ -296,45 +384,81 @@ final class PrinterDiscovery {
         }
     }
 
-    /** Açık portları olan tek adresin kimliği (sırayla: ePOS 443 → 80 → 9143 → 9100). */
+    /** Taramada açık bulunan portlara kimlik sorusu. */
     static List<Found> identify(String host, Set<String> open, Ports ports) {
-        List<Found> out = new ArrayList<>();
-        boolean https = open.contains(key(host, ports.eposHttps));
-        boolean http = open.contains(key(host, ports.eposHttp));
-        boolean tls = open.contains(key(host, ports.tls));
-        boolean raw = open.contains(key(host, ports.raw));
+        return identifyWith(
+            host, ports, STATUS_TIMEOUT_MS, null,
+            open.contains(key(host, ports.eposHttps)), open.contains(key(host, ports.eposHttp)),
+            open.contains(key(host, ports.tls)), open.contains(key(host, ports.raw)), true
+        );
+    }
 
+    /**
+     * İpuçlu adres (SNMP / mDNS / kayıtlı): dört port da uzun zaman aşımıyla doğrudan sorgulanır — tarama
+     * "kapalı" demiş olsa da (uyuyan Wi-Fi yazıcısı). Hiçbir protokol cevabı yoksa ama adı yazıcıya
+     * benziyorsa ya da bir portu açıksa aday olarak listelenir.
+     */
+    static List<Found> identifyHinted(String host, String name, Set<String> open, Ports ports) {
+        List<Found> out = identifyWith(host, ports, HINT_TIMEOUT_MS, name, true, true, true, true, false);
+        if (!out.isEmpty()) return out;
+        // Yazıcıya özgü port (9100 / 9143) açıksa ya da adı yazıcıya benziyorsa aday; yalnız 443/80 açık olan
+        // adsız cihaz (modem, NAS) aday değildir.
+        boolean raw = open.contains(key(host, ports.raw)), tls = open.contains(key(host, ports.tls));
+        boolean https = open.contains(key(host, ports.eposHttps)), http = open.contains(key(host, ports.eposHttp));
+        boolean printerPort = raw || tls;
+        if (!printerPort && !looksLikePrinter(name)) return out;
+        int port = raw ? ports.raw : tls ? ports.tls : https ? ports.eposHttps : http ? ports.eposHttp : ports.raw;
+        String msg = printerPort || https || http
+            ? String.format(Locale.ROOT, "port %d açık, durum cevabı yok", port)
+            : "ağda görüldü (SNMP/Bonjour), yazıcı portları cevap vermedi";
+        out.add(new Found(host, port, KIND_OPEN, false, null, msg, name));
+        return out;
+    }
+
+    /**
+     * Ortak kimlik akışı: ePOS 443 → 80 → 9143 (TLS + DLE EOT) → 9100 (DLE EOT). `candidateOnSilentTls`:
+     * tarama yolunda 9143 açık ama cevapsız ve 9100 kapalıysa aday (discover.ts kuralı).
+     */
+    private static List<Found> identifyWith(
+        String host, Ports ports, int timeoutMs, String name,
+        boolean https, boolean http, boolean tls, boolean raw, boolean candidateOnSilentTls
+    ) {
+        List<Found> out = new ArrayList<>();
         boolean epos = false;
         if (https) {
-            PrinterClient.StatusResult r = PrinterClient.statusEpos(host, ports.eposHttps, true, STATUS_TIMEOUT_MS);
+            PrinterClient.StatusResult r = PrinterClient.statusEpos(host, ports.eposHttps, true, timeoutMs);
             if (r.reachable) {
-                out.add(new Found(host, ports.eposHttps, KIND_EPSON_EPOS, true, r.status, r.message));
+                out.add(new Found(host, ports.eposHttps, KIND_EPSON_EPOS, true, r.status, r.message, name));
                 epos = true;
             }
         }
         if (!epos && http) {
-            PrinterClient.StatusResult r = PrinterClient.statusEpos(host, ports.eposHttp, false, STATUS_TIMEOUT_MS);
-            if (r.reachable) out.add(new Found(host, ports.eposHttp, KIND_EPSON_EPOS, true, r.status, r.message));
+            PrinterClient.StatusResult r = PrinterClient.statusEpos(host, ports.eposHttp, false, timeoutMs);
+            if (r.reachable) out.add(new Found(host, ports.eposHttp, KIND_EPSON_EPOS, true, r.status, r.message, name));
         }
 
         boolean secure = false;
+        boolean tlsAnswered = false;
         if (tls) {
-            PrinterClient.StatusResult r = PrinterClient.statusRaw(host, ports.tls, true, STATUS_TIMEOUT_MS);
+            PrinterClient.StatusResult r = PrinterClient.statusRaw(host, ports.tls, true, timeoutMs);
+            tlsAnswered = r.reachable;
             if (r.reachable && PrinterClient.looksLikeEscPos(PrinterClient.unhex(r.status))) {
-                out.add(new Found(host, ports.tls, KIND_EPSON_SECURE, true, r.status, null));
+                out.add(new Found(host, ports.tls, KIND_EPSON_SECURE, true, r.status, null, name));
                 secure = true;
             }
         }
+        boolean rawReachable = false;
         if (raw && !secure) {
-            PrinterClient.StatusResult r = PrinterClient.statusRaw(host, ports.raw, false, STATUS_TIMEOUT_MS);
+            PrinterClient.StatusResult r = PrinterClient.statusRaw(host, ports.raw, false, timeoutMs);
+            rawReachable = r.reachable;
             if (r.reachable) {
                 boolean esc = PrinterClient.looksLikeEscPos(PrinterClient.unhex(r.status));
-                out.add(new Found(host, ports.raw, esc ? KIND_ESCPOS : KIND_OPEN, esc, r.status, esc ? null : r.message));
+                out.add(new Found(host, ports.raw, esc ? KIND_ESCPOS : KIND_OPEN, esc, r.status, esc ? null : r.message, name));
             }
         }
-        if (tls && !secure && !raw) {
+        if (candidateOnSilentTls && tlsAnswered && !secure && !rawReachable) {
             // 9143 açık, TLS'le durum cevabı yok: yine de aday (deneme fişiyle doğrulanabilir) — discover.ts.
-            out.add(new Found(host, ports.tls, KIND_OPEN, false, null, String.format(Locale.ROOT, "port %d açık, durum cevabı yok", ports.tls)));
+            out.add(new Found(host, ports.tls, KIND_OPEN, false, null, String.format(Locale.ROOT, "port %d açık, durum cevabı yok", ports.tls), name));
         }
         return out;
     }

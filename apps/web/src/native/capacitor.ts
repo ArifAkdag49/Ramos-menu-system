@@ -58,6 +58,8 @@ export interface FoundPrinter {
   /** Son okunan durum baytları (onaltılık). */
   status?: string;
   message?: string;
+  /** SNMP sysDescr ya da Bonjour hizmet adı (ör. "EPSON TM-m30III"). */
+  name?: string;
 }
 
 export interface DiscoveredNetwork {
@@ -118,6 +120,13 @@ export interface BackgroundStationStatus {
   missingPrinter: boolean;
   /** Sunucunun bildirdiği `settings.print_route`; `null` = henüz bilinmiyor. */
   route: string | null;
+  /**
+   * Fişin gerçekten gittiği adres (v2.3.2+): kayıtlı adres ulaşılamayınca hizmet ağda kendisi arar ve tek
+   * doğrulanmış yazıcı bulursa ona basar (`autoSwitched`). Eski APK'da `null` / `false`.
+   */
+  activeHost: string | null;
+  activePort: number | null;
+  autoSwitched: boolean;
   notificationsGranted: boolean;
   ignoringBatteryOptimizations: boolean;
 }

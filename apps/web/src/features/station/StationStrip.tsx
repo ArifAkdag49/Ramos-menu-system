@@ -205,6 +205,7 @@ function enableErrorText(t: TFunction, e: BackgroundEnableFailure): string {
  */
 function BackgroundStrip({ route }: { route: string | null | undefined }) {
   const { t } = useTranslation();
+  const savedHost = useSettings()?.printer_host?.trim() ?? '';
   const bg = useStationStore((s) => s.bg);
   const busy = useStationStore((s) => s.bgBusy);
   const actionError = useStationStore((s) => s.bgError);
@@ -242,6 +243,14 @@ function BackgroundStrip({ route }: { route: string | null | undefined }) {
           <p className="text-sm text-muted tabular">
             {t('kitchen.station.bg.printed', { count: bg.printed })}
           </p>
+          {bg.autoSwitched && bg.activeHost ? (
+            <p role="note" className="min-w-0 basis-full break-words text-xs text-warning">
+              {t('kitchen.station.bg.autoHost', {
+                host: bg.activePort ? `${bg.activeHost}:${bg.activePort}` : bg.activeHost,
+                saved: savedHost || '—',
+              })}
+            </p>
+          ) : null}
           {bg.lastError ? (
             <p className="min-w-0 basis-full break-words text-xs text-warning">
               {errorKey ? t(errorKey) : t('kitchen.station.lastError', { error: bg.lastError })}

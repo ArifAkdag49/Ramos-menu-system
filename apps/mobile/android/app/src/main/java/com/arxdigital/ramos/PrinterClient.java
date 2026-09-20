@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -71,6 +72,9 @@ final class PrinterClient {
      */
     interface SocketBinder {
         void bind(Socket socket, String host) throws IOException;
+
+        /** UDP (SNMP yayını) soketi de aynı ağa: yayın paketi hücresel ağa değil Wi-Fi'a gitsin. */
+        void bindDatagram(DatagramSocket socket) throws IOException;
     }
 
     private static volatile SocketBinder binder;
@@ -85,6 +89,16 @@ final class PrinterClient {
         if (b == null) return;
         try {
             b.bind(socket, host);
+        } catch (Throwable ignored) {
+            // varsayılan ağ
+        }
+    }
+
+    static void bindDatagram(DatagramSocket socket) {
+        SocketBinder b = binder;
+        if (b == null) return;
+        try {
+            b.bindDatagram(socket);
         } catch (Throwable ignored) {
             // varsayılan ağ
         }

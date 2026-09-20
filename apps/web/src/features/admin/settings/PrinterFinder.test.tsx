@@ -36,7 +36,14 @@ describe('<PrinterFinder />', () => {
       ok: true,
       networks: [{ address: '192.168.2.17', prefix: 24, transport: 'wifi' }],
       printers: [
-        { host: '192.168.2.198', port: 443, kind: 'epson_epos', confirmed: true, status: '121212' },
+        {
+          host: '192.168.2.198',
+          port: 443,
+          kind: 'epson_epos',
+          confirmed: true,
+          status: '121212',
+          name: 'EPSON TM-m30III',
+        },
         { host: '192.168.2.40', port: 9100, kind: 'open', confirmed: false, message: 'cevap yok' },
       ],
       scanned: 254,
@@ -50,7 +57,9 @@ describe('<PrinterFinder />', () => {
     expect(discover).toHaveBeenCalledWith({ host: '192.168.2.198' });
 
     expect(await screen.findByText('192.168.2.198:443')).toBeInTheDocument();
+    expect(screen.getByText('EPSON TM-m30III')).toBeInTheDocument();
     expect(screen.getByText('192.168.2.40:9100')).toBeInTheDocument();
+    expect(screen.getByText(/DHCP/)).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('2 yazıcı bulundu');
     expect(screen.getByText(/Bu telefon: 192\.168\.2\.17 \(Wi-Fi\)/)).toHaveTextContent(
       '192.168.2.1–254',

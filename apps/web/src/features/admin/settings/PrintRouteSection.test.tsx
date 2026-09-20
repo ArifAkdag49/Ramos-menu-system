@@ -139,6 +139,7 @@ describe('<PrintRouteSection />', () => {
   });
 
   it('yazıcı listesi: ad, etkin/pasif, bağlantı durumu, son hata', () => {
+    h.row = { print_route: 'epson_sdp' } as unknown as SettingsRow;
     h.printers = [
       printer({ last_seen_at: new Date().toISOString(), last_error: 'EPTR_REC_EMPTY' }),
       printer({ id: 'p2', name: 'Bar', is_active: false }),
@@ -155,6 +156,7 @@ describe('<PrintRouteSection />', () => {
 
   it('yazıcı ekle: adres bir kez gösterilir, kopyalanır, kapatınca kaybolur', async () => {
     const user = userEvent.setup();
+    h.row = { print_route: 'epson_sdp' } as unknown as SettingsRow;
     const writeText = vi.fn(async () => undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     h.create.mockImplementation((_name: string, opts: MutateOpts<{ id: string; token: string }>) =>
@@ -179,6 +181,7 @@ describe('<PrintRouteSection />', () => {
 
   it('anahtarı yenile onay ister ve yeni adresi gösterir; vazgeçilirse çağrılmaz', async () => {
     const user = userEvent.setup();
+    h.row = { print_route: 'epson_sdp' } as unknown as SettingsRow;
     h.printers = [printer()];
     h.rotate.mockImplementation((_id: string, opts: MutateOpts<{ id: string; token: string }>) =>
       opts.onSuccess?.({ id: 'p1', token: TOKEN }),
@@ -199,6 +202,7 @@ describe('<PrintRouteSection />', () => {
 
   it('pasifleştir / etkinleştir', async () => {
     const user = userEvent.setup();
+    h.row = { print_route: 'epson_sdp' } as unknown as SettingsRow;
     h.printers = [printer(), printer({ id: 'p2', name: 'Bar', is_active: false })];
     renderSection();
     await user.click(screen.getByRole('button', { name: 'Pasifleştir' }));
@@ -284,9 +288,19 @@ describe('<PrintRouteSection />', () => {
     });
   });
 
-  it('Web Config rehberi adımları görünür', () => {
+  it('Web Config rehberi ve Epson yazıcı listesi yalnız SDP yolu seçiliyken görünür', async () => {
+    const user = userEvent.setup();
+    h.printers = [printer()];
     renderSection();
+    // Ajan yolu: Epson'a özgü bölüm yok — istasyon/ajan her ESC/POS ağ yazıcısıyla çalışır.
+    expect(screen.queryByText('Epson Web Config adımları')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Yazıcı ekle' })).toBeNull();
+    expect(screen.queryByText('Mutfak TM-m30III')).toBeNull();
+
+    await user.click(screen.getByRole('radio', { name: /Epson Server Direct Print/ }));
     expect(screen.getByText('Epson Web Config adımları')).toBeInTheDocument();
     expect(screen.getByText(/Interval/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Yazıcı ekle' })).toBeInTheDocument();
+    expect(screen.getByText('Mutfak TM-m30III')).toBeInTheDocument();
   });
 });

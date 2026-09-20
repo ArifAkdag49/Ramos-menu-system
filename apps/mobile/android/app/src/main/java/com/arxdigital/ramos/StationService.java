@@ -21,7 +21,9 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 import java.net.HttpURLConnection;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -326,10 +328,20 @@ public class StationService extends Service {
             return;
         }
 
+        // Kayıtlı adres ulaşılamıyorken istasyonun kendi bulduğu yazıcı varsa ona bas (heartbeat yönetir).
+        // Yönetici kayıtlı adresi yeni adrese çevirdiyse kayıtlı port geçerli olur.
+        StationStore.Status st = StationStore.snapshot(this);
+        String host = job.printerHost;
+        int port = job.printerPort;
+        if (st.autoHost != null && !st.autoHost.equals(job.printerHost)) {
+            host = st.autoHost;
+            port = st.autoPort;
+        }
+
         PrinterClient.SendResult res;
         PrinterClient.LOCK.lock();
         try {
-            res = PrinterClient.sendBase64(job.printerHost, job.printerPort, job.data, SEND_TIMEOUT_MS, true);
+            res = PrinterClient.sendBase64(host, port, job.data, SEND_TIMEOUT_MS, true);
         } finally {
             PrinterClient.LOCK.unlock();
         }
@@ -439,17 +451,29 @@ public class StationService extends Service {
         boolean reachable = false;
         JSONObject state = null;
         String message = null;
+        String autoNote = null;
         // Baskı yolu istasyon değilse yazıcıya bağlanma: bilgisayar programının baskısıyla çakışmasın (R69).
         boolean probe = st.printerHost != null && stationRoute;
         if (probe) {
-            PrinterClient.StatusResult r;
-            PrinterClient.LOCK.lock();
-            try {
-                r = PrinterClient.status(st.printerHost, st.printerPort, STATUS_TIMEOUT_MS);
-            } finally {
-                PrinterClient.LOCK.unlock();
-            }
+            PrinterClient.StatusResult r = probeStatus(st.printerHost, st.printerPort);
             if (stopped) return;
+            if (r.reachable) {
+                // Kayıtlı adres geri geldi: otomatik bulunan adres bırakılır.
+                unreachableSince = 0;
+                if (st.autoHost != null) {
+                    Log.i(TAG, "kayıtlı adres yeniden ulaşılabilir, otomatik adres bırakıldı");
+                    StationStore.update(this, s -> s.autoHost = null);
+                }
+            } else {
+                r = recoverPrinter(st, r);
+                if (stopped) return;
+                if (r.reachable) {
+                    StationStore.Status now = StationStore.snapshot(this);
+                    if (now.autoHost != null) {
+                        autoNote = "auto_host: " + now.autoHost + ":" + now.autoPort + " (kayıtlı " + st.printerHost + ":" + st.printerPort + " cevap vermiyor)";
+                    }
+                }
+            }
             reachable = r.reachable;
             message = r.message;
             byte[] bytes = PrinterClient.unhex(r.status);
@@ -467,7 +491,7 @@ public class StationService extends Service {
         if (st.lastError != null) error = st.lastError;
         else if (st.printerHost == null) error = "no_printer_config";
         else if (!stationRoute) error = "route: " + st.route;
-        else if (reachable) error = null;
+        else if (reachable) error = autoNote;
         else error = "offline: " + (message == null || message.trim().isEmpty() ? "offline" : message.trim());
 
         try {
@@ -476,6 +500,85 @@ public class StationService extends Service {
             onUnauthorized();
         } catch (Exception e) {
             Log.w(TAG, "heartbeat yazılamadı: " + feedErrorText(e));
+        }
+    }
+
+    private PrinterClient.StatusResult probeStatus(String host, int port) {
+        PrinterClient.LOCK.lock();
+        try {
+            return PrinterClient.status(host, port, STATUS_TIMEOUT_MS);
+        } finally {
+            PrinterClient.LOCK.unlock();
+        }
+    }
+
+    // ---------------------------------------------------------------- otomatik yazıcı bulma
+
+    /** Kayıtlı adres bu süredir ulaşılamıyorsa ağda aranır (modem yazıcıya yeni IP vermiş olabilir — DHCP). */
+    static final long AUTO_SCAN_AFTER_MS = 20_000;
+    /** İki otomatik arama arası en az süre (tarama ≈ 15–25 sn, yazıcıyı kilitler). */
+    static final long AUTO_SCAN_INTERVAL_MS = 90_000;
+
+    private long unreachableSince = 0;
+    private long lastAutoScan = 0;
+
+    /**
+     * Kayıtlı adres cevap vermedi: önce daha önce otomatik bulunan adres denenir; o da yoksa/düştüyse ve
+     * süre dolduysa ağ taranır. Yalnız TEK doğrulanmış yazıcı (ya da kayıtlı portla eşleşen tek yazıcı)
+     * bulunursa ona geçilir — birden fazla varsa hangisi olduğu bilinemez, değiştirilmez (ajanın kuralı).
+     * Dönüş: kullanılacak adresin durum sonucu (ulaşılamıyorsa kayıtlı adresinki).
+     */
+    private PrinterClient.StatusResult recoverPrinter(StationStore.Status st, PrinterClient.StatusResult configured) {
+        if (st.autoHost != null) {
+            PrinterClient.StatusResult r = probeStatus(st.autoHost, st.autoPort);
+            if (r.reachable) return r;
+            Log.w(TAG, "otomatik adres " + st.autoHost + " de cevap vermiyor, bırakıldı");
+            StationStore.update(this, s -> s.autoHost = null);
+        }
+        long now = SystemClock.elapsedRealtime();
+        if (unreachableSince == 0) {
+            unreachableSince = now;
+            return configured;
+        }
+        if (now - unreachableSince < AUTO_SCAN_AFTER_MS || now - lastAutoScan < AUTO_SCAN_INTERVAL_MS) return configured;
+        lastAutoScan = now;
+        PrinterDiscovery.Found f = autoFind(st);
+        if (f == null || stopped) return configured;
+        Log.i(TAG, "yazıcı ağda bulundu: " + f.host + ":" + f.port + " (" + f.kind + (f.name != null ? ", " + f.name : "") + ")");
+        StationStore.update(this, s -> {
+            s.autoHost = f.host;
+            s.autoPort = f.port;
+        });
+        return probeStatus(f.host, f.port);
+    }
+
+    private PrinterDiscovery.Found autoFind(StationStore.Status st) {
+        if (!PrinterDiscovery.tryBegin()) return null; // Ayarlar'daki düğme tarıyor
+        try {
+            List<LanNetworks.Lan> lans = LanNetworks.list(this);
+            if (lans.isEmpty()) return null;
+            List<String> extra = new ArrayList<>();
+            extra.add(st.printerHost);
+            PrinterDiscovery.Result res;
+            PrinterClient.LOCK.lock();
+            try {
+                res = LanNetworks.discoverAll(this, lans, extra);
+            } finally {
+                PrinterClient.LOCK.unlock();
+            }
+            List<PrinterDiscovery.Found> confirmed = new ArrayList<>();
+            for (PrinterDiscovery.Found f : res.printers) if (f.confirmed) confirmed.add(f);
+            if (confirmed.size() == 1) return confirmed.get(0);
+            List<PrinterDiscovery.Found> samePort = new ArrayList<>();
+            for (PrinterDiscovery.Found f : confirmed) if (f.port == st.printerPort) samePort.add(f);
+            if (samePort.size() == 1) return samePort.get(0);
+            Log.w(TAG, "otomatik arama: " + confirmed.size() + " doğrulanmış yazıcı, seçim yapılmadı");
+            return null;
+        } catch (Throwable t) {
+            Log.w(TAG, "otomatik arama hata: " + t);
+            return null;
+        } finally {
+            PrinterDiscovery.end();
         }
     }
 
@@ -578,10 +681,11 @@ public class StationService extends Service {
         if ("paper_end".equals(s.problem)) return "Yazıcıda kağıt bitti";
         if ("cover_open".equals(s.problem)) return "Yazıcı kapağı açık";
         if (Boolean.FALSE.equals(s.reachable) || "offline".equals(s.problem)) return "Yazıcıya ulaşılamıyor";
+        String auto = s.autoHost != null ? " · yazıcı " + s.autoHost + " (kendisi buldu)" : "";
         if (s.lastPrintedAt != null) {
-            return "Çalışıyor · son fiş " + new SimpleDateFormat("HH:mm", Locale.ROOT).format(new Date(s.lastPrintedAt));
+            return "Çalışıyor · son fiş " + new SimpleDateFormat("HH:mm", Locale.ROOT).format(new Date(s.lastPrintedAt)) + auto;
         }
-        return "Çalışıyor";
+        return "Çalışıyor" + auto;
     }
 
     private void refreshNotification() {

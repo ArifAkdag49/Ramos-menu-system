@@ -38,6 +38,9 @@ const bgStatus = (over: Partial<BackgroundStationStatus> = {}): BackgroundStatio
   lastPollAt: null,
   missingPrinter: false,
   route: 'station',
+  activeHost: null,
+  activePort: null,
+  autoSwitched: false,
   notificationsGranted: true,
   ignoringBatteryOptimizations: true,
   ...over,
@@ -114,6 +117,22 @@ describe('<StationStrip /> — arka plan kipi (yeni APK)', () => {
     expect(screen.getByText('Açık')).toBeInTheDocument();
     expect(screen.queryByText(/Ekranı açık tutun/)).toBeNull();
     expect(h.startStation).not.toHaveBeenCalled();
+  });
+
+  it('hizmet yazıcıyı kendisi bulduysa (kayıtlı adres cevapsız) not gösterir', async () => {
+    newApk({
+      enabled: true,
+      running: true,
+      deviceId: 'dev-1',
+      activeHost: '192.168.2.199',
+      activePort: 443,
+      autoSwitched: true,
+    });
+    render(<StationStrip />);
+    await switchReady();
+    const note = await screen.findByRole('note');
+    expect(note).toHaveTextContent('192.168.2.199:443');
+    expect(note).toHaveTextContent(/Ağdaki yazıcıyı bul/);
   });
 
   it('açınca: cihaz kaydı → hizmet anahtarla başlar → kimlik saklanır; anahtar saklanmaz', async () => {

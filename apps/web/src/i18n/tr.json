@@ -204,7 +204,8 @@
         "notificationsDenied": "Bildirim izni gerekli — Android ayarlarından Ramo's için bildirimlere izin verip yeniden deneyin",
         "startFailed": "Arka plan hizmeti başlatılamadı ({{detail}}) — tekrar deneyin",
         "batteryHint": "Android pil tasarrufu arka planda baskıyı durdurabilir.",
-        "battery": "Pil kısıtlamasını kaldır"
+        "battery": "Pil kısıtlamasını kaldır",
+      "autoHost": "Kayıtlı adres {{saved}} cevap vermiyor; yazıcı ağda {{host}} adresinde bulundu ve fişler oraya basılıyor. Kalıcı olması için Admin → Ayarlar → Yazıcı bağlantısı → Ağdaki yazıcıyı bul → Bu yazıcıyı kullan → Kaydet."
       }
     },
     "start": {
@@ -696,7 +697,7 @@
         "type": "Yazıcı türü",
         "typeHint": "Seçim port ve karakter tablosunu doldurur; sonra kaydet.",
         "types": {
-          "xprinter": "Xprinter (port 9100, CP857)",
+          "xprinter": "Ağ yazıcısı · ham TCP, port 9100 (Xprinter ve benzeri, CP857)",
           "epson": "Epson TM (şifreli, port 9143)",
           "epson_epos": "Epson TM-m30III (ePOS-Print, port 443)",
           "custom": "Özel (alanları elle doldur)"
@@ -726,7 +727,8 @@
           "failed": "Tarama yapılamadı: {{detail}}",
           "none": "Ağda yazıcı bulunamadı ({{scanned}} adres tarandı). Yazıcının açık ve telefonla aynı modeme bağlı olduğundan emin olun; yazıcının ayar fişindeki IP aşağıdaki aralığın dışındaysa yazıcı başka bir ağ ayarındadır.",
           "phone": "Bu telefon: {{address}} ({{transport}}) · taranan aralık {{range}}",
-          "outsideNetwork": "Kayıtlı adres {{host}} bu telefonun ağında ({{network}}) değil — yazıcı başka bir ağ ayarında. Ya yazıcının IP'sini bu ağa göre değiştirin (yazıcının kendi aracıyla ya da modemden), ya da telefonu yazıcının bağlı olduğu Wi-Fi'a bağlayın; tarama yalnız telefonun kendi ağını görür.",
+          "outsideNetwork": "Kayıtlı adres {{host}} bu telefonun ağında ({{network}}) değil; tarama yalnız telefonun kendi ağını görür. Modem iki ağı birbirine yönlendiriyorsa adres yine çalışabilir: Kaydet → Test fişi bas. Çalışmazsa yazıcı başka bir ağ ayarındadır: yazıcının IP'sini bu ağa göre değiştirin (yazıcının kendi aracı ya da modem) ya da telefonu yazıcının bağlı olduğu Wi-Fi'a bağlayın.",
+          "dhcpNote": "Modem yazıcıya DHCP ile her açılışta farklı adres verebilir. Adres değişirse istasyon yazıcıyı ağda kendisi yeniden bulur; yine de modemde yazıcıya sabit adres (DHCP rezervasyonu) tanımlamak en sağlamı.",
           "summary": "{{count}} yazıcı bulundu · {{scanned}} adres tarandı",
           "transport": {
             "wifi": "Wi-Fi",
