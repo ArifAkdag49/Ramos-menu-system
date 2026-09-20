@@ -183,7 +183,7 @@ Restorandaki **bir Android tablet** (çoğunlukla mutfak tableti) fişleri aynı
 **Kurulum:**
 
 1. **Yazıcı bilgisi:** Tablette (ya da telefonda) Ramo's uygulamasına **yönetici** hesabıyla girin → **Ayarlar → Yazıcı bağlantısı → Ağdaki yazıcıyı bul** (uygulama v2.3+). 10–20 saniyede aynı ağdaki yazıcılar listelenir; her satırda yazıcının türü ve **Doğrulandı** rozeti görünür. **Bu yazıcıyı kullan** → IP adresi, Port ve Karakter tablosu kendiliğinden dolar → **Kaydet**. İstasyon bu bilgileri kullanır. Eski uygulamada ya da bilgisayardan giriyorsanız alanları elle doldurun: IP adresi, Port (`9100` Xprinter / `9143` Epson Secure Printing / `443` Epson ePOS-Print) ve Karakter tablosu → **Kaydet**.
-2. **Baskı yolunu seçin:** **Ayarlar → Baskı yolu → Tablet yazıcı istasyonu** → **Baskı yolunu uygula**. Bu andan itibaren fişleri yalnız tablet basar; bilgisayar programı ve Epson Server Direct Print iş almaz.
+2. **Baskı yolu:** Yazıcı 1. adımdaki gibi **Ağdaki yazıcıyı bul** ile seçilip kaydedildiyse (uygulama v2.3.3+) baskı yolu kendiliğinden **Tablet yazıcı istasyonu** olur; ayrıca seçmek gerekmez. Elle girdiyseniz: **Ayarlar → Baskı yolu → Tablet yazıcı istasyonu** → **Baskı yolunu uygula**. Bilgisayar programı ve Epson Server Direct Print seçenekleri "Diğer yollar" başlığının altında katlıdır; telefon kurulumunda gerekmez. Bu andan itibaren fişleri yalnız tablet basar.
 3. **Tablette:** Ramo's uygulamasını açın → mutfak hesabıyla giriş → **Mutfak** ekranında başlığın altındaki **Yazıcı istasyonu** anahtarını **açın**. Rozet **Açık** olur; ilk fiş basılınca **Açık · son baskı 14:32** gibi saat görünür.
 4. **Deneyin:** **Ayarlar → Yazıcı bağlantısı → Test fişi bas**. Birkaç saniye içinde tabletten yazıcıya gider. Türkçe harfler bozuksa §2.5.
 
@@ -363,7 +363,7 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
 
 | | |
 |---|---|
-| Dosya | `Desktop\Ramos APK\ramos-v2.3.2.apk` (v2.3: ağda yazıcı bulma, yazıcı bağlantısı Wi-Fi üzerinden; v2.2: geri tuşu, ePOS-Print; v2.1: arka planda baskı). `ramos-v2.3.2-dahili.apk`: site APK'nın içinde gömülü sürüm (sunucuya yayın olmadan deneme, aşağıya bakın) |
+| Dosya | `Desktop\Ramos APK\ramos-v2.3.3.apk` (v2.3: ağda yazıcı bulma, yazıcı bağlantısı Wi-Fi üzerinden; v2.2: geri tuşu, ePOS-Print; v2.1: arka planda baskı). `ramos-v2.3.3-dahili.apk`: site APK'nın içinde gömülü sürüm (sunucuya yayın olmadan deneme, aşağıya bakın) |
 | Uygulama adı / paket | Ramo's / `com.arxdigital.ramos` |
 | Açtığı adres | https://ramos.arxdigitalsevice.com |
 
@@ -387,9 +387,9 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
 
 > "Uygulama yüklenmedi" / "paket çakışıyor" hatası çıkarsa cihazdaki uygulama başka bir anahtarla imzalanmıştır. O cihazda eski uygulamayı silip v2'yi kurun: yeniden giriş ve bildirim izni gerekir; siparişler sunucuda olduğu için hiçbir şey kaybolmaz.
 
-**v2.3'e geçiş (20.09.2026 — imza anahtarı yenilendi):** v2.3 ve sonrası **yeni** bir anahtarla imzalanır (eski restoran PC'sindeki anahtar artık kullanılmıyor). Bu yüzden v2.2 ve öncesi kurulu her telefon/tablette **bir kez** eski Ramo's uygulamasını silin, sonra `ramos-v2.3.2.apk`'yı kurun, giriş yapın ve bildirim iznini yeniden verin. Siparişler, menü ve ayarlar sunucuda olduğu için hiçbir şey kaybolmaz. Bundan sonraki sürümler yine üst üste kurulur.
+**v2.3'e geçiş (20.09.2026 — imza anahtarı yenilendi):** v2.3 ve sonrası **yeni** bir anahtarla imzalanır (eski restoran PC'sindeki anahtar artık kullanılmıyor). Bu yüzden v2.2 ve öncesi kurulu her telefon/tablette **bir kez** eski Ramo's uygulamasını silin, sonra `ramos-v2.3.3.apk`'yı kurun, giriş yapın ve bildirim iznini yeniden verin. Siparişler, menü ve ayarlar sunucuda olduğu için hiçbir şey kaybolmaz. Bundan sonraki sürümler yine üst üste kurulur.
 
-**Sunucuya yayın olmadan deneme (`-dahili` APK):** Normal APK siteyi canlı adresten açar; sitedeki yeni bir özellik telefonda ancak site sunucuya yayınlanınca görünür. `ramos-v2.3.2-dahili.apk` ise sitenin o anki derlemesini **kendi içinde** taşır: sunucuya dokunmadan kurulup denenir (Ağdaki yazıcıyı bul dahil), internet yalnız Supabase için gerekir. Bedeli: bu kipte web değişiklikleri yeni APK gerektirir, bildirime dokununca açılan sayfa canlı siteden gelir. Deneme bitince normal APK'yı üzerine kurmak yeterlidir (aynı paket, aynı imza).
+**Sunucuya yayın olmadan deneme (`-dahili` APK):** Normal APK siteyi canlı adresten açar; sitedeki yeni bir özellik telefonda ancak site sunucuya yayınlanınca görünür. `ramos-v2.3.3-dahili.apk` ise sitenin o anki derlemesini **kendi içinde** taşır: sunucuya dokunmadan kurulup denenir (Ağdaki yazıcıyı bul dahil), internet yalnız Supabase için gerekir. Bedeli: bu kipte web değişiklikleri yeni APK gerektirir, bildirime dokununca açılan sayfa canlı siteden gelir. Deneme bitince normal APK'yı üzerine kurmak yeterlidir (aynı paket, aynı imza).
 
 **Güncelleme:** Menü, ekranlar ve düzeltmeler siteden geldiği için APK'yı yeniden kurmak gerekmez. Yeni APK yalnız uygulamanın adı, simgesi ya da Android tarafı (bildirim, yazıcı eklentisi) değişince üretilir (Ek A.3). Yeni APK eskisinin üzerine kurulur, veriler silinmez.
 

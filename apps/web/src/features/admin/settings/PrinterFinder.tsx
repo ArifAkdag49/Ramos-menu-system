@@ -33,7 +33,13 @@ export function PrinterFinder({
     { status: 'idle' } | { status: 'running' } | { status: 'done'; outcome: DiscoveryOutcome }
   >({ status: 'idle' });
 
-  if (support === 'browser') return null;
+  if (support === 'browser') {
+    return (
+      <p role="note" className="text-sm text-muted">
+        {t('admin.settings.printer.find.browserNote')}
+      </p>
+    );
+  }
 
   const running = state.status === 'running';
   const run = async () => {

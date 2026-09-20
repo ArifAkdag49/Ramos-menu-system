@@ -21,6 +21,7 @@ import { FIELD, MoveButtons, Section, SelectField, TextField, Toggle } from '../
 import { TicketPayloadPaper } from '../menu/TicketPreview';
 import { formatDateTime } from '../orders/orderView';
 import { PrinterCard } from '../PrinterCard';
+import { isNative } from '../../../native/capacitor';
 import { applyFoundPrinter } from './printerDiscovery';
 import { PrinterFinder } from './PrinterFinder';
 import { PrintRouteSection } from './PrintRouteSection';
@@ -121,6 +122,10 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
   const [previewAt] = useState(() => new Date());
   // "Özel" elle seçildiyse alanlar bir hazır seçime uysa bile "Özel" görünür kalır.
   const [customPrinterType, setCustomPrinterType] = useState(false);
+  // Yazıcı "Ağdaki yazıcıyı bul" ile seçildi: kaydedilince baskı yolu da istasyon yapılır.
+  const [pickedFromFinder, setPickedFromFinder] = useState(false);
+  // Elle alanlar (IP, port, karakter tablosu): yerel uygulamada katlı başlar, tarayıcıda açık.
+  const [manualOpen, setManualOpen] = useState(() => !isNative());
 
   // Kayıt dışarıda değişti (kendi kaydımız ya da başka bir cihaz — Realtime `settings`). Yerel
   // değişiklik yoksa ya da form zaten yeni kayda eşitse sessizce yenilenir; yoksa operatörün
@@ -146,6 +151,7 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
     const e = visibleErrors[key];
     return e ? t(ERROR_KEY[e]) : null;
   };
+  const printerFieldError = Boolean(visibleErrors.printer_host || visibleErrors.printer_port);
 
   const set = <K extends keyof SettingsForm>(key: K, value: SettingsForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -173,13 +179,19 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
       });
       return;
     }
+    // Yazıcı bu uygulamadan (ağ taramasıyla) seçildiyse fişleri bu uygulamadaki istasyon basacaktır:
+    // baskı yolu da aynı kayıtta "station" yapılır — telefon kurulumunda ayrıca yol seçmek gerekmesin.
+    const switchRoute = pickedFromFinder && row.print_route !== 'station';
     update.mutate(
-      { ...patch, updated_by: meId },
+      { ...patch, ...(switchRoute ? { print_route: 'station' as const } : {}), updated_by: meId },
       {
         onSuccess: () => {
           setShowErrors(false);
           setConflict(false);
-          toast(t('admin.settings.saved'));
+          setPickedFromFinder(false);
+          toast(
+            switchRoute ? t('admin.settings.printer.find.routeApplied') : t('admin.settings.saved'),
+          );
         },
         onError: () => toast(t('admin.settings.saveError'), 'danger'),
       },
@@ -189,6 +201,7 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
   const discard = () => {
     setForm(formFromSettings(row));
     setCustomPrinterType(false);
+    setPickedFromFinder(false);
     setConflict(false);
     setShowErrors(false);
   };
@@ -331,76 +344,101 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
             title={t('admin.settings.printer.title')}
             description={t('admin.settings.printer.description')}
           >
-            <SelectField<PrinterPresetId>
-              label={t('admin.settings.printer.type')}
-              value={printerType}
-              hint={t('admin.settings.printer.typeHint')}
-              onChange={choosePrinterType}
-              options={(['xprinter', 'epson', 'epson_epos', 'custom'] as const).map((id) => ({
-                value: id,
-                label: t(PRINTER_TYPE_KEY[id]),
-              }))}
-            />
-            {printerType === 'epson' ? (
-              <p role="note" className="text-sm text-muted">
-                {t('admin.settings.printer.epsonHint')}
-              </p>
-            ) : null}
-            {printerType === 'epson_epos' ? (
-              <p role="note" className="text-sm text-muted">
-                {t('admin.settings.printer.eposHint')}
-              </p>
-            ) : null}
+            {/* Telefon/tablet kurulumu: önce "bul", elle alanlar katlanır (yerel uygulamada varsayılan kapalı). */}
             <PrinterFinder
               currentHost={form.printer_host}
               onPick={(p) => {
                 // Bulunan yazıcı: adres + port + (kanıta göre) karakter tablosu; kayıt yine "Kaydet" ile.
+                // Kaydedilince baskı yolu da "Tablet yazıcı istasyonu" olur (bu uygulamadaki istasyon basar).
                 setCustomPrinterType(false);
+                setPickedFromFinder(true);
                 setForm((f) => applyFoundPrinter(f, p));
                 toast(t('admin.settings.printer.find.applied'));
               }}
             />
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
-              <TextField
-                label={t('admin.settings.printer.host')}
-                value={form.printer_host}
-                placeholder="192.168.1.50"
-                maxLength={253}
-                inputMode="url"
-                error={errorText('printer_host')}
-                hint={t('admin.settings.printer.hostHint')}
-                onChange={(v) => set('printer_host', v)}
-              />
-              <TextField
-                label={t('admin.settings.printer.port')}
-                value={form.printer_port}
-                placeholder="9100"
-                maxLength={5}
-                inputMode="numeric"
-                error={errorText('printer_port')}
-                hint={t('admin.settings.printer.portHint')}
-                onChange={(v) => set('printer_port', v)}
-              />
-            </div>
-            <SelectField
-              label={t('admin.settings.printer.codepage')}
-              value={form.codepage}
-              hint={t('admin.settings.printer.codepageHint')}
-              onChange={(v) => set('codepage', v)}
-              options={choices.map((value) => ({
-                value,
-                label:
-                  value in CODEPAGE_KEY
-                    ? t(CODEPAGE_KEY[value as keyof typeof CODEPAGE_KEY])
-                    : value,
-              }))}
-            />
-            <Toggle
-              label={t('admin.settings.printer.transliterate')}
-              hint={t('admin.settings.printer.transliterateHint')}
-              checked={form.printer_transliterate}
-              onChange={(v) => set('printer_transliterate', v)}
-            />
+            <p className="text-sm">
+              <span className="text-muted">{t('admin.settings.printer.current')}</span>{' '}
+              <span className="font-mono">
+                {form.printer_host.trim()
+                  ? `${form.printer_host.trim()}:${form.printer_port.trim()}`
+                  : '—'}
+              </span>
+              {form.printer_host.trim() ? (
+                <span className="text-muted"> · {t(PRINTER_TYPE_KEY[printerType])}</span>
+              ) : null}
+            </p>
+            <details
+              open={manualOpen || printerFieldError}
+              onToggle={(e) => setManualOpen(e.currentTarget.open)}
+              className="rounded-control border border-border px-3 py-2"
+            >
+              <summary className="cursor-pointer text-sm font-medium">
+                {t('admin.settings.printer.manual')}
+              </summary>
+              <div className="mt-3 flex flex-col gap-4">
+                <SelectField<PrinterPresetId>
+                  label={t('admin.settings.printer.type')}
+                  value={printerType}
+                  hint={t('admin.settings.printer.typeHint')}
+                  onChange={choosePrinterType}
+                  options={(['xprinter', 'epson', 'epson_epos', 'custom'] as const).map((id) => ({
+                    value: id,
+                    label: t(PRINTER_TYPE_KEY[id]),
+                  }))}
+                />
+                {printerType === 'epson' ? (
+                  <p role="note" className="text-sm text-muted">
+                    {t('admin.settings.printer.epsonHint')}
+                  </p>
+                ) : null}
+                {printerType === 'epson_epos' ? (
+                  <p role="note" className="text-sm text-muted">
+                    {t('admin.settings.printer.eposHint')}
+                  </p>
+                ) : null}
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
+                  <TextField
+                    label={t('admin.settings.printer.host')}
+                    value={form.printer_host}
+                    placeholder="192.168.1.50"
+                    maxLength={253}
+                    inputMode="url"
+                    error={errorText('printer_host')}
+                    hint={t('admin.settings.printer.hostHint')}
+                    onChange={(v) => set('printer_host', v)}
+                  />
+                  <TextField
+                    label={t('admin.settings.printer.port')}
+                    value={form.printer_port}
+                    placeholder="9100"
+                    maxLength={5}
+                    inputMode="numeric"
+                    error={errorText('printer_port')}
+                    hint={t('admin.settings.printer.portHint')}
+                    onChange={(v) => set('printer_port', v)}
+                  />
+                </div>
+                <SelectField
+                  label={t('admin.settings.printer.codepage')}
+                  value={form.codepage}
+                  hint={t('admin.settings.printer.codepageHint')}
+                  onChange={(v) => set('codepage', v)}
+                  options={choices.map((value) => ({
+                    value,
+                    label:
+                      value in CODEPAGE_KEY
+                        ? t(CODEPAGE_KEY[value as keyof typeof CODEPAGE_KEY])
+                        : value,
+                  }))}
+                />
+                <Toggle
+                  label={t('admin.settings.printer.transliterate')}
+                  hint={t('admin.settings.printer.transliterateHint')}
+                  checked={form.printer_transliterate}
+                  onChange={(v) => set('printer_transliterate', v)}
+                />
+              </div>
+            </details>
             {printerDirty ? (
               <p role="status" className="flex items-start gap-2 text-warning">
                 <AlertTriangle aria-hidden size={18} className="mt-0.5 shrink-0" />

@@ -624,6 +624,7 @@
         "title": "Druckweg",
         "description": "Wer druckt die Küchenbons",
         "routeLabel": "Bons druckt",
+        "otherRoutes": "Weitere Wege (Computerprogramm, Epson Server Direct Print) — bei Einrichtung per Telefon nicht nötig",
         "agent": "PC-Programm (Druckagent)",
         "agentHint": "Das Programm auf dem Restaurant-PC schickt die Bons an den Drucker",
         "epson": "Epson Server Direct Print",
@@ -716,6 +717,8 @@
         "transliterate": "Türkische Buchstaben vereinfachen",
         "transliterateHint": "Ş→S, Ğ→G, İ→I, ı→i. Einschalten, wenn der Drucker Türkisch mit keinem Zeichensatz druckt.",
         "saveBeforeTest": "Der Testbon nutzt die gespeicherten Einstellungen — zum Testen der neuen Druckereinstellung zuerst speichern.",
+        "current": "Gespeicherter Drucker:",
+        "manual": "Manuell einstellen (IP-Adresse, Port, Zeichensatz)",
         "find": {
           "title": "Drucker im Netzwerk suchen",
           "description": "Die App sucht selbst nach Bondruckern im WLAN (oder LAN), mit dem dieses Tablet/Telefon verbunden ist; beim Auswählen werden IP, Port und Zeichensatz ausgefüllt. Der Drucker kann per WLAN oder Kabel angeschlossen sein, solange er am selben Router hängt. Kein Computer nötig.",
@@ -744,7 +747,9 @@
           "unconfirmed": "Nicht bestätigt",
           "current": "Gespeicherte Adresse",
           "use": "Diesen Drucker verwenden",
-          "applied": "Druckeradresse ausgefüllt — auf Speichern tippen, dann Testbon drucken."
+          "applied": "Druckeradresse ausgefüllt — auf Speichern tippen, dann Testbon drucken.",
+          "routeApplied": "Gespeichert. Druckweg auf \"Tablet-Druckstation\" gesetzt: die Bons druckt die Station in dieser App. In der Küchenansicht den Schalter Druckstation einschalten, dann Testbon drucken.",
+          "browserNote": "Zum automatischen Finden des Druckers die Ramo's-App (Telefon/Tablet) verwenden: Einstellungen → Druckerverbindung → Drucker im Netzwerk suchen. Im Browser die Adresse unten von Hand eingeben."
         }
       },
       "quickNotes": {

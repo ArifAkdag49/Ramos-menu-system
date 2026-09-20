@@ -19,9 +19,10 @@ afterEach(() => {
 });
 
 describe('<PrinterFinder />', () => {
-  it('tarayıcıda hiçbir şey çizmez', () => {
-    const { container } = render(<PrinterFinder currentHost="" onPick={vi.fn()} />);
-    expect(container).toBeEmptyDOMElement();
+  it('tarayıcıda düğme yok, uygulamaya yönlendiren not var', () => {
+    render(<PrinterFinder currentHost="" onPick={vi.fn()} />);
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByRole('note')).toHaveTextContent(/Ramo's uygulamasını/);
   });
 
   it('eski APK: düğme yerine sürüm uyarısı', () => {

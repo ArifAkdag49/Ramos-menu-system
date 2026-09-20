@@ -624,6 +624,7 @@
         "title": "Baskı yolu",
         "description": "Mutfak fişlerini kim basar",
         "routeLabel": "Fişleri basan",
+        "otherRoutes": "Diğer yollar (bilgisayar programı, Epson Server Direct Print) — telefon kurulumunda gerekmez",
         "agent": "Bilgisayar programı (yazdırma ajanı)",
         "agentHint": "Restorandaki bilgisayarda çalışan program fişi yazıcıya gönderir",
         "epson": "Epson Server Direct Print",
@@ -716,6 +717,8 @@
         "transliterate": "Türkçe harfleri sadeleştir",
         "transliterateHint": "Ş→S, Ğ→G, İ→I, ı→i. Yazıcı hiçbir tabloda Türkçe basamıyorsa aç.",
         "saveBeforeTest": "Test fişi kayıtlı ayarlarla basılır — yeni yazıcı ayarını denemek için önce kaydet.",
+        "current": "Kayıtlı yazıcı:",
+        "manual": "Elle ayarla (IP adresi, port, karakter tablosu)",
         "find": {
           "title": "Ağdaki yazıcıyı bul",
           "description": "Uygulama, bu tabletin/telefonun bağlı olduğu Wi-Fi (ya da kablolu) ağdaki fiş yazıcılarını kendisi arar; bulduğunu seçince IP, port ve karakter tablosu dolar. Yazıcı Wi-Fi ile de kabloyla da bağlı olabilir, yeter ki tabletle aynı modemde olsun. Bilgisayar gerekmez.",
@@ -744,7 +747,9 @@
           "unconfirmed": "Doğrulanmadı",
           "current": "Kayıtlı adres",
           "use": "Bu yazıcıyı kullan",
-          "applied": "Yazıcı adresi dolduruldu — Kaydet'e basın, sonra Test fişi bas."
+          "applied": "Yazıcı adresi dolduruldu — Kaydet'e basın, sonra Test fişi bas.",
+          "routeApplied": "Kaydedildi. Baskı yolu \"Tablet yazıcı istasyonu\" yapıldı: fişleri bu uygulamadaki istasyon basar. Mutfak ekranında Yazıcı istasyonu anahtarı açık olsun, sonra Test fişi bas.",
+          "browserNote": "Yazıcıyı otomatik bulmak için Ramo's uygulamasını (telefon/tablet) kullanın: Ayarlar → Yazıcı bağlantısı → Ağdaki yazıcıyı bul. Tarayıcıdan adresi aşağıdan elle girin."
         }
       },
       "quickNotes": {

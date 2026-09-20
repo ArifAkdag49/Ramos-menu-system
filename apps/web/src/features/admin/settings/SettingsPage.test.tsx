@@ -1,6 +1,6 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../../i18n';
 import type { SettingsRow } from '../../../data/settings';
 
@@ -381,5 +381,90 @@ describe('<SettingsPage />', () => {
     await user.click(screen.getByRole('button', { name: 'Vazgeç' }));
     expect(screen.getByLabelText('Alt yazı')).toHaveValue('');
     expect(saveButton()).toBeDisabled();
+  });
+});
+
+// --- Telefon kurulumu: yazıcı ağ taramasıyla seçilince kayıt baskı yolunu da istasyon yapar ---------
+
+type W = Window & { Capacitor?: unknown };
+
+describe('<SettingsPage /> — yerel uygulamada yazıcı bulma', () => {
+  beforeEach(() => {
+    h.row = baseRow({ printer_host: '', print_route: 'agent' });
+    h.mutate.mockReset();
+    useToast.getState().dismiss();
+    useAuth.setState({
+      profile: {
+        id: 'me',
+        username: 'patron',
+        display_name: 'Patron',
+        role: 'admin',
+        locale: 'tr',
+        is_active: true,
+      },
+    } as never);
+    (window as W).Capacitor = {
+      isNativePlatform: () => true,
+      Plugins: {
+        RamosPrinter: {
+          send: vi.fn(),
+          status: vi.fn(),
+          discover: vi.fn().mockResolvedValue({
+            ok: true,
+            networks: [{ address: '192.168.2.176', prefix: 24, transport: 'wifi' }],
+            printers: [
+              {
+                host: '192.168.2.199',
+                port: 443,
+                kind: 'epson_epos',
+                confirmed: true,
+                name: 'EPSON TM-m30III',
+              },
+            ],
+            scanned: 253,
+            durationMs: 9000,
+          }),
+        },
+      },
+    };
+  });
+
+  afterEach(() => {
+    delete (window as W).Capacitor;
+  });
+
+  it('bul → Bu yazıcıyı kullan → Kaydet: adres/port/tablo ve print_route=station tek kayıtta', async () => {
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    // Elle alanlar yerel uygulamada katlı gelir; "Kayıtlı yazıcı" boş.
+    expect(screen.getByText('Kayıtlı yazıcı:').parentElement).toHaveTextContent('—');
+
+    await user.click(screen.getByRole('button', { name: 'Ağdaki yazıcıyı bul' }));
+    expect(await screen.findByText('EPSON TM-m30III')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Bu yazıcıyı kullan' }));
+    expect(screen.getByText('Kayıtlı yazıcı:').parentElement).toHaveTextContent('192.168.2.199:443');
+    expect(screen.getByLabelText('IP adresi')).toHaveValue('192.168.2.199');
+    expect(screen.getByLabelText('Port')).toHaveValue('443');
+
+    await user.click(saveButton());
+    expect(h.mutate).toHaveBeenCalledTimes(1);
+    expect(h.mutate.mock.calls[0]![0]).toMatchObject({
+      printer_host: '192.168.2.199',
+      printer_port: 443,
+      printer_codepage: 'windows1254',
+      printer_codepage_number: 48,
+      print_route: 'station',
+      updated_by: 'me',
+    });
+  });
+
+  it('yol zaten istasyonsa print_route yazılmaz', async () => {
+    h.row = baseRow({ printer_host: '', print_route: 'station' });
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    await user.click(screen.getByRole('button', { name: 'Ağdaki yazıcıyı bul' }));
+    await user.click(await screen.findByRole('button', { name: 'Bu yazıcıyı kullan' }));
+    await user.click(saveButton());
+    expect(h.mutate.mock.calls[0]![0]).not.toHaveProperty('print_route');
   });
 });

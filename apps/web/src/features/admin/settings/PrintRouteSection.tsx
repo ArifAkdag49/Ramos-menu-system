@@ -123,6 +123,29 @@ export function PrintRouteSection({
     rotate.reset();
   };
 
+  const routeCard = (route: PrintRoute) => (
+    <label
+      key={route}
+      className={clsx(
+        'flex min-h-12 cursor-pointer items-start gap-3 rounded-control border px-3 py-2',
+        selected === route ? 'border-lime' : 'border-border',
+      )}
+    >
+      <input
+        type="radio"
+        name="print-route"
+        value={route}
+        checked={selected === route}
+        onChange={() => setChoice(route === saved ? null : route)}
+        className="mt-1 size-5 shrink-0 accent-lime"
+      />
+      <span className="flex flex-col">
+        <span className="text-sm font-medium">{t(ROUTE_TEXT[route].label)}</span>
+        <span className="text-xs text-muted">{t(ROUTE_TEXT[route].hint)}</span>
+      </span>
+    </label>
+  );
+
   const secretUrl = secret ? sdpPrinterUrl(supabaseUrl, secret.token) : null;
   const copy = async () => {
     if (!secretUrl) return;
@@ -144,28 +167,20 @@ export function PrintRouteSection({
         <legend className="mb-1 text-xs font-medium text-muted">
           {t('admin.settings.printRoute.routeLabel')}
         </legend>
-        {PRINT_ROUTES.map((route) => (
-          <label
-            key={route}
-            className={clsx(
-              'flex min-h-12 cursor-pointer items-start gap-3 rounded-control border px-3 py-2',
-              selected === route ? 'border-lime' : 'border-border',
-            )}
-          >
-            <input
-              type="radio"
-              name="print-route"
-              value={route}
-              checked={selected === route}
-              onChange={() => setChoice(route === saved ? null : route)}
-              className="mt-1 size-5 shrink-0 accent-lime"
-            />
-            <span className="flex flex-col">
-              <span className="text-sm font-medium">{t(ROUTE_TEXT[route].label)}</span>
-              <span className="text-xs text-muted">{t(ROUTE_TEXT[route].hint)}</span>
-            </span>
-          </label>
-        ))}
+        {/* Birincil yol: tablet/telefon istasyonu (bilgisayarsız). Bilgisayar programı ve Epson SDP katlı —
+            telefon kurulumunda görünüp kafa karıştırmasın; kayıtlı yol onlardan biriyse açık gelir. */}
+        {routeCard('station')}
+        <details
+          open={selected !== 'station'}
+          className="rounded-control border border-dashed border-border px-3 py-2"
+        >
+          <summary className="cursor-pointer text-sm text-muted">
+            {t('admin.settings.printRoute.otherRoutes')}
+          </summary>
+          <div className="mt-2 flex flex-col gap-2">
+            {PRINT_ROUTES.filter((r) => r !== 'station').map(routeCard)}
+          </div>
+        </details>
       </fieldset>
 
       {choice ? (

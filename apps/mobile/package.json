@@ -1,6 +1,6 @@
 {
   "name": "@ramos/mobile",
-  "version": "2.3.2",
+  "version": "2.3.3",
   "private": true,
   "description": "Ramo's Android uygulaması (Capacitor 7): canlı siteyi WebView'da açar, FCM bildirimleri ve yerel RamosPrinter eklentisi",
   "scripts": {
