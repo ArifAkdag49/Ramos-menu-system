@@ -134,3 +134,61 @@ export function applyFoundPrinter(form: SettingsForm, p: FoundPrinter): Settings
 export function primaryNetwork(networks: DiscoveredNetwork[]): DiscoveredNetwork | null {
   return networks.find((n) => n.transport === 'wifi') ?? networks[0] ?? null;
 }
+
+// --- Adres hesapları (apps/mobile PrinterDiscovery ile aynı kurallar) -------------------------
+
+const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+
+/** IPv4 metni → 32 bit sayı; geçersizse `null`. */
+export function ipToInt(ip: string): number | null {
+  const m = IPV4.exec(ip.trim());
+  if (!m) return null;
+  let n = 0;
+  for (let i = 1; i <= 4; i++) {
+    const o = Number(m[i]);
+    if (o > 255) return null;
+    n = n * 256 + o;
+  }
+  return n;
+}
+
+const intToIp = (n: number) =>
+  [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
+
+/** Cihazın fiilen taradığı önek: /22'den geniş ağda yalnız kendi /24'ü (MAX_HOSTS_PER_NETWORK). */
+function effectivePrefix(prefix: number): number {
+  return 2 ** (32 - prefix) - 2 > 1022 ? 24 : prefix;
+}
+
+/** `host`, `net`'in taranan alt ağında mı. IPv4 olmayan (alan adı) → `true` sayılır (bilinmiyor). */
+export function hostInNetwork(host: string, net: DiscoveredNetwork): boolean {
+  const h = ipToInt(host);
+  const a = ipToInt(net.address);
+  if (h === null || a === null) return true;
+  const prefix = effectivePrefix(net.prefix);
+  const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+  return ((h & mask) >>> 0) === ((a & mask) >>> 0);
+}
+
+/**
+ * Kayıtlı yazıcı adresi taranan ağların hiçbirinde değil: yazıcı başka bir ağ ayarında (ör. Xprinter
+ * fabrika adresi 192.168.123.100, telefon 192.168.1.x'te). Tarama onu bulamaz; kullanıcıya söylenir.
+ */
+export function hostOutsideNetworks(host: string, networks: DiscoveredNetwork[]): boolean {
+  const h = host.trim();
+  if (networks.length === 0 || ipToInt(h) === null) return false;
+  return !networks.some((n) => hostInNetwork(h, n));
+}
+
+/** Taranan aralık metni: "192.168.1.1–254". */
+export function scanRange(net: DiscoveredNetwork): string {
+  const a = ipToInt(net.address);
+  if (a === null) return '';
+  const prefix = effectivePrefix(net.prefix);
+  if (prefix < 1 || prefix > 30) return '';
+  const mask = (0xffffffff << (32 - prefix)) >>> 0;
+  const network = (a & mask) >>> 0;
+  const broadcast = (network | (~mask >>> 0)) >>> 0;
+  const last = intToIp(broadcast - 1);
+  return `${intToIp(network + 1)}–${last.slice(last.lastIndexOf('.') + 1)}`;
+}

@@ -8,7 +8,9 @@ import { Button } from '../../../ui/Button';
 import {
   discoverPrinters,
   discoverySupport,
+  hostOutsideNetworks,
   primaryNetwork,
+  scanRange,
   type DiscoveryOutcome,
 } from './printerDiscovery';
 
@@ -106,14 +108,36 @@ function Outcome({
     );
   }
   const net = primaryNetwork(outcome.networks);
-  const network = net
-    ? `${t(`admin.settings.printer.find.transport.${net.transport === 'ethernet' ? 'ethernet' : 'wifi'}`)} ${net.address}/${net.prefix}`
-    : '—';
+  const transport = net
+    ? t(
+        `admin.settings.printer.find.transport.${net.transport === 'ethernet' ? 'ethernet' : 'wifi'}`,
+      )
+    : '';
+  // "Telefon: 192.168.1.23 (Wi-Fi) · taranan 192.168.1.1–254" — yazıcı başka ağdaysa buradan anlaşılır.
+  const phone = net
+    ? t('admin.settings.printer.find.phone', {
+        address: net.address,
+        transport,
+        range: scanRange(net) || `${net.address}/${net.prefix}`,
+      })
+    : '';
+  const outside = hostOutsideNetworks(currentHost, outcome.networks) ? (
+    <p role="note" className="break-words text-sm text-warning">
+      {t('admin.settings.printer.find.outsideNetwork', {
+        host: currentHost,
+        network: net ? `${net.address}/${net.prefix}` : '',
+      })}
+    </p>
+  ) : null;
   if (outcome.printers.length === 0) {
     return (
-      <p role="status" className="text-sm text-warning">
-        {t('admin.settings.printer.find.none', { scanned: outcome.scanned, network })}
-      </p>
+      <div className="flex flex-col gap-2">
+        <p role="status" className="text-sm text-warning">
+          {t('admin.settings.printer.find.none', { scanned: outcome.scanned })}
+        </p>
+        {phone ? <p className="text-xs text-muted">{phone}</p> : null}
+        {outside}
+      </div>
     );
   }
   return (
@@ -122,9 +146,10 @@ function Outcome({
         {t('admin.settings.printer.find.summary', {
           count: outcome.printers.length,
           scanned: outcome.scanned,
-          network,
         })}
       </p>
+      {phone ? <p className="text-xs text-muted">{phone}</p> : null}
+      {outside}
       <ul className="flex flex-col gap-2">
         {outcome.printers.map((p) => (
           <li

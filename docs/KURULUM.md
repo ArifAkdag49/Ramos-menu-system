@@ -360,7 +360,7 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
 
 | | |
 |---|---|
-| Dosya | `Desktop\Ramos APK\ramos-v2.3.0.apk` (v2.3: ağda yazıcı bulma, yazıcı bağlantısı Wi-Fi üzerinden; v2.2: geri tuşu, ePOS-Print; v2.1: arka planda baskı). `ramos-v2.3.0-dahili.apk`: site APK'nın içinde gömülü sürüm (sunucuya yayın olmadan deneme, aşağıya bakın) |
+| Dosya | `Desktop\Ramos APK\ramos-v2.3.1.apk` (v2.3: ağda yazıcı bulma, yazıcı bağlantısı Wi-Fi üzerinden; v2.2: geri tuşu, ePOS-Print; v2.1: arka planda baskı). `ramos-v2.3.1-dahili.apk`: site APK'nın içinde gömülü sürüm (sunucuya yayın olmadan deneme, aşağıya bakın) |
 | Uygulama adı / paket | Ramo's / `com.arxdigital.ramos` |
 | Açtığı adres | https://ramos.arxdigitalsevice.com |
 
@@ -384,9 +384,9 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
 
 > "Uygulama yüklenmedi" / "paket çakışıyor" hatası çıkarsa cihazdaki uygulama başka bir anahtarla imzalanmıştır. O cihazda eski uygulamayı silip v2'yi kurun: yeniden giriş ve bildirim izni gerekir; siparişler sunucuda olduğu için hiçbir şey kaybolmaz.
 
-**v2.3'e geçiş (20.09.2026 — imza anahtarı yenilendi):** v2.3 ve sonrası **yeni** bir anahtarla imzalanır (eski restoran PC'sindeki anahtar artık kullanılmıyor). Bu yüzden v2.2 ve öncesi kurulu her telefon/tablette **bir kez** eski Ramo's uygulamasını silin, sonra `ramos-v2.3.0.apk`'yı kurun, giriş yapın ve bildirim iznini yeniden verin. Siparişler, menü ve ayarlar sunucuda olduğu için hiçbir şey kaybolmaz. Bundan sonraki sürümler yine üst üste kurulur.
+**v2.3'e geçiş (20.09.2026 — imza anahtarı yenilendi):** v2.3 ve sonrası **yeni** bir anahtarla imzalanır (eski restoran PC'sindeki anahtar artık kullanılmıyor). Bu yüzden v2.2 ve öncesi kurulu her telefon/tablette **bir kez** eski Ramo's uygulamasını silin, sonra `ramos-v2.3.1.apk`'yı kurun, giriş yapın ve bildirim iznini yeniden verin. Siparişler, menü ve ayarlar sunucuda olduğu için hiçbir şey kaybolmaz. Bundan sonraki sürümler yine üst üste kurulur.
 
-**Sunucuya yayın olmadan deneme (`-dahili` APK):** Normal APK siteyi canlı adresten açar; sitedeki yeni bir özellik telefonda ancak site sunucuya yayınlanınca görünür. `ramos-v2.3.0-dahili.apk` ise sitenin o anki derlemesini **kendi içinde** taşır: sunucuya dokunmadan kurulup denenir (Ağdaki yazıcıyı bul dahil), internet yalnız Supabase için gerekir. Bedeli: bu kipte web değişiklikleri yeni APK gerektirir, bildirime dokununca açılan sayfa canlı siteden gelir. Deneme bitince normal APK'yı üzerine kurmak yeterlidir (aynı paket, aynı imza).
+**Sunucuya yayın olmadan deneme (`-dahili` APK):** Normal APK siteyi canlı adresten açar; sitedeki yeni bir özellik telefonda ancak site sunucuya yayınlanınca görünür. `ramos-v2.3.1-dahili.apk` ise sitenin o anki derlemesini **kendi içinde** taşır: sunucuya dokunmadan kurulup denenir (Ağdaki yazıcıyı bul dahil), internet yalnız Supabase için gerekir. Bedeli: bu kipte web değişiklikleri yeni APK gerektirir, bildirime dokununca açılan sayfa canlı siteden gelir. Deneme bitince normal APK'yı üzerine kurmak yeterlidir (aynı paket, aynı imza).
 
 **Güncelleme:** Menü, ekranlar ve düzeltmeler siteden geldiği için APK'yı yeniden kurmak gerekmez. Yeni APK yalnız uygulamanın adı, simgesi ya da Android tarafı (bildirim, yazıcı eklentisi) değişince üretilir (Ek A.3). Yeni APK eskisinin üzerine kurulur, veriler silinmez.
 

@@ -724,8 +724,10 @@
           "noNetwork": "Wi-Fi ya da kablolu ağ bağlantısı yok — cihazı yazıcının bağlı olduğu ağa bağlayıp yeniden deneyin.",
           "busy": "Tarama zaten sürüyor — birkaç saniye bekleyip yeniden deneyin.",
           "failed": "Tarama yapılamadı: {{detail}}",
-          "none": "Ağda yazıcı bulunamadı ({{scanned}} adres tarandı · {{network}}). Yazıcının açık ve tabletle aynı modeme bağlı olduğundan emin olun; yazıcının ayar fişindeki IP'yi elle de girebilirsiniz.",
-          "summary": "{{count}} yazıcı bulundu · {{scanned}} adres tarandı · {{network}}",
+          "none": "Ağda yazıcı bulunamadı ({{scanned}} adres tarandı). Yazıcının açık ve telefonla aynı modeme bağlı olduğundan emin olun; yazıcının ayar fişindeki IP aşağıdaki aralığın dışındaysa yazıcı başka bir ağ ayarındadır.",
+          "phone": "Bu telefon: {{address}} ({{transport}}) · taranan aralık {{range}}",
+          "outsideNetwork": "Kayıtlı adres {{host}} bu telefonun ağında ({{network}}) değil — yazıcı başka bir ağ ayarında. Ya yazıcının IP'sini bu ağa göre değiştirin (yazıcının kendi aracıyla ya da modemden), ya da telefonu yazıcının bağlı olduğu Wi-Fi'a bağlayın; tarama yalnız telefonun kendi ağını görür.",
+          "summary": "{{count}} yazıcı bulundu · {{scanned}} adres tarandı",
           "transport": {
             "wifi": "Wi-Fi",
             "ethernet": "Kablolu ağ"

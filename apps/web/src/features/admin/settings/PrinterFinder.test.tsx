@@ -52,7 +52,10 @@ describe('<PrinterFinder />', () => {
     expect(await screen.findByText('192.168.2.198:443')).toBeInTheDocument();
     expect(screen.getByText('192.168.2.40:9100')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('2 yazıcı bulundu');
-    expect(screen.getByRole('status')).toHaveTextContent('192.168.2.17/24');
+    expect(screen.getByText(/Bu telefon: 192\.168\.2\.17 \(Wi-Fi\)/)).toHaveTextContent(
+      '192.168.2.1–254',
+    );
+    expect(screen.queryByRole('note')).toBeNull(); // kayıtlı adres telefonun ağında
     expect(screen.getByText('Kayıtlı adres')).toBeInTheDocument();
     expect(screen.getByText('cevap yok')).toBeInTheDocument();
 
@@ -78,6 +81,23 @@ describe('<PrinterFinder />', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Ağdaki yazıcıyı bul' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/Wi-Fi/);
+  });
+
+  it('kayıtlı adres telefonun ağında değilse "farklı ağ" uyarısı (yazıcı bulunamasa da)', async () => {
+    mockNative(
+      vi.fn().mockResolvedValue({
+        ok: true,
+        networks: [{ address: '192.168.1.23', prefix: 24, transport: 'wifi' }],
+        printers: [],
+        scanned: 253,
+      }),
+    );
+    render(<PrinterFinder currentHost="192.168.123.100" onPick={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Ağdaki yazıcıyı bul' }));
+    const note = await screen.findByRole('note');
+    expect(note).toHaveTextContent('192.168.123.100');
+    expect(note).toHaveTextContent('192.168.1.23/24');
+    expect(screen.getByText(/Bu telefon: 192\.168\.1\.23/)).toHaveTextContent('192.168.1.1–254');
   });
 
   it('eklenti reddederse hata metni, asla fırlatmaz', async () => {

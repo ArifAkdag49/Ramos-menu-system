@@ -4,9 +4,13 @@ import {
   applyFoundPrinter,
   discoverPrinters,
   discoverySupport,
+  hostInNetwork,
+  hostOutsideNetworks,
+  ipToInt,
   normalizeDiscovery,
   presetForFound,
   primaryNetwork,
+  scanRange,
 } from './printerDiscovery';
 import type { SettingsForm } from './settingsLogic';
 
@@ -161,5 +165,45 @@ describe('primaryNetwork', () => {
     expect(primaryNetwork([eth, wifi])).toBe(wifi);
     expect(primaryNetwork([eth])).toBe(eth);
     expect(primaryNetwork([])).toBeNull();
+  });
+});
+
+describe('adres hesapları', () => {
+  const wifi = { address: '192.168.1.23', prefix: 24, transport: 'wifi' };
+
+  it('ipToInt geçersizi eler', () => {
+    expect(ipToInt('192.168.1.1')).toBe(3232235777);
+    expect(ipToInt(' 10.0.0.1 ')).toBe(167772161);
+    expect(ipToInt('192.168.1')).toBeNull();
+    expect(ipToInt('192.168.1.256')).toBeNull();
+    expect(ipToInt('epson.local')).toBeNull();
+  });
+
+  it('hostInNetwork: alt ağ, geniş ağda yalnız kendi /24, alan adı bilinmiyor sayılır', () => {
+    expect(hostInNetwork('192.168.1.250', wifi)).toBe(true);
+    expect(hostInNetwork('192.168.2.250', wifi)).toBe(false);
+    expect(hostInNetwork('192.168.2.250', { ...wifi, prefix: 16 })).toBe(false); // /16 → yalnız kendi /24'ü taranır
+    expect(hostInNetwork('192.168.1.7', { ...wifi, prefix: 16 })).toBe(true);
+    expect(hostInNetwork('10.0.1.9', { address: '10.0.0.5', prefix: 22, transport: 'wifi' })).toBe(true);
+    expect(hostInNetwork('epson.local', wifi)).toBe(true);
+  });
+
+  it('hostOutsideNetworks: kayıtlı IP hiçbir taranan ağda değilse true', () => {
+    expect(hostOutsideNetworks('192.168.123.100', [wifi])).toBe(true);
+    expect(hostOutsideNetworks(' 192.168.1.50 ', [wifi])).toBe(false);
+    expect(hostOutsideNetworks('', [wifi])).toBe(false);
+    expect(hostOutsideNetworks('epson.local', [wifi])).toBe(false);
+    expect(hostOutsideNetworks('192.168.123.100', [])).toBe(false);
+    expect(
+      hostOutsideNetworks('10.0.0.9', [wifi, { address: '10.0.0.5', prefix: 24, transport: 'ethernet' }]),
+    ).toBe(false);
+  });
+
+  it('scanRange: ilk–son adres', () => {
+    expect(scanRange(wifi)).toBe('192.168.1.1–254');
+    expect(scanRange({ address: '10.20.30.40', prefix: 16, transport: 'wifi' })).toBe('10.20.30.1–254');
+    expect(scanRange({ address: '10.0.0.5', prefix: 22, transport: 'wifi' })).toBe('10.0.0.1–254');
+    expect(scanRange({ address: '192.168.1.5', prefix: 31, transport: 'wifi' })).toBe('');
+    expect(scanRange({ address: 'x', prefix: 24, transport: 'wifi' })).toBe('');
   });
 });

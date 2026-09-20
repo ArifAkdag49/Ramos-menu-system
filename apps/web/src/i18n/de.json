@@ -724,8 +724,10 @@
           "noNetwork": "Keine WLAN- oder LAN-Verbindung — das Gerät mit dem Netzwerk des Druckers verbinden und erneut versuchen.",
           "busy": "Suche läuft bereits — ein paar Sekunden warten und erneut versuchen.",
           "failed": "Suche fehlgeschlagen: {{detail}}",
-          "none": "Kein Drucker im Netzwerk gefunden ({{scanned}} Adressen geprüft · {{network}}). Prüfen, ob der Drucker eingeschaltet und am selben Router wie das Tablet ist; die IP vom Selbsttest-Bon kann auch von Hand eingegeben werden.",
-          "summary": "{{count}} Drucker gefunden · {{scanned}} Adressen geprüft · {{network}}",
+          "none": "Kein Drucker im Netzwerk gefunden ({{scanned}} Adressen geprüft). Prüfen, ob der Drucker eingeschaltet und am selben Router wie das Telefon ist; liegt die IP vom Selbsttest-Bon außerhalb des Bereichs unten, hat der Drucker eine andere Netzwerkeinstellung.",
+          "phone": "Dieses Telefon: {{address}} ({{transport}}) · geprüfter Bereich {{range}}",
+          "outsideNetwork": "Die gespeicherte Adresse {{host}} liegt nicht im Netzwerk dieses Telefons ({{network}}) — der Drucker hat eine andere Netzwerkeinstellung. Entweder die IP des Druckers an dieses Netzwerk anpassen (mit dem Tool des Druckers oder im Router) oder das Telefon mit dem WLAN des Druckers verbinden; die Suche sieht nur das eigene Netzwerk des Telefons.",
+          "summary": "{{count}} Drucker gefunden · {{scanned}} Adressen geprüft",
           "transport": {
             "wifi": "WLAN",
             "ethernet": "LAN"
