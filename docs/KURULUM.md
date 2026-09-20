@@ -360,7 +360,7 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
 
 | | |
 |---|---|
-| Dosya | `C:\Users\PC\Desktop\Ramos APK\ramos-v2.3.0.apk` (v2.3: ağda yazıcı bulma, yazıcı bağlantısı Wi-Fi üzerinden; v2.2: geri tuşu, ePOS-Print; v2.1: arka planda baskı) |
+| Dosya | `Desktop\Ramos APK\ramos-v2.3.0.apk` (v2.3: ağda yazıcı bulma, yazıcı bağlantısı Wi-Fi üzerinden; v2.2: geri tuşu, ePOS-Print; v2.1: arka planda baskı). `ramos-v2.3.0-dahili.apk`: site APK'nın içinde gömülü sürüm (sunucuya yayın olmadan deneme, aşağıya bakın) |
 | Uygulama adı / paket | Ramo's / `com.arxdigital.ramos` |
 | Açtığı adres | https://ramos.arxdigitalsevice.com |
 
@@ -384,9 +384,13 @@ APK kurulamıyorsa: Chrome'da siteyi açın → menü (⋮) → **Uygulamayı y�
 
 > "Uygulama yüklenmedi" / "paket çakışıyor" hatası çıkarsa cihazdaki uygulama başka bir anahtarla imzalanmıştır. O cihazda eski uygulamayı silip v2'yi kurun: yeniden giriş ve bildirim izni gerekir; siparişler sunucuda olduğu için hiçbir şey kaybolmaz.
 
+**v2.3'e geçiş (20.09.2026 — imza anahtarı yenilendi):** v2.3 ve sonrası **yeni** bir anahtarla imzalanır (eski restoran PC'sindeki anahtar artık kullanılmıyor). Bu yüzden v2.2 ve öncesi kurulu her telefon/tablette **bir kez** eski Ramo's uygulamasını silin, sonra `ramos-v2.3.0.apk`'yı kurun, giriş yapın ve bildirim iznini yeniden verin. Siparişler, menü ve ayarlar sunucuda olduğu için hiçbir şey kaybolmaz. Bundan sonraki sürümler yine üst üste kurulur.
+
+**Sunucuya yayın olmadan deneme (`-dahili` APK):** Normal APK siteyi canlı adresten açar; sitedeki yeni bir özellik telefonda ancak site sunucuya yayınlanınca görünür. `ramos-v2.3.0-dahili.apk` ise sitenin o anki derlemesini **kendi içinde** taşır: sunucuya dokunmadan kurulup denenir (Ağdaki yazıcıyı bul dahil), internet yalnız Supabase için gerekir. Bedeli: bu kipte web değişiklikleri yeni APK gerektirir, bildirime dokununca açılan sayfa canlı siteden gelir. Deneme bitince normal APK'yı üzerine kurmak yeterlidir (aynı paket, aynı imza).
+
 **Güncelleme:** Menü, ekranlar ve düzeltmeler siteden geldiği için APK'yı yeniden kurmak gerekmez. Yeni APK yalnız uygulamanın adı, simgesi ya da Android tarafı (bildirim, yazıcı eklentisi) değişince üretilir (Ek A.3). Yeni APK eskisinin üzerine kurulur, veriler silinmez.
 
-> **İmza anahtarı:** Uygulama, `C:\Users\PC\Desktop\Ramos APK` klasöründeki `ramos-release.keystore` ile imzalanır (parolası aynı klasördeki anahtar notunda). Bu dosyalar **repoda yoktur**. Kaybedilirse cihazlardaki uygulamaya güncelleme kurulamaz: uygulama silinip yeni anahtarla imzalanmış APK kurulmak zorunda kalınır. Klasörün bir yedeğini güvenli bir yerde (ör. şifreli USB bellek) saklayın.
+> **İmza anahtarı:** Uygulama, geliştirici bilgisayarındaki `Desktop\Ramos APK` klasöründeki `ramos-release.keystore` ile imzalanır (parolası ve sertifika özeti aynı klasördeki `OKU-BENI-anahtar.txt` notunda; 20.09.2026'dan beri geçerli anahtar `C:\Users\arifa\Desktop\Ramos APK` altındadır, eski `C:\Users\PC\…` anahtarı emekli). Bu dosyalar **repoda yoktur**. Kaybedilirse cihazlardaki uygulamaya güncelleme kurulamaz: uygulama silinip yeni anahtarla imzalanmış APK kurulmak zorunda kalınır. Klasörün bir yedeğini güvenli bir yerde (ör. şifreli USB bellek) saklayın.
 
 ### 5.4 Giriş, mesai ve dil
 
@@ -780,8 +784,8 @@ Bu tablo **yalnız yerleri** gösterir; değerler hiçbir belgeye, sohbete ya da
 | Sunucu erişimi | `C:\Users\PC\.ssh\tvds_deploy` | Plesk sunucusuna root SSH anahtarı |
 | Edge Function secret'ları | Supabase projesi → Edge Functions → Secrets | `VAPID_PUBLIC_JWK`, `VAPID_PRIVATE_JWK`, `VAPID_SUBJECT`, `WEBHOOK_SECRET` (`admin-staff` ayrıca `STAFF_EMAIL_DOMAIN` okur) |
 | Vault sırları | Supabase projesi → Vault | `notify_ready_url`, `notify_ready_webhook_secret` |
-| Android imza anahtarı | **`C:\Users\PC\Desktop\Ramos APK\ramos-release.keystore`** + aynı klasördeki **`OKU-BENI-anahtar.txt`** (parola) | Repoda yok. Kaybedilirse uygulamaya güncelleme kurulamaz; güvenli bir yedeği tutulmalı |
-| Firebase dosyaları | **`C:\Users\PC\Desktop\Ramos APK\firebase\`**: `google-services.json` + hizmet hesabı JSON'u | Repoda yok, kimseyle paylaşılmaz ([§5.5](#55-android-bildirimleri-için-firebase-bir-kerelik)). Firebase projesinin sahibi işletmenin Google hesabıdır |
+| Android imza anahtarı | **`C:\Users\arifa\Desktop\Ramos APK\ramos-release.keystore`** + aynı klasördeki **`OKU-BENI-anahtar.txt`** (parola + sertifika SHA-256) — 20.09.2026'da yenilendi; eski `C:\Users\PC\…` anahtarı emekli | Repoda yok. Kaybedilirse uygulamaya güncelleme kurulamaz; güvenli bir yedeği tutulmalı |
+| Firebase dosyaları | **`C:\Users\arifa\Desktop\Ramos APK\firebase\`**: `google-services.json` (20.09.2026: v2.2 APK'sındaki değerlerden yeniden oluşturuldu; hizmet hesabı JSON'u burada yok, Supabase secret'ında) | Repoda yok, kimseyle paylaşılmaz ([§5.5](#55-android-bildirimleri-için-firebase-bir-kerelik)). Firebase projesinin sahibi işletmenin Google hesabıdır |
 | FCM sunucu anahtarı | Supabase projesi → Edge Functions → Secrets → `FCM_SERVICE_ACCOUNT` | Hizmet hesabı JSON'unun içeriği; `notify-ready` Android bildirimlerini bununla gönderir |
 
 **Kurallar:**
@@ -830,7 +834,8 @@ Kurulu bir PC'de aynı komutlar `%LOCALAPPDATA%\RamosPrintAgent` klasöründe `n
 v2'den itibaren uygulama `apps/mobile` (Capacitor, uzak URL) altındadır; `apps/android` (TWA, v1) yerini almıştır.
 
 1. `apps/mobile/android/app/build.gradle` içinde `versionCode`'u artırın ve `versionName`'i güncelleyin.
-2. `powershell -ExecutionPolicy Bypass -File apps/mobile/build-apk.ps1`. Betik `Desktop\Ramos APK\firebase\google-services.json` varsa uygulamaya kopyalar (yoksa APK bildirimsiz derlenir ve uyarı yazar), Android derlemesini yapar, `Desktop\Ramos APK\ramos-release.keystore` ile imzalar ve `Desktop\Ramos APK\ramos-v<sürüm>.apk` yazar. Parola anahtar klasöründeki nottan okunur. Android SDK `%LOCALAPPDATA%\Android\Sdk` altında olmalıdır.
+2. `powershell -ExecutionPolicy Bypass -File apps/mobile/build-apk.ps1`. Betik `Desktop\Ramos APK\firebase\google-services.json` varsa uygulamaya kopyalar (yoksa APK bildirimsiz derlenir ve uyarı yazar), Android derlemesini yapar, `Desktop\Ramos APK\ramos-release.keystore` ile imzalar ve `Desktop\Ramos APK\ramos-v<sürüm>.apk` yazar. Parola ve beklenen sertifika özeti anahtar klasöründeki nottan okunur (`Parola :` ve `SHA-256 :` satırları). JDK ve Android SDK: `JAVA_HOME` / `ANDROID_HOME` ortam değişkenleri varsa onlar, yoksa `C:\Program Files\Eclipse Adoptium\…` ve `%LOCALAPPDATA%\Android\Sdk`. Taşınabilir kurulum (JDK 21 zip + commandline-tools ile `platforms;android-36`, `build-tools;35.0.0`) yeterlidir.
+   - `-Bundled`: siteyi APK'nın içine gömer (`apps/web/dist` gerekir: önce `apps/web` içinde `npm run build`); çıktı `ramos-v<sürüm>-dahili.apk`. Sunucuya yayın yapmadan telefonda deneme için (§5.3).
 3. Web tarafı (`apps/web/src/native`, `apps/web/src/features/station`) `@capacitor/*` paketlerini içe aktarmaz; uygulamanın enjekte ettiği `window.Capacitor.Plugins` köprüsünü kullanır. Web yayını (A.1) uygulamayı da günceller; APK yalnız yerel eklenti ya da Firebase değişince gerekir.
 
 ### A.4 "Hazır" bildirim hattı

@@ -24,7 +24,10 @@ param(
   [string]$KeyDir = "$env:USERPROFILE\Desktop\Ramos APK",
   # Ortam değişkeni varsa o (taşınabilir SDK/JDK); yoksa Android Studio / Adoptium'un olağan yolları.
   [string]$SdkDir = $(if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { "$env:LOCALAPPDATA\Android\Sdk" }),
-  [string]$JavaHome = $(if ($env:JAVA_HOME) { $env:JAVA_HOME } else { 'C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot' })
+  [string]$JavaHome = $(if ($env:JAVA_HOME) { $env:JAVA_HOME } else { 'C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot' }),
+  # Site APK'nın İÇİNE gömülür (apps/web/dist): sunucuya yayın yapmadan telefonda deneme. Çıktı adı
+  # ramos-v<sürüm>-dahili.apk. Normal APK canlı siteyi açar; ikisi aynı paket + aynı imza → üst üste kurulur.
+  [switch]$Bundled
 )
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
@@ -55,7 +58,16 @@ if (Test-Path -LiteralPath $gs) {
   Write-Warning "google-services.json yok ($gs) — APK FCM bildirimleri olmadan derleniyor."
 }
 
-# 2) Capacitor eşitleme
+# 2) Capacitor eşitleme. -Bundled: capacitor.config.ts RAMOS_BUNDLED=1 görünce webDir=../web/dist, server.url yok.
+if ($Bundled) {
+  if (-not (Test-Path -LiteralPath (Join-Path $here '..\web\dist\index.html'))) {
+    throw 'apps/web/dist yok — önce apps/web içinde üretim derlemesi (npm run build) yapın.'
+  }
+  $env:RAMOS_BUNDLED = '1'
+  Write-Host 'Dahili (site gömülü) APK derleniyor.'
+} else {
+  $env:RAMOS_BUNDLED = ''
+}
 Push-Location -LiteralPath $here
 try {
   & npx cap sync android
@@ -77,7 +89,8 @@ $buildTools = Get-ChildItem -LiteralPath (Join-Path $SdkDir 'build-tools') -Dire
   Sort-Object { [version]($_.Name -replace '[^0-9.]', '') } | Select-Object -Last 1
 $apksigner = Join-Path $buildTools.FullName 'apksigner.bat'
 $version = (Select-String -LiteralPath (Join-Path $android 'app\build.gradle') -Pattern 'versionName\s+"([^"]+)"').Matches[0].Groups[1].Value
-$out = Join-Path $KeyDir "ramos-v$version.apk"
+$suffix = if ($Bundled) { '-dahili' } else { '' }
+$out = Join-Path $KeyDir "ramos-v$version$suffix.apk"
 
 $env:RAMOS_KS_PW = $pwMatch.Matches[0].Groups[1].Value
 try {
