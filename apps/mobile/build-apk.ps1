@@ -22,19 +22,23 @@
 [CmdletBinding()]
 param(
   [string]$KeyDir = "$env:USERPROFILE\Desktop\Ramos APK",
-  [string]$SdkDir = "$env:LOCALAPPDATA\Android\Sdk",
-  [string]$JavaHome = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot'
+  # Ortam değişkeni varsa o (taşınabilir SDK/JDK); yoksa Android Studio / Adoptium'un olağan yolları.
+  [string]$SdkDir = $(if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { "$env:LOCALAPPDATA\Android\Sdk" }),
+  [string]$JavaHome = $(if ($env:JAVA_HOME) { $env:JAVA_HOME } else { 'C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot' })
 )
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 $android = Join-Path $here 'android'
-$expectedSha = 'DDD993716BAA17D75952758F8D509505E158FC57446C7F7711FBC086073534F4'
 
 $keystore = Join-Path $KeyDir 'ramos-release.keystore'
 $pwFile = Join-Path $KeyDir 'OKU-BENI-anahtar.txt'
 if (-not (Test-Path -LiteralPath $keystore)) { throw "Anahtar yok: $keystore" }
 $pwMatch = Select-String -LiteralPath $pwFile -Pattern '^Parola\s*:\s*(\S+)' | Select-Object -First 1
 if (-not $pwMatch) { throw "Parola okunamadı: $pwFile" }
+# Beklenen imza özeti: anahtar notundaki "SHA-256 : <64 hex>" satırı (anahtar yenilenince not güncellenir);
+# satır yoksa ilk (2026-09-15) anahtarın özeti. Farklı imza eski kurulumun üzerine güncellenemez.
+$shaNote = Select-String -LiteralPath $pwFile -Pattern '^SHA-256\s*:\s*([0-9A-Fa-f]{64})' | Select-Object -First 1
+$expectedSha = if ($shaNote) { $shaNote.Matches[0].Groups[1].Value.ToUpperInvariant() } else { 'DDD993716BAA17D75952758F8D509505E158FC57446C7F7711FBC086073534F4' }
 
 if (-not (Test-Path -LiteralPath $JavaHome)) { throw "JDK 21 yok: $JavaHome" }
 $env:JAVA_HOME = $JavaHome
