@@ -550,6 +550,17 @@ Bilinmesi gerekenler:
 - Kategorilerin İngilizce ve Arapça adları **Menü → Kategoriler**'de düzenlenir; boş bırakılırsa Almanca ad görünür.
 - Kod sitenin adresini taşır (`…/menu`). Alan adı değişirse QR kodu yeniden indirip basın.
 
+**22.09.2026'dan beri müşteri menüsü arx-panel'de yayınlanıyor.** Basılı QR'lar aynen geçerli:
+`ramos.arxdigitalsevice.com/menu` adresine gelen telefon `menu.arxdigitalsevice.com/r/ramos/menu`
+adresine yönlendirilir (geçici yönlendirme, `apps/web/public/.htaccess`). Yeni menüde ürün
+çeşitleri de fiyatlarıyla görünür (ör. *Hähnchen 7,50 € / Kalb 8,50 €*).
+
+- **Karşılaştırmak ya da arıza hâlinde** eski menü hâlâ açılabilir: `…/menu?eski=1`.
+- **Geri dönmek** için `.htaccess`'teki yönlendirme satırını kaldırıp yayın almak yeterlidir.
+- Fiyat, ad, açıklama ve **Tükendi** değişiklikleri iki panelde de yapılabilir; sistemler
+  birbirini eşitler (son değişiklik geçerlidir). Yeni ürün ve silme de iki yönlüdür; Ramos'ta
+  ürün silinmez, **pasife alınır** (siparişler ürüne bağlıdır).
+
 ---
 
 ## 7. Günlük akış
