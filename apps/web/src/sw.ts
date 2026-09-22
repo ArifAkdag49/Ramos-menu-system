@@ -37,6 +37,9 @@ registerRoute(
       /^\/\.well-known\//,
       // Uzantılı adresler (ikon, manifest, görsel) SPA sayfası değildir.
       /\/[^/?]+\.[a-z0-9]+(?:\?.*)?$/i,
+      // QR menüsü sunucuda arx-panel'e yönlendiriliyor (public/.htaccess). Önbellekten açılırsa
+      // yönlendirme hiç görülmez: bu yol her zaman ağdan sorulur.
+      /^\/menu(?:\/|$)/,
     ],
   }),
 );

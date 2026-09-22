@@ -148,8 +148,14 @@
         "rangeMinMax": "{{min}}–{{max}} auswählen"
       }
     },
-    "ready": { "title": "Fertig", "empty": "Kein fertiges Essen wartet" },
-    "profile": { "title": "Profil", "language": "Sprache" },
+    "ready": {
+      "title": "Fertig",
+      "empty": "Kein fertiges Essen wartet"
+    },
+    "profile": {
+      "title": "Profil",
+      "language": "Sprache"
+    },
     "actions": {
       "markServed": "Serviert",
       "markServedDrink": "Getränk serviert",
@@ -173,8 +179,12 @@
       "offline": "Kein Internet — der Bildschirm aktualisiert sich automatisch, sobald du wieder online bist",
       "realtimeOffline": "Live-Verbindung wird wiederhergestellt"
     },
-    "printBadge": { "queued": "Wird gedruckt" },
-    "nav": { "label": "Kellner-Navigation" },
+    "printBadge": {
+      "queued": "Wird gedruckt"
+    },
+    "nav": {
+      "label": "Kellner-Navigation"
+    },
     "readyAlert": {
       "title": "{{table}} · {{orderNo}} fertig",
       "more_one": "+{{count}} weitere Bestellung fertig",
@@ -205,7 +215,7 @@
         "startFailed": "Hintergrunddienst konnte nicht starten ({{detail}}) — erneut versuchen",
         "batteryHint": "Der Android-Energiesparmodus kann das Drucken im Hintergrund stoppen.",
         "battery": "Akku-Beschränkung aufheben",
-      "autoHost": "Die gespeicherte Adresse {{saved}} antwortet nicht; der Drucker wurde im Netzwerk unter {{host}} gefunden und die Bons gehen dorthin. Dauerhaft übernehmen: Admin → Einstellungen → Druckerverbindung → Drucker im Netzwerk suchen → Diesen Drucker verwenden → Speichern."
+        "autoHost": "Die gespeicherte Adresse {{saved}} antwortet nicht; der Drucker wurde im Netzwerk unter {{host}} gefunden und die Bons gehen dorthin. Dauerhaft übernehmen: Admin → Einstellungen → Druckerverbindung → Drucker im Netzwerk suchen → Diesen Drucker verwenden → Speichern."
       }
     },
     "start": {
@@ -213,8 +223,14 @@
       "hint": "Für Ton und Bildschirm-Sperre antippen",
       "button": "Starten"
     },
-    "columns": { "active": "In der Küche", "ready": "Fertig" },
-    "empty": { "active": "Keine Bestellung in der Küche", "ready": "Kein fertiges Essen wartet" },
+    "columns": {
+      "active": "In der Küche",
+      "ready": "Fertig"
+    },
+    "empty": {
+      "active": "Keine Bestellung in der Küche",
+      "ready": "Kein fertiges Essen wartet"
+    },
     "elapsed": {
       "warn": "WARTET",
       "late": "VERSPÄTET",
@@ -232,7 +248,9 @@
       "nachbestellung": "NACHBESTELLUNG",
       "storno": "STORNO"
     },
-    "printBadge": { "queued": "In der Warteschlange" },
+    "printBadge": {
+      "queued": "In der Warteschlange"
+    },
     "soldOut": {
       "title": "Ausverkauft",
       "button": "Ausverkauft",
@@ -817,7 +835,10 @@
         "stateOpen": "Offen",
         "empty": "Kein Tisch offen — Tische werden im Kellner-Bildschirm geöffnet"
       },
-      "audit": { "title": "Letzte Aktivitäten", "empty": "Noch keine Aktivitäten" }
+      "audit": {
+        "title": "Letzte Aktivitäten",
+        "empty": "Noch keine Aktivitäten"
+      }
     },
     "printer": {
       "title": "Drucker",
@@ -1056,6 +1077,8 @@
     "station_id_invalid": "Kennung der Druckstation ungültig — App neu öffnen",
     "fcm_token_invalid": "Benachrichtigungs-Registrierung ungültig — Benachrichtigungen aus- und wieder einschalten",
     "station_device_name_invalid": "Tablet-Name muss 1–60 Zeichen lang sein",
-    "station_device_not_found": "Tablet nicht gefunden — Liste aktualisieren"
+    "station_device_not_found": "Tablet nicht gefunden — Liste aktualisieren",
+    "menu_sync_client_name_invalid": "Name muss 1–60 Zeichen lang sein",
+    "menu_sync_client_not_found": "Sync-Verbindung nicht gefunden"
   }
 }

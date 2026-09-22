@@ -1,5 +1,15 @@
 RewriteEngine On
 RewriteBase /
+
+# QR menüsü artık arx-panel'de (menu.arxdigitalsevice.com). Basılı QR'lar bu adrese geliyor:
+# ramos.arxdigitalsevice.com/menu → panel menüsü. 302 (geçici) bilerek seçildi; kalıcı (301)
+# tarayıcıda ezbere kaydolur ve geri dönmek istersek aylarca temizlenmez.
+# Kaçış kapısı: /menu?eski=1 eski (Ramos içindeki) menüyü açar — karşılaştırma ve arıza hâli için.
+# `src/sw.ts` bu yolu service worker'ın gezinme yakalamasından çıkarır, yoksa telefonda
+# önbellekteki eski menü açılır ve yönlendirme hiç görülmez.
+RewriteCond %{QUERY_STRING} !(^|&)eski=1(&|$)
+RewriteRule ^menu/?$ https://menu.arxdigitalsevice.com/r/ramos/menu [R=302,L]
+
 RewriteRule ^index\.html$ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

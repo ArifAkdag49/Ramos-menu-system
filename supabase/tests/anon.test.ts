@@ -91,6 +91,22 @@ describe('anon erişimi (Görev 27)', () => {
     expect(feed.filter((r) => r.anon || r.authenticated || !r.service).map((r) => r.fn)).toEqual([]);
   });
 
+  it('0016 fonksiyonları var ve anon için kapalı; menu_sync_* personele de kapalı (yalnız service_role)', async () => {
+    for (const name of ['create_menu_sync_client', 'revoke_menu_sync_client']) {
+      expect(fns.find((f) => f.proname === name)?.anon_exec, name).toBe(false);
+    }
+    const sync = await sql<{ fn: string; anon: boolean; authenticated: boolean; service: boolean }>(`
+      select p.oid::regprocedure::text as fn,
+             has_function_privilege('anon', p.oid, 'execute') as anon,
+             has_function_privilege('authenticated', p.oid, 'execute') as authenticated,
+             has_function_privilege('service_role', p.oid, 'execute') as service
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in ('menu_sync_pull', 'menu_sync_push', 'menu_sync_touch')`);
+    expect(sync).toHaveLength(3);
+    expect(sync.filter((r) => r.anon || r.authenticated || !r.service).map((r) => r.fn)).toEqual([]);
+  });
+
   it('public şemadaki hiçbir fonksiyon anon tarafından çağrılamaz (PostgREST)', async () => {
     const failures: string[] = [];
     for (const { proname, in_args } of fns) {

@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { sql } from './helpers/sql';
 
 const TABLES = [
-  'audit_log', 'categories', 'daily_counters', 'dining_tables', 'ingredients', 'option_groups',
-  'options', 'order_items', 'orders', 'print_jobs', 'printer_status', 'product_ingredients',
-  'product_option_groups', 'product_variants', 'products', 'profiles', 'push_subscriptions',
-  'sdp_printers', 'settings', 'station_devices', 'table_sessions',
+  'audit_log', 'categories', 'daily_counters', 'dining_tables', 'ingredients', 'menu_sync_clients',
+  'option_groups', 'options', 'order_items', 'orders', 'print_jobs', 'printer_status',
+  'product_ingredients', 'product_option_groups', 'product_variants', 'products', 'profiles',
+  'push_subscriptions', 'sdp_printers', 'settings', 'station_devices', 'table_sessions',
 ];
 
 describe('0001 şema', () => {
-  it('21 tablo var ve hepsinde RLS açık', async () => {
+  it('22 tablo var ve hepsinde RLS açık', async () => {
     const rows = await sql<{ relname: string; relrowsecurity: boolean }>(`
       select c.relname, c.relrowsecurity
       from pg_class c join pg_namespace n on n.oid = c.relnamespace

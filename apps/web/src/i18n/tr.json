@@ -148,8 +148,14 @@
         "rangeMinMax": "{{min}}–{{max}} seçin"
       }
     },
-    "ready": { "title": "Hazır", "empty": "Bekleyen hazır yemek yok" },
-    "profile": { "title": "Profil", "language": "Dil" },
+    "ready": {
+      "title": "Hazır",
+      "empty": "Bekleyen hazır yemek yok"
+    },
+    "profile": {
+      "title": "Profil",
+      "language": "Dil"
+    },
     "actions": {
       "markServed": "Teslim edildi",
       "markServedDrink": "Teslim edildi (içecek)",
@@ -173,8 +179,12 @@
       "offline": "İnternet yok — ekran bağlantı gelince kendiliğinden güncellenir",
       "realtimeOffline": "Canlı bağlantı yeniden kuruluyor"
     },
-    "printBadge": { "queued": "Yazdırılıyor" },
-    "nav": { "label": "Garson gezinmesi" },
+    "printBadge": {
+      "queued": "Yazdırılıyor"
+    },
+    "nav": {
+      "label": "Garson gezinmesi"
+    },
     "readyAlert": {
       "title": "{{table}} · {{orderNo}} hazır",
       "more_one": "+{{count}} sipariş daha hazır",
@@ -205,7 +215,7 @@
         "startFailed": "Arka plan hizmeti başlatılamadı ({{detail}}) — tekrar deneyin",
         "batteryHint": "Android pil tasarrufu arka planda baskıyı durdurabilir.",
         "battery": "Pil kısıtlamasını kaldır",
-      "autoHost": "Kayıtlı adres {{saved}} cevap vermiyor; yazıcı ağda {{host}} adresinde bulundu ve fişler oraya basılıyor. Kalıcı olması için Admin → Ayarlar → Yazıcı bağlantısı → Ağdaki yazıcıyı bul → Bu yazıcıyı kullan → Kaydet."
+        "autoHost": "Kayıtlı adres {{saved}} cevap vermiyor; yazıcı ağda {{host}} adresinde bulundu ve fişler oraya basılıyor. Kalıcı olması için Admin → Ayarlar → Yazıcı bağlantısı → Ağdaki yazıcıyı bul → Bu yazıcıyı kullan → Kaydet."
       }
     },
     "start": {
@@ -213,8 +223,14 @@
       "hint": "Ses ve ekranın açık kalması için dokun",
       "button": "Başlat"
     },
-    "columns": { "active": "Mutfakta", "ready": "Hazır" },
-    "empty": { "active": "Mutfakta bekleyen sipariş yok", "ready": "Hazır bekleyen sipariş yok" },
+    "columns": {
+      "active": "Mutfakta",
+      "ready": "Hazır"
+    },
+    "empty": {
+      "active": "Mutfakta bekleyen sipariş yok",
+      "ready": "Hazır bekleyen sipariş yok"
+    },
     "elapsed": {
       "warn": "BEKLİYOR",
       "late": "GECİKTİ",
@@ -232,7 +248,9 @@
       "nachbestellung": "EK SİPARİŞ",
       "storno": "İPTAL"
     },
-    "printBadge": { "queued": "Kuyrukta" },
+    "printBadge": {
+      "queued": "Kuyrukta"
+    },
     "soldOut": {
       "title": "Tükendi",
       "button": "Tükendi",
@@ -817,7 +835,10 @@
         "stateOpen": "Açık",
         "empty": "Açık masa yok — masalar garson ekranından açılır"
       },
-      "audit": { "title": "Son hareketler", "empty": "Henüz hareket yok" }
+      "audit": {
+        "title": "Son hareketler",
+        "empty": "Henüz hareket yok"
+      }
     },
     "printer": {
       "title": "Yazıcı",
@@ -1056,6 +1077,8 @@
     "station_id_invalid": "Yazıcı istasyonu kimliği geçersiz — uygulamayı yeniden aç",
     "fcm_token_invalid": "Bildirim kaydı geçersiz — bildirimleri kapatıp yeniden aç",
     "station_device_name_invalid": "Tablet adı 1–60 karakter olmalı",
-    "station_device_not_found": "Tablet bulunamadı — listeyi tazele"
+    "station_device_not_found": "Tablet bulunamadı — listeyi tazele",
+    "menu_sync_client_name_invalid": "Ad 1–60 karakter olmalı",
+    "menu_sync_client_not_found": "Eşitleme bağlantısı bulunamadı"
   }
 }

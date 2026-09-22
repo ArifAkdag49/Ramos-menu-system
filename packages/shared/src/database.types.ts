@@ -149,6 +149,36 @@ export type Database = {
         }
         Relationships: []
       }
+      menu_sync_clients: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_error: string | null
+          last_seen_at: string | null
+          name: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_seen_at?: string | null
+          name: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_seen_at?: string | null
+          name?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
       option_groups: {
         Row: {
           admin_label: string
@@ -645,6 +675,7 @@ export type Database = {
           name: string
           slug: string
           sort: number
+          sync_updated_at: string
           updated_at: string
         }
         Insert: {
@@ -662,6 +693,7 @@ export type Database = {
           name: string
           slug: string
           sort?: number
+          sync_updated_at?: string
           updated_at?: string
         }
         Update: {
@@ -679,6 +711,7 @@ export type Database = {
           name?: string
           slug?: string
           sort?: number
+          sync_updated_at?: string
           updated_at?: string
         }
         Relationships: [
@@ -1018,6 +1051,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_menu_sync_client: { Args: { p_name: string }; Returns: Json }
       create_sdp_printer: { Args: { p_name: string }; Returns: Json }
       current_business_day_start: { Args: never; Returns: string }
       delete_push_subscription: {
@@ -1034,6 +1068,18 @@ export type Database = {
       is_on_duty: { Args: { p_since: string }; Returns: boolean }
       mark_order_ready: { Args: { p_order_id: string }; Returns: undefined }
       mark_order_served: { Args: { p_order_id: string }; Returns: undefined }
+      menu_sync_pull: {
+        Args: { p_limit?: number; p_since: string; p_token_hash: string }
+        Returns: Json
+      }
+      menu_sync_push: {
+        Args: { p_items: Json; p_token_hash: string }
+        Returns: Json
+      }
+      menu_sync_touch: {
+        Args: { p_error: string; p_token_hash: string }
+        Returns: string
+      }
       move_table_session: {
         Args: { p_session_id: string; p_target_table_id: string }
         Returns: undefined
@@ -1044,6 +1090,7 @@ export type Database = {
       report_range: { Args: { p_from: string; p_to: string }; Returns: Json }
       reprint_order: { Args: { p_order_id: string }; Returns: undefined }
       retry_print_job: { Args: { p_job_id: string }; Returns: undefined }
+      revoke_menu_sync_client: { Args: { p_id: string }; Returns: undefined }
       revoke_station_device: { Args: { p_id: string }; Returns: undefined }
       rotate_sdp_printer_token: { Args: { p_id: string }; Returns: Json }
       save_fcm_token: {
