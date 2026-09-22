@@ -737,6 +737,8 @@ Kısmi arızalar:
 
 Veritabanı Supabase'in **ücretsiz** planındadır. Proje **7 günden uzun** süre kullanılmazsa Supabase onu **uyutur**. Restoran PC'sindeki yazdırma programı birkaç saniyede bir bağlandığı için **PC açık kaldıkça** bu olmaz.
 
+Restoran kapalıyken de uyumasın diye **sunucu günde iki kez** (07:10 ve 19:10 UTC) menüyü çeken küçük bir istek atar (`/etc/cron.d/ramos-ping`, betik `/opt/backups/ramos/ramos-ping.sh`, günlük `/var/log/ramos-ping.log`, kaynak `deploy/keepalive/`). Başarılı satır şöyledir: `2026-09-22T21:10:48+00:00 ok 200 45465`. Yani uyutma yalnız **sunucu da uzun süre kapalı kalırsa** olabilir.
+
 Uzun tatilde PC kapatılacaksa, dönüşte sistem açılmıyor olabilir:
 
 1. Supabase'in gönderdiği e-postadaki bağlantıya tıklayın **ya da** supabase.com'da proje sahibi hesabıyla giriş yapın (organizasyon **Cicekci**, proje **ramos-siparis**).

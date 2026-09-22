@@ -1,0 +1,4 @@
+# Ramo's — Supabase'i uyanık tutan günlük istek (docs/KURULUM.md §10).
+# Günde iki kez: 07:10 ve 19:10 UTC. Biri kaçarsa diğeri yetişir; yedek cron'larıyla (04:15, 04:30) çakışmaz.
+# Kurulum: /etc/cron.d/ramos-ping (root, 0644, LF satır sonu). Kaynak: deploy/keepalive/ramos-ping.cron
+10 7,19 * * * root /opt/backups/ramos/ramos-ping.sh >> /var/log/ramos-ping.log 2>&1
