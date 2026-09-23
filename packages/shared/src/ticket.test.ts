@@ -21,8 +21,9 @@ describe('renderTicket', () => {
   const texts = lines.flatMap((l) => (l.kind === 'text' ? [l.text] : l.kind === 'rule' ? ['---'] : []));
 
   it('başlık büyük ve ortalı, ek sipariş bandı, kutulu masa ve meta', () => {
-    expect(lines[0]).toMatchObject({ kind: 'text', text: "     RAMO'S · KÜCHE", width: 2, height: 2, bold: true });
-    expect(lines[1]).toMatchObject({ text: 'NACHBESTELLUNG', invert: true, height: 2 });
+    // lines[0] üstteki tutamak boşluğudur (feed 2); başlık ve bant ondan sonra gelir.
+    expect(lines[1]).toMatchObject({ kind: 'text', text: "     RAMO'S · KÜCHE", width: 2, height: 2, bold: true });
+    expect(lines[2]).toMatchObject({ text: 'NACHBESTELLUNG', invert: true, height: 2 });
     expect(texts).toEqual(expect.arrayContaining(['      +----------+', '      | TISCH 12 |']));
     expect(lines.find((l) => l.kind === 'text' && l.text.includes('| TISCH 12 |')))
       .toMatchObject({ width: 2, height: 2, bold: true });
@@ -79,7 +80,7 @@ describe('renderTicket', () => {
   it('ilk turda bant yok; STORNO ve TISCHWECHSEL bantları', () => {
     expect(linesToText(renderTicket({ ...order, round: 1 }))).not.toContain('NACHBESTELLUNG');
     const st = renderTicket({ ...order, kind: 'storno', refOrderNo: 47, reason: 'Gast hat storniert' });
-    expect(st[1]).toMatchObject({ text: '*** STORNO ***' });
+    expect(st[2]).toMatchObject({ text: '*** STORNO ***' });
     expect(linesToText(st)).toContain('zu Bestellung #047');
     expect(linesToText(st)).toContain('15.09.2026 19:42 · Kellner: Ahmet'); // R47: STORNO da tarih + garson bilgisi taşır
     expect(linesToText(st)).toContain('Grund: Gast hat storniert');
@@ -101,8 +102,8 @@ describe('renderTicket', () => {
   });
 
   it('NACHBESTELLUNG (addition) ve NACHDRUCK (reprint) bantları', () => {
-    expect(renderTicket({ ...order, kind: 'addition' })[1]).toMatchObject({ text: 'NACHBESTELLUNG' });
-    expect(renderTicket({ ...order, kind: 'reprint' })[1]).toMatchObject({ text: 'NACHDRUCK' });
+    expect(renderTicket({ ...order, kind: 'addition' })[2]).toMatchObject({ text: 'NACHBESTELLUNG' });
+    expect(renderTicket({ ...order, kind: 'reprint' })[2]).toMatchObject({ text: 'NACHDRUCK' });
   });
 
   it('TESTDRUCK: yazıcı bilgisi, sampleLine ve örnek kalemler', () => {
@@ -113,7 +114,7 @@ describe('renderTicket', () => {
       items: [{ qty: 1, code: null, name: 'Testkalem', isBeverage: false, variant: null, without: [], groups: [], note: null }],
     };
     const t = renderTicket(test);
-    expect(t[1]).toMatchObject({ text: 'TESTDRUCK', invert: true, height: 2 });
+    expect(t[2]).toMatchObject({ text: 'TESTDRUCK', invert: true, height: 2 });
     const tTexts = linesToText(t);
     expect(tTexts).toContain('15.09.2026 19:42'); // R45: TESTDRUCK tarihi de basar
     expect(tTexts).toContain('Drucker: 192.168.123.100:9100');
@@ -224,5 +225,27 @@ describe('linesToText', () => {
     expect(rows[3]).toBe('');
     expect(rows[4]).toBe('');
     expect(rows.length).toBe(5);
+  });
+});
+
+describe('fişin başı: tutamak boşluğu ve başlıksız fiş', () => {
+  it('her fiş iki boş satırla başlar (koparıp yapıştırmak için üstte pay)', () => {
+    const lines = renderTicket(order);
+    expect(lines[0]).toEqual({ kind: 'feed', lines: 2 });
+  });
+
+  it('başlık boşsa hiç basılmaz: boşluktan sonra doğrudan masa kutusu gelir', () => {
+    const lines = renderTicket({ ...order, header: '', round: 1 }); // ilk tur: bant da yok
+    const metin = lines.filter((l): l is Extract<typeof l, { kind: 'text' }> => l.kind === 'text');
+    expect(metin.some((l) => l.text.includes("RAMO'S"))).toBe(false);
+    expect(metin[0]?.text).toContain('+---');   // kutunun üst kenarı
+    expect(metin[1]?.text).toContain('TISCH');
+  });
+
+  it('başlık doluysa eskisi gibi en üstte büyük basılır', () => {
+    const lines = renderTicket(order);
+    const ilk = lines.find((l) => l.kind === 'text') as Extract<(typeof lines)[number], { kind: 'text' }>;
+    expect(ilk.text).toContain("RAMO'S");
+    expect(ilk.width).toBe(2);
   });
 });

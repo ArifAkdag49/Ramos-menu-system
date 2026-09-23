@@ -301,10 +301,16 @@ export function renderTicket(p: TicketPayload, opts: { columns?: number; transli
   const clean = (s: string): string => (doTransliterate ? transliterate(sanitize(s)) : sanitize(s));
 
   const lines: Line[] = [];
+  // Üstte tutamak boşluğu: fiş koparılıp bir yere yapıştırılıyor, kesim payının üstünde parmakla
+  // tutulacak boş bir şerit kalsın (mutfak isteği).
+  lines.push({ kind: 'feed', lines: 2 });
   // Başlık ("RAMO'S") büyük basılır; 24 kolonluk çift genişliğe sığmıyorsa normal boyda ortalanır.
+  // Ayarlarda başlık boş bırakılırsa hiç basılmaz: fişin en üstünde doğrudan masa kutusu görünür.
   const header = clean(p.header);
-  if (header.length <= DOUBLE_WIDTH_BUDGET) pushText(lines, centerWide(header), { width: 2, height: 2, bold: true });
-  else pushText(lines, header, { align: 'center', bold: true });
+  if (header) {
+    if (header.length <= DOUBLE_WIDTH_BUDGET) pushText(lines, centerWide(header), { width: 2, height: 2, bold: true });
+    else pushText(lines, header, { align: 'center', bold: true });
+  }
 
   const banner = bannerFor(p);
   if (banner) pushText(lines, banner, { align: 'center', bold: true, invert: true, height: 2 });
