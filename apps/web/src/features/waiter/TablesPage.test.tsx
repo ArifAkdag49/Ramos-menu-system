@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../i18n';
 
 const rows = [
@@ -43,9 +43,17 @@ const rows = [
   },
 ];
 
-vi.mock('../../data/tables', () => ({ useTableOverview: () => rows }));
+// R94: ekran artık ham sorguyu okuyor (tazeleme göstergesi için); `fetching` testten sürülür.
+const state = vi.hoisted(() => ({ fetching: false }));
+vi.mock('../../data/tables', () => ({
+  useTableOverviewQuery: () => ({ data: rows, isFetching: state.fetching }),
+}));
 
 import { TablesPage } from './TablesPage';
+
+beforeEach(() => {
+  state.fetching = false;
+});
 
 const renderPage = () =>
   render(
@@ -119,5 +127,24 @@ describe('TablesPage — "Hazır" nabzı (O6)', () => {
     const badge = within(card).getByText('Hazır');
     expect(badge.className).toContain('pulse-ring');
     expect(badge.className).not.toContain('animate-pulse');
+  });
+});
+
+/**
+ * R94 — ızgara, uygulama yeniden açılınca diskteki son bilinen özetle anında çizilir. Eskimiş
+ * olabilen bu sayıların yanında "tazeleniyor" bilgisi GÖRÜNMEK zorunda; yoksa garson bir dakika
+ * önceki tabloyu güncel sanar.
+ */
+describe('TablesPage — tazeleme göstergesi (R94)', () => {
+  it('tazeleme sürerken satır görünür', () => {
+    state.fetching = true;
+    renderPage();
+    expect(screen.getByText('Tazeleniyor')).toBeInTheDocument();
+  });
+
+  it('tazeleme bitince satır kaybolur — kartlar yerinde kalır', () => {
+    renderPage();
+    expect(screen.queryByText('Tazeleniyor')).not.toBeInTheDocument();
+    expect(screen.getByText('Masa 2')).toBeInTheDocument();
   });
 });

@@ -1,18 +1,10 @@
 import type { ReactNode } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { LoginPage } from '../features/auth/LoginPage';
-import { KitchenPage } from '../features/kitchen/KitchenPage';
-import { PublicMenuPage } from '../features/publicMenu/PublicMenuPage';
-import { OrderPage } from '../features/waiter/OrderPage';
-import { ProfilePage } from '../features/waiter/ProfilePage';
-import { ReadyPage } from '../features/waiter/ReadyPage';
-import { TableDetailPage } from '../features/waiter/TableDetailPage';
-import { TablesPage } from '../features/waiter/TablesPage';
-import { WaiterLayout } from '../features/waiter/WaiterLayout';
 import type { Role } from '../lib/auth';
-import { AdminRoute } from './AdminRoute';
 import { HomeRedirect } from './pages';
 import { RoleGate } from './RoleGate';
+import { AdminRoute, KitchenRoute, PublicMenuRoute, WaiterRoute } from './routeChunks';
 
 const gate = (roles: Role[], element: ReactNode) => <RoleGate roles={roles}>{element}</RoleGate>;
 
@@ -20,30 +12,21 @@ const WAITER: Role[] = ['waiter', 'admin'];
 const KITCHEN: Role[] = ['kitchen', 'admin'];
 const ADMIN: Role[] = ['admin'];
 
-/** Rotalar BUILD-PROMPT §5'teki gibidir. Garson sekmeleri (`WaiterLayout`) ortak üst bar,
- * bağlantı şeritleri ve alt gezinmeyi paylaşır; sipariş girişi (Görev 14) bu düzenin dışındadır. */
+/** Rotalar BUILD-PROMPT §5'teki gibidir. Garson, mutfak, müşteri menüsü ve yönetim bölümlerinin
+ * her biri ayrı bir JS parçasıdır (R94 — `routeChunks.tsx`); yalnız giriş ekranı açılış paketinde
+ * durur. Alt rotalar bölümün kendi içindedir (`features/waiter/WaiterApp.tsx`,
+ * `features/admin/AdminApp.tsx`), böylece bir bölüme girildiğinde tek parça yeter. */
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
 
   // Müşteri QR menüsü: girişsiz, `RoleGate` dışında. Oturum ve rol aranmaz.
-  { path: '/menu', element: <PublicMenuPage /> },
+  { path: '/menu', element: <PublicMenuRoute /> },
 
-  {
-    path: '/waiter',
-    element: gate(WAITER, <WaiterLayout />),
-    children: [
-      { index: true, element: <TablesPage /> },
-      { path: 'table/:tableId', element: <TableDetailPage /> },
-      { path: 'ready', element: <ReadyPage /> },
-      { path: 'profile', element: <ProfilePage /> },
-    ],
-  },
-  { path: '/waiter/table/:tableId/order', element: gate(WAITER, <OrderPage />) },
+  // `RoleGate` önce çalışır: parça yalnız rolü uyan oturumda indirilir.
+  { path: '/waiter/*', element: gate(WAITER, <WaiterRoute />) },
 
-  { path: '/kitchen', element: gate(KITCHEN, <KitchenPage />) },
+  { path: '/kitchen', element: gate(KITCHEN, <KitchenRoute />) },
 
-  // Görev 27: admin ayrı parçada (`AdminRoute` → `features/admin/AdminApp.tsx`), alt rotalar orada.
-  // `RoleGate` önce çalışır: parça yalnız admin oturumunda indirilir.
   { path: '/admin/*', element: gate(ADMIN, <AdminRoute />) },
 
   { path: '/', element: <HomeRedirect /> },

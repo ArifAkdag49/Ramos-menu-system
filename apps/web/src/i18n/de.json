@@ -9,6 +9,7 @@
     "logout": "Abmelden",
     "retry": "Nochmal versuchen",
     "loading": "Lädt",
+    "refreshing": "Wird aktualisiert",
     "search": "Suchen",
     "elapsedMinutes": "{{count}} Min.",
     "add": "Hinzufügen",

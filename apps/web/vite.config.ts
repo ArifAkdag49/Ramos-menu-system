@@ -58,6 +58,10 @@ export default defineConfig({
       },
     }),
   ],
+  // R94 — kalıcı sorgu önbelleğinin "buster"ı: her derleme başka bir değer alır, böylece yeni
+  // sürüm eski bir veri şeklini asla okumaz (`lib/queryPersist.ts`). Ad bilinçli olarak eşsiz;
+  // `define` değişimi node_modules dâhil tüm kaynakta geçerlidir.
+  define: { __RAMOS_BUILD_ID__: JSON.stringify(Date.now().toString(36)) },
   build: {
     rolldownOptions: {
       // Fiş kodlayıcı (`@point-of-sale/*`, `@ramos/shared` escpos) yalnız yerel uygulamadaki tablet

@@ -1,10 +1,11 @@
-import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { LogOut, RotateCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RouterProvider } from 'react-router';
 import { useAuth } from '../lib/auth';
 import { queryClient } from '../lib/queryClient';
+import { persistOptions } from '../lib/queryPersist';
 import { UpdatePrompt } from '../pwa/UpdatePrompt';
 import { Button } from '../ui/Button';
 import { Brand, BrandLoader } from './BrandLoader';
@@ -77,10 +78,12 @@ export function App() {
     );
   }
 
+  // R94 — sağlayıcı yalnız oturum çözüldükten sonra çizilir: `useAuth.init()` kalıcı önbelleğin
+  // sahibini o sırada doğrulamış olur, yani başka bir garsonun verisi geri yüklenmeye bile başlamaz.
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
       <RouterProvider router={router} />
       <UpdatePrompt />
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }

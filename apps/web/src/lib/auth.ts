@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { setLanguage } from '../i18n';
+import { claimPersistedQueries, clearPersistedQueries } from './queryPersist';
 import { supabase } from './supabase';
 
 export type Role = 'admin' | 'waiter' | 'kitchen' | 'printer';
@@ -83,9 +84,16 @@ export const useAuth = create<AuthStore>((set, get) => ({
       const { data } = await supabase.auth.getSession();
       const session = data.session;
       if (!session) {
+        // Oturum yok: diskte kalmış bir sorgu önbelleği de kalmasın (R94).
+        clearPersistedQueries();
         set({ session: null, profile: null, problem: null });
         return;
       }
+
+      // R94 — kalıcı önbellek bu kullanıcıya ait mi? Telefonu başka bir garson devraldıysa
+      // önbellek burada, HENÜZ geri yüklenmeden atılır: `App` `PersistQueryClientProvider`'ı
+      // yalnız oturum çözüldükten (`ready`) sonra çizer.
+      claimPersistedQueries(session.user.id);
 
       const { profile, failed } = await loadProfile(session.user.id);
       if (failed) {
@@ -98,6 +106,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
       if (!usable(profile)) {
         // Okuma başarılı ve cevap net: satır yok ya da profil uygun değil → çıkış.
         await supabase.auth.signOut();
+        clearPersistedQueries();
         set({ session: null, profile: null, problem: null });
         return;
       }
@@ -123,15 +132,21 @@ export const useAuth = create<AuthStore>((set, get) => ({
     // Girişte yetki doğrulanamıyorsa içeri alınmaz (fail-closed) ve tek genel mesaj verilir.
     if (!usable(profile)) {
       await supabase.auth.signOut();
+      clearPersistedQueries();
       set({ session: null, profile: null });
       throw new Error('login_failed');
     }
+    // Önceki kullanıcının önbelleği bu girişle atılır; aynı kullanıcı geri geldiyse korunur (R94).
+    claimPersistedQueries(data.session.user.id);
     setLanguage(profile.locale);
     set({ session: data.session, profile, problem: null });
   },
 
   async signOut() {
     await supabase.auth.signOut();
+    // R94 — çıkışta kalıcı önbellek hem bellekten hem diskten silinir: sonraki garson
+    // öncekinin masalarını, ayarlarını ya da personel listesini görmez.
+    clearPersistedQueries();
     set({ session: null, profile: null, problem: null });
   },
 
@@ -143,6 +158,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
     if (!usable(profile)) {
       // Admin hesabı pasifleştirdiyse ya da role düşürdüyse etki anında.
       await supabase.auth.signOut();
+      clearPersistedQueries();
       set({ session: null, profile: null });
       return;
     }

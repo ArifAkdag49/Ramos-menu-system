@@ -23,6 +23,9 @@ vi.mock('./supabase', () => ({
 vi.mock('../i18n', () => ({ setLanguage: vi.fn() }));
 
 import { emailFor, homeFor, usable, useAuth, type Profile } from './auth';
+import { qk } from '../data/keys';
+import { queryClient } from './queryClient';
+import { CACHE_STORAGE_KEY, OWNER_STORAGE_KEY } from './queryPersist';
 
 const SESSION = { user: { id: 'u1' } } as unknown as Session;
 
@@ -178,5 +181,65 @@ describe('signIn', () => {
     await useAuth.getState().signIn('test-kitchen', 'x');
     expect(useAuth.getState().profile).toEqual(p);
     expect(h.signOut).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * R94 — kalıcı sorgu önbelleği. Aynı telefonu kullanan başka bir garson, öncekinin masalarını,
+ * ayarlarını ya da personel listesini bir an bile görmemeli.
+ */
+describe('kalıcı sorgu önbelleği (R94)', () => {
+  const seedCache = (owner: string) => {
+    queryClient.setQueryData(qk.tables, [{ table_id: 't1' }]);
+    localStorage.setItem(CACHE_STORAGE_KEY, '{"timestamp":1}');
+    localStorage.setItem(OWNER_STORAGE_KEY, owner);
+  };
+
+  const emptied = () =>
+    queryClient.getQueryData(qk.tables) === undefined &&
+    localStorage.getItem(CACHE_STORAGE_KEY) === null;
+
+  beforeEach(() => {
+    localStorage.removeItem(CACHE_STORAGE_KEY);
+    localStorage.removeItem(OWNER_STORAGE_KEY);
+    queryClient.clear();
+  });
+
+  it('çıkışta önbellek hem bellekten hem diskten silinir', async () => {
+    seedCache('u1');
+    await useAuth.getState().signOut();
+    expect(emptied()).toBe(true);
+    expect(localStorage.getItem(OWNER_STORAGE_KEY)).toBeNull();
+  });
+
+  it('açılışta aynı kullanıcının önbelleği KORUNUR', async () => {
+    seedCache('u1');
+    okRead(profileOf());
+    await useAuth.getState().init();
+    expect(queryClient.getQueryData(qk.tables)).toEqual([{ table_id: 't1' }]);
+  });
+
+  it('açılışta başka bir kullanıcının önbelleği atılır', async () => {
+    seedCache('eski-garson');
+    okRead(profileOf());
+    await useAuth.getState().init();
+    expect(emptied()).toBe(true);
+    expect(localStorage.getItem(OWNER_STORAGE_KEY)).toBe('u1');
+  });
+
+  it('oturum yoksa diskte önbellek bırakılmaz', async () => {
+    seedCache('u1');
+    h.getSession.mockResolvedValue({ data: { session: null } });
+    await useAuth.getState().init();
+    expect(emptied()).toBe(true);
+  });
+
+  it('girişte önceki kullanıcının önbelleği atılır', async () => {
+    seedCache('eski-garson');
+    h.signInWithPassword.mockResolvedValue({ data: { session: SESSION }, error: null });
+    okRead(profileOf());
+    await useAuth.getState().signIn('ahmet', '1234');
+    expect(emptied()).toBe(true);
+    expect(localStorage.getItem(OWNER_STORAGE_KEY)).toBe('u1');
   });
 });

@@ -9,6 +9,7 @@
     "logout": "Çıkış",
     "retry": "Tekrar dene",
     "loading": "Yükleniyor",
+    "refreshing": "Tazeleniyor",
     "search": "Ara",
     "elapsedMinutes": "{{count}} dk",
     "add": "Ekle",

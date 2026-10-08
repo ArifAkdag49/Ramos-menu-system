@@ -3,10 +3,11 @@ import { clsx } from 'clsx';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { useTableOverview } from '../../data/tables';
+import { useTableOverviewQuery } from '../../data/tables';
 import { Badge } from '../../ui/Badge';
 import { Chip } from '../../ui/Chip';
 import { EmptyState } from '../../ui/EmptyState';
+import { Spinner } from '../../ui/Spinner';
 import { Elapsed } from '../common/Elapsed';
 import { sortTables, tableTone } from './waiterLogic';
 
@@ -26,12 +27,19 @@ export function TablesPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const locale: Locale = i18n.language === 'de' ? 'de' : 'tr';
-  const rows = useTableOverview();
+  const { data, isFetching } = useTableOverviewQuery();
+  const rows = useMemo(() => data ?? [], [data]);
   const [filter, setFilter] = useState<Filter>('all');
 
   // Görev 12'nin `useTableOverview`'i yükleme durumu döndürmez; seed her zaman masa içerdiğinden
   // boş dizi pratikte yalnız "henüz gelmedi" anlamına gelir (Karar: task-13-report.md).
   const loading = rows.length === 0;
+
+  // R94 — ızgara artık uygulama yeniden açılınca diskteki son bilinen özetle ANINDA çizilir
+  // (`lib/queryPersist.ts`). Bu yüzden "elimdeki veri eski olabilir" bilgisi görünmek zorunda:
+  // tazeleme sürdüğü sürece ince bir satır durur. `ConnectionBanners` neden kopuk olduğunu
+  // söylüyor, bu satır ise ekrandaki sayıların henüz doğrulanmadığını söyler.
+  const refreshing = isFetching && rows.length > 0;
 
   // O1 (M3 tasarım kapısı): ızgara sunucu sırasında geliyordu; 12 boş masa önde, açık ve hazır
   // masalar katlamanın altında kalıyordu. Sıra artık durumdan geliyor: hazır → açık → boş.
@@ -53,6 +61,13 @@ export function TablesPage() {
           {t('waiter.tables.filterReady')}
         </Chip>
       </div>
+
+      {refreshing ? (
+        <p className="flex items-center gap-2 text-xs text-muted">
+          <Spinner className="size-4" />
+          {t('common.refreshing')}
+        </p>
+      ) : null}
 
       {loading ? (
         <div className="grid grid-cols-3 gap-3">
