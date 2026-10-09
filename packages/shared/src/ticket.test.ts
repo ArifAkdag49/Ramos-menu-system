@@ -229,9 +229,9 @@ describe('linesToText', () => {
 });
 
 describe('fişin başı: tutamak boşluğu ve başlıksız fiş', () => {
-  it('her fiş iki boş satırla başlar (koparıp yapıştırmak için üstte pay)', () => {
+  it('her fiş bir boş satırla başlar (koparıp yapıştırmak için üstte pay)', () => {
     const lines = renderTicket(order);
-    expect(lines[0]).toEqual({ kind: 'feed', lines: 2 });
+    expect(lines[0]).toEqual({ kind: 'feed', lines: 1 });
   });
 
   it('başlık boşsa hiç basılmaz: boşluktan sonra doğrudan masa kutusu gelir', () => {

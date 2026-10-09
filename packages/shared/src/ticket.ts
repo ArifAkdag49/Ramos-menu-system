@@ -302,8 +302,9 @@ export function renderTicket(p: TicketPayload, opts: { columns?: number; transli
 
   const lines: Line[] = [];
   // Üstte tutamak boşluğu: fiş koparılıp bir yere yapıştırılıyor, kesim payının üstünde parmakla
-  // tutulacak boş bir şerit kalsın (mutfak isteği).
-  lines.push({ kind: 'feed', lines: 2 });
+  // tutulacak bir şerit kalsın (mutfak isteği). Önce iki satırdı, "çok fazla boşluk" denince
+  // yarıya indirildi: yazıcının kesim sonrası kendi ilerletmesi de üste pay ekliyor.
+  lines.push({ kind: 'feed', lines: 1 });
   // Başlık ("RAMO'S") büyük basılır; 24 kolonluk çift genişliğe sığmıyorsa normal boyda ortalanır.
   // Ayarlarda başlık boş bırakılırsa hiç basılmaz: fişin en üstünde doğrudan masa kutusu görünür.
   const header = clean(p.header);
