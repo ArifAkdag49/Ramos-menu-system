@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { TableRecord } from '../features/admin/tables/tablesLogic';
+import { callRpc } from '../lib/rpc';
 import { supabase } from '../lib/supabase';
 import { qk } from './keys';
 
@@ -23,6 +24,77 @@ export function useAdminTables() {
         .order('name');
       if (error) throw error;
       return data ?? [];
+    },
+  });
+}
+
+/** `admin_table_states` satırı (0017): masanın kendisi + varsa AÇIK oturumun özeti. */
+export interface AdminTableState {
+  table_id: string;
+  name: string;
+  sort: number;
+  is_active: boolean;
+  session_id: string | null;
+  opened_at: string | null;
+  opened_by_name: string | null;
+  total_cents: number;
+  /** Açık hesaptaki aktif kalem adedi (iptaller sayılmaz). */
+  items: number;
+  orders_in_kitchen: number;
+  orders_ready: number;
+}
+
+/**
+ * Admin masa durumu (0017). `table_overview` yerine bunu kullanır: pasif masaları da döndürür.
+ * Pasifleştirilmiş bir masada açık oturum kalırsa (garson ekranı onu hiç göstermez) admin yine
+ * görüp kapatabilsin. Realtime `orders` olayı `['tables']` ön ekini geçersiz kıldığı için masa
+ * açılıp kapandıkça kendiliğinden tazelenir.
+ */
+export function useAdminTableStates() {
+  return useQuery({
+    queryKey: qk.adminTableStates,
+    queryFn: () => callRpc<AdminTableState[]>('admin_table_states'),
+  });
+}
+
+/** Masayı sipariş olmadan açar (masa garson ekranında "dolu" görünür). */
+export function useOpenTableSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tableId: string) =>
+      callRpc<{ session_id: string }>('admin_open_table_session', { p_table_id: tableId }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['tables'] });
+      void qc.invalidateQueries({ queryKey: ['session'] });
+    },
+  });
+}
+
+export interface ResetResult {
+  items: number;
+  value_cents: number;
+  storno_jobs: number;
+}
+
+/**
+ * Masayı sıfırlar: aktif kalemler iptal edilir (ciroya girmez), mutfakta/hazır bekleyen her
+ * sipariş için STORNO fişi basılır, hesap kapanır. Sebep sunucuya **Almanca** gider —
+ * doğrudan STORNO fişine yazılır (`CancelItemSheet` ile aynı karar).
+ */
+export function useResetTableSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { sessionId: string; reason: string }) =>
+      callRpc<ResetResult>('admin_reset_table_session', {
+        p_session_id: vars.sessionId,
+        p_reason: vars.reason,
+      }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['tables'] });
+      void qc.invalidateQueries({ queryKey: ['session'] });
+      void qc.invalidateQueries({ queryKey: ['orders'] });
+      void qc.invalidateQueries({ queryKey: ['bill'] });
+      void qc.invalidateQueries({ queryKey: ['printer-status'] });
     },
   });
 }

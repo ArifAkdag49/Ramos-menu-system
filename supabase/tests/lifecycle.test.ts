@@ -173,6 +173,85 @@ describe('masa kapatma ve taşıma', () => {
   });
 });
 
+describe('admin masa denetimi (0017)', () => {
+  type StateRow = { name: string; is_active: boolean; session_id: string | null;
+    total_cents: number; items: number; orders_in_kitchen: number; orders_ready: number };
+  const stateOf = async (name: string): Promise<StateRow | undefined> => {
+    const { data, error } = await admin.rpc('admin_table_states');
+    if (error) throw error;
+    return (data as StateRow[]).find((r) => r.name === name);
+  };
+
+  it('admin boş masayı elle açar; ikinci açış ve pasif masa reddedilir, garson/mutfak açamaz', async () => {
+    expect((await waiter.rpc('admin_open_table_session', { p_table_id: f.tableId })).error?.message)
+      .toBe('not_authorized');
+    expect((await kitchen.rpc('admin_open_table_session', { p_table_id: f.tableId })).error?.message)
+      .toBe('not_authorized');
+
+    const r = await admin.rpc('admin_open_table_session', { p_table_id: f.tableId });
+    expect(r.error).toBeNull();
+    const sessionId = (r.data as { session_id: string }).session_id;
+    // Masa artık "dolu" ama hesap boş: sipariş olmadan açılmış bir oturum.
+    expect(await stateOf('Test-Tisch')).toMatchObject({ session_id: sessionId, total_cents: 0, items: 0 });
+    expect((await admin.rpc('admin_open_table_session', { p_table_id: f.tableId })).error?.message)
+      .toBe('session_already_open');
+    // Elle açılan oturum garsonun bildiği yolla kapanır (ayrı bir kapatma fonksiyonu yok).
+    expect((await admin.rpc('close_table_session', { p_session_id: sessionId })).error).toBeNull();
+
+    await sql(`update public.dining_tables set is_active = false where id = '${f.table2Id}'`);
+    expect((await admin.rpc('admin_open_table_session', { p_table_id: f.table2Id })).error?.message)
+      .toBe('table_inactive');
+    await sql(`update public.dining_tables set is_active = true where id = '${f.table2Id}'`);
+  });
+
+  it('sıfırlama: sebep zorunlu, kalemler iptal olur, mutfaktaki sipariş başına tek STORNO basılır', async () => {
+    const a = await order([item(), { product_id: f.colaId, quantity: 2 }]);
+    const b = await order();
+    expect((await kitchen.rpc('mark_order_ready', { p_order_id: b.order_id })).error).toBeNull();
+
+    expect((await admin.rpc('admin_reset_table_session', { p_session_id: a.session_id, p_reason: '  ' }))
+      .error?.message).toBe('reason_required');
+    expect((await waiter.rpc('admin_reset_table_session', { p_session_id: a.session_id, p_reason: 'x' }))
+      .error?.message).toBe('not_authorized');
+
+    const r = await admin.rpc('admin_reset_table_session',
+      { p_session_id: a.session_id, p_reason: 'Tisch zurückgesetzt' });
+    expect(r.error).toBeNull();
+    // 3 + 1 adet kalem, iki sipariş (biri mutfakta biri hazır) → iki STORNO fişi.
+    expect(r.data).toMatchObject({ items: 4, storno_jobs: 2 });
+    expect([await statusOf(a.order_id), await statusOf(b.order_id)]).toEqual(['cancelled', 'cancelled']);
+    expect([await stornoCount(a.order_id), await stornoCount(b.order_id)]).toEqual([1, 1]);
+    const [storno] = await sql<{ payload: Payload }>(
+      `select payload from public.print_jobs where order_id = '${a.order_id}' and type = 'storno'`);
+    expect(storno!.payload).toMatchObject({ kind: 'storno', reason: 'Tisch zurückgesetzt' });
+    expect((storno!.payload as { items: unknown[] }).items).toHaveLength(2);
+    // Masa boşalır ve kapalı oturum ikinci kez sıfırlanamaz.
+    expect(await stateOf('Test-Tisch')).toMatchObject({ session_id: null });
+    expect((await admin.rpc('admin_reset_table_session', { p_session_id: a.session_id, p_reason: 'x' }))
+      .error?.message).toBe('session_closed');
+  });
+
+  it('teslim edilmiş sipariş sıfırlamada served kalır, STORNO basılmaz (R42 ile aynı kural)', async () => {
+    const o = await order([{ product_id: f.colaId, quantity: 1 }]);
+    expect((await waiter.rpc('mark_order_served', { p_order_id: o.order_id })).error).toBeNull();
+    const r = await admin.rpc('admin_reset_table_session',
+      { p_session_id: o.session_id, p_reason: 'Kasse zurückgesetzt' });
+    expect(r.data).toMatchObject({ items: 1, storno_jobs: 0 });
+    expect(await statusOf(o.order_id)).toBe('served');
+    expect(await stornoCount(o.order_id)).toBe(0);
+  });
+
+  it('admin_table_states pasif masayı da verir; garson boş liste alır', async () => {
+    await sql(`update public.dining_tables set is_active = false where id = '${f.table2Id}'`);
+    expect(await stateOf('Test-Tisch-2')).toMatchObject({ is_active: false, session_id: null });
+    await sql(`update public.dining_tables set is_active = true where id = '${f.table2Id}'`);
+    // `has_role('admin')` satır süzgecidir: yetkisiz rol hata değil BOŞ liste alır (table_overview ile aynı).
+    const w = await waiter.rpc('admin_table_states');
+    expect(w.error).toBeNull();
+    expect(w.data).toEqual([]);
+  });
+});
+
 describe('tükendi, hesap özeti, masa özeti', () => {
   it('mutfak tükendi işaretler, garson işaretleyemez; tükenen ürün sipariş edilemez', async () => {
     expect((await waiter.rpc('set_product_sold_out', { p_product_id: f.doenerId, p_sold_out: true })).error?.message)

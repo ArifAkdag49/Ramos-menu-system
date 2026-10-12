@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { changedTables, suggestTableName, tableNameError } from './tablesLogic';
+import {
+  changedTables,
+  suggestTableName,
+  summarizeTableStates,
+  tableLiveState,
+  tableNameError,
+} from './tablesLogic';
 
 describe('suggestTableName ("Tisch N" önerisi)', () => {
   it('en büyük numaranın bir fazlası', () =>
@@ -106,4 +112,23 @@ describe('changedTables (yalnız değişen satırlar yazılır)', () => {
         { id: 't1', name: 'Tisch 1', sort: 20, is_active: false },
       ],
     }));
+});
+
+describe('tableLiveState (admin masa durumu)', () => {
+  it('açık oturum pasiflikten önce gelir — kapatma düğmesi kaybolmasın', () => {
+    expect(tableLiveState({ is_active: true, session_id: 's1' })).toBe('open');
+    expect(tableLiveState({ is_active: false, session_id: 's1' })).toBe('open');
+    expect(tableLiveState({ is_active: true, session_id: null })).toBe('free');
+    expect(tableLiveState({ is_active: false, session_id: null })).toBe('inactive');
+  });
+
+  it('özet sayılar her durumu bir kez sayar', () =>
+    expect(
+      summarizeTableStates([
+        { is_active: true, session_id: 's1' },
+        { is_active: false, session_id: 's2' },
+        { is_active: true, session_id: null },
+        { is_active: false, session_id: null },
+      ]),
+    ).toEqual({ open: 2, free: 1, inactive: 1 }));
 });

@@ -448,12 +448,26 @@ Soldaki menü: **Canlı durum · Menü · Personel · Masalar · Siparişler · 
 
 ### 6.2 Masalar
 
-Sistem **Tisch 1–12** ile başladı. Gerçek masa sayısına göre düzenleyin:
+Ekran iki bölümdür: üstte **Masa durumu** (anında çalışır), altta **Masa listesi** (Kaydet ile yazılır).
+
+**Masa listesi** — sistem **Tisch 1–12** ile başladı, gerçek masa sayısına göre düzenleyin:
 
 1. **Masalar → Masa ekle**.
 2. Masa adını **Almanca** yazın (ör. `Tisch 13`). Türkçe ekranda otomatik olarak "Masa 13" görünür.
 3. Kullanılmayan masanın **Kullanımda** anahtarını kapatın; garson ekranından kalkar. Açık hesabı olan masa kapatılamaz, önce masayı kapatın.
 4. **Kaydet**.
+
+**Masa durumu** — her masanın o anki hâli ve üç düğme. Bu düğmeler **anında** çalışır, Kaydet gerekmez:
+
+| Düğme | Ne yapar |
+| --- | --- |
+| **Masayı aç** | Boş masayı sipariş olmadan açar; masa garson ekranında "dolu" görünür. Garson masaya dokunup siparişi aynı hesaba ekler. |
+| **Hesabı kapat** | Garsonun yaptığının aynısı: hazır siparişler teslim sayılır, **kalemler ciroda kalır**, masa boşa düşer. Mutfakta hazırlanan sipariş mutfakta kalır (hazır olunca Hazır listesinden teslim edilir). |
+| **Sıfırla** | Masadaki bütün kalemleri **iptal eder** — ciroya girmez. Mutfakta ya da hazır bekleyen her sipariş için mutfağa **STORNO** fişi basılır. Sebep zorunludur ve fişe yazıldığı için **Almanca** gönderilir. Geri alınamaz. |
+
+- Normal "müşteri ödedi, kalktı" durumunda **Hesabı kapat** kullanılır. **Sıfırla** yanlışlıkla dolu kalan ya da hiç servis edilmemiş masa içindir: ciro şişmesin.
+- Her üç işlem de **Denetim kaydı**na düşer (kim, hangi masa, sebep, kaç kalem, ne kadar).
+- Kullanımda olmayan bir masada açık hesap kalmışsa (garson ekranında hiç görünmez) burada sarı uyarıyla çıkar ve kapatılabilir.
 
 ### 6.3 Menü
 

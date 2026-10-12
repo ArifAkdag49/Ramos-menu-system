@@ -36,6 +36,30 @@ export function tableNameError(
   return rows.some((r) => r.key !== key && norm(r.name) === n) ? 'taken' : null;
 }
 
+/**
+ * Masanın CANLI durumu (0017, admin masa denetimi). Açık oturum `is_active`'ten ÖNCE gelir:
+ * pasifleştirilmiş bir masada açık hesap kalmışsa (garson ekranı onu hiç göstermez) admin onu
+ * "pasif" diye değil "dolu" diye görmeli — yoksa kapatma düğmesi hiç çıkmaz ve oturum açık kalır.
+ */
+export type TableLiveState = 'open' | 'free' | 'inactive';
+
+export function tableLiveState(row: {
+  is_active: boolean;
+  session_id: string | null;
+}): TableLiveState {
+  if (row.session_id) return 'open';
+  return row.is_active ? 'free' : 'inactive';
+}
+
+/** Başlık altındaki özet sayılar ("2 masa dolu · 1 masa kullanımda değil"). */
+export function summarizeTableStates(
+  rows: { is_active: boolean; session_id: string | null }[],
+): Record<TableLiveState, number> {
+  const out: Record<TableLiveState, number> = { open: 0, free: 0, inactive: 0 };
+  for (const r of rows) out[tableLiveState(r)] += 1;
+  return out;
+}
+
 export interface TableRecord {
   id: string;
   name: string;

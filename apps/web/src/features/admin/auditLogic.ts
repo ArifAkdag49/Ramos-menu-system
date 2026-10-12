@@ -11,6 +11,7 @@ import { formatEuro, formatOrderNo, localTableName, type Locale } from '@ramos/s
 const ACTION_KEY = {
   session_open: 'admin.audit.action.session_open',
   session_close: 'admin.audit.action.session_close',
+  session_reset: 'admin.audit.action.session_reset',
   session_move: 'admin.audit.action.session_move',
   order_submit: 'admin.audit.action.order_submit',
   order_ready: 'admin.audit.action.order_ready',
@@ -135,6 +136,17 @@ export function auditSummary(
     }
     case 'session_open':
       return join([table(d.table)]);
+    case 'session_reset': {
+      // 0017 — sıfırlama: kaç kalem, ne kadar tutar iptal edildi ve sebebi.
+      const value = num(d.value_cents);
+      const items = num(d.items);
+      return join([
+        table(d.table),
+        items === null ? null : `${items}×`,
+        value === null ? null : formatEuro(value),
+        str(d.reason),
+      ]);
+    }
     case 'session_move': {
       const from = table(d.from);
       const to = table(d.to);

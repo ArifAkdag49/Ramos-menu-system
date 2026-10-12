@@ -480,6 +480,34 @@
       "activeCount_other": "{{count}} Tische in Betrieb",
       "saved": "Tische gespeichert",
       "empty": "Noch keine Tische — Tisch hinzufügen",
+      "list": {
+        "title": "Tischliste"
+      },
+      "state": {
+        "title": "Tischstatus",
+        "hint": "Tisch öffnen, offene Rechnung schließen, hängengebliebenen Tisch zurücksetzen. Diese Tasten wirken sofort — ohne Speichern.",
+        "summary": "{{busy}} Tische besetzt, {{free}} Tische frei",
+        "busy": "Besetzt",
+        "free": "Frei",
+        "freeHint": "Tisch ist frei. Er öffnet sich mit der ersten Bestellung des Kellners.",
+        "total": "Rechnung",
+        "items": "Positionen",
+        "inKitchen": "{{count}} Bestellungen in der Küche",
+        "ready": "{{count}} Bestellungen fertig",
+        "strayOpen": "Tisch ist außer Betrieb, hat aber eine offene Rechnung — im Kellner-Bildschirm unsichtbar, hier schließen",
+        "open": "Tisch öffnen",
+        "opened": "{{table}} geöffnet",
+        "close": "Rechnung schließen",
+        "closeTitle": "{{table}} — Rechnung schließen",
+        "closeExplain": "Fertige Bestellungen gelten als serviert, die Positionen bleiben im Umsatz. Der Tisch wird frei.",
+        "closeKitchenWarn": "{{count}} Bestellungen sind noch in der Küche. Sie bleiben dort und werden nach „Fertig“ über die Fertig-Liste serviert.",
+        "closed": "{{table}} geschlossen",
+        "reset": "Zurücksetzen",
+        "resetTitle": "{{table}} — Tisch zurücksetzen",
+        "resetWarn": "{{count}} Positionen ({{total}}) werden storniert und nicht im Umsatz gezählt. Nicht widerrufbar.",
+        "resetStorno": "Für {{count}} Bestellungen wird ein STORNO-Bon gedruckt.",
+        "resetDone": "{{table}} zurückgesetzt — {{count}} Positionen storniert"
+      },
       "errors": {
         "required": "Tischname fehlt",
         "taken": "Diesen Namen hat schon ein anderer Tisch — anderen Namen wählen",
@@ -885,6 +913,7 @@
       "action": {
         "session_open": "Tisch geöffnet",
         "session_close": "Tisch geschlossen",
+        "session_reset": "Tisch zurückgesetzt",
         "session_move": "Tisch gewechselt",
         "order_submit": "Bestellung gesendet",
         "order_ready": "Bestellung fertig gemeldet",
@@ -1080,6 +1109,8 @@
     "station_device_name_invalid": "Tablet-Name muss 1–60 Zeichen lang sein",
     "station_device_not_found": "Tablet nicht gefunden — Liste aktualisieren",
     "menu_sync_client_name_invalid": "Name muss 1–60 Zeichen lang sein",
-    "menu_sync_client_not_found": "Sync-Verbindung nicht gefunden"
+    "menu_sync_client_not_found": "Sync-Verbindung nicht gefunden",
+    "table_not_found": "Tisch nicht gefunden — Liste aktualisieren",
+    "session_already_open": "Dieser Tisch hat schon eine offene Rechnung"
   }
 }

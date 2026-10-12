@@ -480,6 +480,34 @@
       "activeCount_other": "{{count}} masa kullanımda",
       "saved": "Masalar kaydedildi",
       "empty": "Henüz masa yok — Masa ekle",
+      "list": {
+        "title": "Masa listesi"
+      },
+      "state": {
+        "title": "Masa durumu",
+        "hint": "Boş masayı aç, açık hesabı kapat, dolu kalmış masayı sıfırla. Bu düğmeler anında çalışır — Kaydet gerekmez.",
+        "summary": "{{busy}} masa dolu, {{free}} masa boş",
+        "busy": "Dolu",
+        "free": "Boş",
+        "freeHint": "Masa boş. Garson sipariş girince kendiliğinden açılır.",
+        "total": "Hesap",
+        "items": "Kalem",
+        "inKitchen": "{{count}} sipariş mutfakta",
+        "ready": "{{count}} sipariş hazır",
+        "strayOpen": "Masa kullanımda değil ama hesabı açık — garson ekranında görünmez, buradan kapat",
+        "open": "Masayı aç",
+        "opened": "{{table}} açıldı",
+        "close": "Hesabı kapat",
+        "closeTitle": "{{table}} — hesabı kapat",
+        "closeExplain": "Hazır siparişler teslim sayılır, kalemler ciroda kalır. Masa boşa düşer.",
+        "closeKitchenWarn": "{{count}} sipariş mutfakta hazırlanıyor. Masa kapansa da mutfakta kalır; hazır olunca Hazır listesinden teslim edilir.",
+        "closed": "{{table}} kapatıldı",
+        "reset": "Sıfırla",
+        "resetTitle": "{{table}} — masayı sıfırla",
+        "resetWarn": "{{count}} kalem ({{total}}) iptal edilecek ve ciroya girmeyecek. Geri alınamaz.",
+        "resetStorno": "{{count}} sipariş için mutfağa STORNO fişi basılacak.",
+        "resetDone": "{{table}} sıfırlandı — {{count}} kalem iptal edildi"
+      },
       "errors": {
         "required": "Masa adı boş olamaz",
         "taken": "Bu ad başka bir masada — farklı bir ad yaz",
@@ -885,6 +913,7 @@
       "action": {
         "session_open": "Masa açtı",
         "session_close": "Masayı kapattı",
+        "session_reset": "Masayı sıfırladı",
         "session_move": "Masayı taşıdı",
         "order_submit": "Sipariş gönderdi",
         "order_ready": "Siparişi hazır yaptı",
@@ -1080,6 +1109,8 @@
     "station_device_name_invalid": "Tablet adı 1–60 karakter olmalı",
     "station_device_not_found": "Tablet bulunamadı — listeyi tazele",
     "menu_sync_client_name_invalid": "Ad 1–60 karakter olmalı",
-    "menu_sync_client_not_found": "Eşitleme bağlantısı bulunamadı"
+    "menu_sync_client_not_found": "Eşitleme bağlantısı bulunamadı",
+    "table_not_found": "Masa bulunamadı — listeyi yenile",
+    "session_already_open": "Bu masanın hesabı zaten açık"
   }
 }

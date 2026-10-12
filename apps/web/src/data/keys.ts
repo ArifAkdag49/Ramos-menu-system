@@ -10,6 +10,9 @@ export const qk = {
   // `tables` ön ekinin altında: Realtime `menu` olayı (`dining_tables` yazımı) ve `orders` olayı
   // (masa açıldı/kapandı) `qk.tables`'ı geçersiz kılınca yönetim listesi de tazelenir.
   adminTables: ['tables', 'admin'] as const,
+  // `tables/admin` ön ekinin altında: masa yazımı da, oturum açılıp kapanması da (Realtime
+  // `orders`) admin masa durumunu tazeler.
+  adminTableStates: ['tables', 'admin', 'states'] as const,
   session: (tableId: string) => ['session', tableId] as const,
   sessionOrders: (sessionId: string) => ['orders', 'session', sessionId] as const,
   kitchen: ['orders', 'kitchen'] as const,
