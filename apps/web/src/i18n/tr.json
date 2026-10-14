@@ -796,7 +796,7 @@
           "use": "Bu yazıcıyı kullan",
           "applied": "Yazıcı adresi dolduruldu — Kaydet'e basın, sonra Test fişi bas.",
           "routeApplied": "Kaydedildi. Baskı yolu \"Tablet yazıcı istasyonu\" yapıldı: fişleri bu uygulamadaki istasyon basar. Mutfak ekranında Yazıcı istasyonu anahtarı açık olsun, sonra Test fişi bas.",
-          "browserNote": "Yazıcıyı otomatik bulmak için Ramo's uygulamasını (telefon/tablet) kullanın: Ayarlar → Yazıcı bağlantısı → Ağdaki yazıcıyı bul. Tarayıcıdan adresi aşağıdan elle girin."
+          "browserNote": "Yazıcı taraması ve fiş basma yalnız Android'deki Ramo's uygulamasında çalışır (Ayarlar → Yazıcı bağlantısı → Ağdaki yazıcıyı bul). iPhone'da ve tarayıcıda tarama yoktur: adresi aşağıdan elle girin; fişleri yine Android cihazdaki istasyon basar."
         }
       },
       "quickNotes": {

@@ -22,7 +22,7 @@ describe('<PrinterFinder />', () => {
   it('tarayıcıda düğme yok, uygulamaya yönlendiren not var', () => {
     render(<PrinterFinder currentHost="" onPick={vi.fn()} />);
     expect(screen.queryByRole('button')).toBeNull();
-    expect(screen.getByRole('note')).toHaveTextContent(/Ramo's uygulamasını/);
+    expect(screen.getByRole('note')).toHaveTextContent(/Android'deki Ramo's uygulamasında/);
   });
 
   it('eski APK: düğme yerine sürüm uyarısı', () => {

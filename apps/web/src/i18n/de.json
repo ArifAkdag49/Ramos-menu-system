@@ -796,7 +796,7 @@
           "use": "Diesen Drucker verwenden",
           "applied": "Druckeradresse ausgefüllt — auf Speichern tippen, dann Testbon drucken.",
           "routeApplied": "Gespeichert. Druckweg auf \"Tablet-Druckstation\" gesetzt: die Bons druckt die Station in dieser App. In der Küchenansicht den Schalter Druckstation einschalten, dann Testbon drucken.",
-          "browserNote": "Zum automatischen Finden des Druckers die Ramo's-App (Telefon/Tablet) verwenden: Einstellungen → Druckerverbindung → Drucker im Netzwerk suchen. Im Browser die Adresse unten von Hand eingeben."
+          "browserNote": "Druckersuche und Bondruck laufen nur in der Ramo's-App auf Android (Einstellungen → Druckerverbindung → Drucker im Netzwerk suchen). Auf dem iPhone und im Browser gibt es keine Suche: Adresse unten von Hand eingeben; die Bons druckt weiterhin die Station auf dem Android-Gerät."
         }
       },
       "quickNotes": {
