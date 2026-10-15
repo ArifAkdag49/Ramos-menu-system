@@ -1073,7 +1073,8 @@
     "pending": "In der Warteschlange",
     "printing": "Druckt",
     "printed": "Gedruckt",
-    "failed": "Nicht gedruckt"
+    "failed": "Nicht gedruckt",
+    "expired": "Abgelaufen, nicht gedruckt"
   },
   "errors": {
     "login_failed": "Benutzername oder PIN falsch",

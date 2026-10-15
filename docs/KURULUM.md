@@ -220,7 +220,7 @@ Anahtar açıldığında tablette küçük bir **arka plan hizmeti** başlar. Uy
 | **Kurulum** | Kurulum.cmd (§3.2) | Web Config'e adres girmek (§2.7) | Uygulamayı kurup anahtarı açmak (§2.8) |
 | **Seçim** | **Ayarlar → Baskı yolu → Bilgisayar programı** | **… → Epson Server Direct Print** | **… → Tablet yazıcı istasyonu** |
 
-Hangi yol seçilirse seçilsin siparişler kaybolmaz: basılamayan fiş sırada bekler ve yol çalışır hâle gelince sırayla basılır. Aynı anda yalnız seçili yol fiş basar; diğerleri açık kalsa da iş almaz.
+Hangi yol seçilirse seçilsin siparişler kaybolmaz: basılamayan fiş sırada bekler ve yol çalışır hâle gelince sırayla basılır. **3 saatten uzun bekleyen fiş ise basılmaz, otomatik iptal edilir** (bkz. "Süresi doldu, basılmadı"). Aynı anda yalnız seçili yol fiş basar; diğerleri açık kalsa da iş almaz.
 
 ---
 
@@ -679,6 +679,14 @@ Fiş 6 denemede basılamadı.
 
 1. Önce sebebi giderin (PC, kablo, kağıt).
 2. **Canlı durum → Yazıcı → Basılamayan fişler** listesinde her fiş için **Tekrar dene**'ye dokunun. Garson ve mutfak ekranındaki **Tekrar bas** da kullanılabilir.
+
+### "Süresi doldu, basılmadı"
+
+Yazıcı ya da istasyon (telefon/PC) 3 saatten uzun süre fiş basamadı; o fişler **otomatik iptal edildi**. Amaç: yazıcı saatler sonra geri geldiğinde çoktan servis edilmiş siparişlerin fişleri art arda basılmasın. Sipariş ve hesap etkilenmez, yalnız fiş kâğıda çıkmaz.
+
+- Bir şey yapmanız gerekmez. Sonraki siparişler normal basılır.
+- Yine de belli bir siparişin fişi gerekiyorsa siparişte **Tekrar bas**'a dokunun (bilinçli yeniden basım).
+- Süre, fişin son denenme anından sayılır: **Tekrar dene** ile yeniden sıraya alınan fiş için 3 saat yeniden başlar.
 
 ### "Yazdırma onayı takıldı"
 

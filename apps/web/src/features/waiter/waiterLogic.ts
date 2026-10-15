@@ -11,9 +11,12 @@ export const sortReady = (orders: OrderView[], meId: string): OrderView[] =>
     (a, b) => Number(b.waiter_id === meId) - Number(a.waiter_id === meId) || (a.ready_at ?? '').localeCompare(b.ready_at ?? ''),
   );
 
-/** Yazdırma durumundan tek bir rozet çıkarır: `pending`/`printing` tek "kuyrukta" görünümüne indirgenir. */
-export const printBadge = (p: OrderView['print']): 'printed' | 'queued' | 'failed' | null =>
-  !p ? null : p.status === 'printed' ? 'printed' : p.status === 'failed' ? 'failed' : 'queued';
+/**
+ * Yazdırma durumundan tek bir rozet çıkarır: `pending`/`printing` tek "kuyrukta" görünümüne indirgenir.
+ * `expired` (0019) kendi rozetidir — "kuyrukta" görünürse garson fişin hâlâ basılacağını sanır.
+ */
+export const printBadge = (p: OrderView['print']): 'printed' | 'queued' | 'failed' | 'expired' | null =>
+  !p ? null : p.status === 'printed' || p.status === 'failed' || p.status === 'expired' ? p.status : 'queued';
 
 const timeFormatter = new Intl.DateTimeFormat('de-DE', {
   timeZone: 'Europe/Berlin',

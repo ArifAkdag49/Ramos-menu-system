@@ -51,6 +51,8 @@ const JOB_TONE: Record<PrintJobStatus, Tone> = {
   printing: 'info',
   printed: 'empty',
   failed: 'danger',
+  // Süresi dolup iptal edilen fiş kâğıda çıkmadı; kırmızı değil (müdahale gerekmez), ama göze çarpsın.
+  expired: 'warning',
 };
 
 // `ReturnType<typeof useTranslation>['t']` yerine `TFunction`: şablon anahtarlı çağrıda (`errors.${…}`)

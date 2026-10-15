@@ -1073,7 +1073,8 @@
     "pending": "Kuyrukta",
     "printing": "Basılıyor",
     "printed": "Basıldı",
-    "failed": "Basılamadı"
+    "failed": "Basılamadı",
+    "expired": "Süresi doldu, basılmadı"
   },
   "errors": {
     "login_failed": "Kullanıcı adı veya PIN hatalı",

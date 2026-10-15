@@ -49,10 +49,11 @@ const STATUS_TONE: Record<OrderView['status'], 'open' | 'ready' | 'empty' | 'dan
   cancelled: 'danger',
 };
 
-const PRINT_TONE: Record<'printed' | 'queued' | 'failed', 'empty' | 'info' | 'danger'> = {
+const PRINT_TONE: Record<'printed' | 'queued' | 'failed' | 'expired', 'empty' | 'info' | 'danger' | 'warning'> = {
   printed: 'empty',
   queued: 'info',
   failed: 'danger',
+  expired: 'warning',
 };
 
 type Panel = 'bill' | 'move' | 'close' | null;

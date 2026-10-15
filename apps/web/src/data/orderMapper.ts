@@ -21,7 +21,8 @@ export interface SelectedOptionView {
 export type OrderItemStatus = 'active' | 'cancelled';
 export type OrderStatus = 'in_kitchen' | 'ready' | 'served' | 'cancelled';
 export type PrintJobType = 'order' | 'addition' | 'storno' | 'table_move' | 'reprint' | 'test';
-export type PrintJobStatus = 'pending' | 'printing' | 'printed' | 'failed';
+/** `expired` (0019): 3 saatten uzun süre basılamadı, otomatik iptal — artık basılmaz. */
+export type PrintJobStatus = 'pending' | 'printing' | 'printed' | 'failed' | 'expired';
 
 const PRINTABLE_TYPES: readonly PrintJobType[] = ['order', 'addition', 'reprint'];
 

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -997,6 +997,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_open_table_session: { Args: { p_table_id: string }; Returns: Json }
+      admin_reset_table_session: {
+        Args: { p_reason: string; p_session_id: string }
+        Returns: Json
+      }
+      admin_table_states: {
+        Args: never
+        Returns: {
+          is_active: boolean
+          items: number
+          name: string
+          opened_at: string
+          opened_by_name: string
+          orders_in_kitchen: number
+          orders_ready: number
+          session_id: string
+          sort: number
+          table_id: string
+          total_cents: number
+        }[]
+      }
       agent_heartbeat: {
         Args: {
           p_agent_id: string
@@ -1228,7 +1249,12 @@ export type Database = {
     Enums: {
       item_status: "active" | "cancelled"
       order_status: "in_kitchen" | "ready" | "served" | "cancelled"
-      print_job_status: "pending" | "printing" | "printed" | "failed"
+      print_job_status:
+        | "pending"
+        | "printing"
+        | "printed"
+        | "failed"
+        | "expired"
       print_job_type:
         | "order"
         | "addition"
@@ -1368,7 +1394,7 @@ export const Constants = {
     Enums: {
       item_status: ["active", "cancelled"],
       order_status: ["in_kitchen", "ready", "served", "cancelled"],
-      print_job_status: ["pending", "printing", "printed", "failed"],
+      print_job_status: ["pending", "printing", "printed", "failed", "expired"],
       print_job_type: [
         "order",
         "addition",

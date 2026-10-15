@@ -32,6 +32,7 @@ describe('waiterLogic', () => {
     expect(printBadge({ status: 'pending' } as never)).toBe('queued');
     expect(printBadge({ status: 'printing' } as never)).toBe('queued');
     expect(printBadge({ status: 'failed' } as never)).toBe('failed');
+    expect(printBadge({ status: 'expired' } as never)).toBe('expired');
     expect(printBadge(null)).toBeNull();
   });
 
