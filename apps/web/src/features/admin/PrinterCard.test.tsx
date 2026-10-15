@@ -90,7 +90,7 @@ describe('<PrinterCard />', () => {
     render(<PrinterCard />);
     await userEvent.click(screen.getByRole('button', { name: 'Test fişi bas' }));
     expect(testPrint.mutate).toHaveBeenCalled();
-    expect(useToast.getState().message).toBe('Test fişi sıraya alındı');
+    expect(useToast.getState().message).toBe('Test fişi sıraya alındı — restoranın baskı cihazı basar');
   });
 
   it('R79: onay takıldığında uyarı, süre ve ne yapılacağı görünür', () => {

@@ -763,6 +763,20 @@
         },
         "transliterate": "Türkische Buchstaben vereinfachen",
         "transliterateHint": "Ş→S, Ğ→G, İ→I, ı→i. Einschalten, wenn der Drucker Türkisch mit keinem Zeichensatz druckt.",
+        "deviceTest": {
+          "title": "Testbon von diesem Gerät",
+          "description": "Der Bon geht nicht in die Warteschlange, nichts wird gespeichert: er wird direkt von diesem Telefon an die Adresse oben gedruckt. Die Station im Restaurant ist nicht betroffen — zum Testen eines Druckers an einem anderen Ort.",
+          "button": "Testbon von diesem Gerät drucken",
+          "hostMissing": "Zuerst Druckeradresse eingeben oder Drucker im Netzwerk suchen.",
+          "sent": "Testbon an {{target}} gesendet — er sollte aus diesem Drucker kommen. Nichts gespeichert.",
+          "errors": {
+            "offline": "Dieses Telefon erreicht {{target}} nicht. Sind Telefon und Drucker im selben Netz? ({{detail}})",
+            "io": "Senden an den Drucker fehlgeschlagen: {{detail}}",
+            "cover_open": "Druckerdeckel ist offen — schließen und erneut versuchen.",
+            "paper_end": "Kein Papier im Drucker — Rolle einlegen und erneut versuchen.",
+            "encode": "Bon konnte mit dieser Zeichentabelle nicht erstellt werden ({{detail}}) — Zeichentabelle ändern."
+          }
+        },
         "saveBeforeTest": "Der Testbon nutzt die gespeicherten Einstellungen — zum Testen der neuen Druckereinstellung zuerst speichern.",
         "current": "Gespeicherter Drucker:",
         "manual": "Manuell einstellen (IP-Adresse, Port, Zeichensatz)",
@@ -906,7 +920,7 @@
         "test": "Testbeleg"
       },
       "testPrint": "Testbeleg drucken",
-      "testPrintSent": "Testbeleg in die Warteschlange gestellt",
+      "testPrintSent": "Testbeleg in die Warteschlange gestellt — gedruckt vom Druckgerät des Restaurants",
       "retried": "Erneut in die Warteschlange gestellt"
     },
     "audit": {

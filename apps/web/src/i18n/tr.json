@@ -763,6 +763,20 @@
         },
         "transliterate": "Türkçe harfleri sadeleştir",
         "transliterateHint": "Ş→S, Ğ→G, İ→I, ı→i. Yazıcı hiçbir tabloda Türkçe basamıyorsa aç.",
+        "deviceTest": {
+          "title": "Bu cihazdan test fişi",
+          "description": "Fiş sıraya girmez, ayar kaydedilmez: yukarıdaki adrese doğrudan bu telefondan basılır. Restorandaki istasyon etkilenmez — başka bir yerde yazıcı denerken bunu kullan.",
+          "button": "Bu cihazdan test fişi bas",
+          "hostMissing": "Önce yazıcı adresini gir ya da ağdaki yazıcıyı bul.",
+          "sent": "Test fişi {{target}} adresine gönderildi — fiş bu yazıcıdan çıkmalı. Ayar kaydedilmedi.",
+          "errors": {
+            "offline": "Bu telefondan {{target}} adresine ulaşılamadı. Telefon ve yazıcı aynı ağda mı? ({{detail}})",
+            "io": "Yazıcıya gönderilemedi: {{detail}}",
+            "cover_open": "Yazıcının kapağı açık — kapatıp tekrar dene.",
+            "paper_end": "Yazıcıda kâğıt yok — rulo takıp tekrar dene.",
+            "encode": "Fiş bu karakter tablosuyla hazırlanamadı ({{detail}}) — karakter tablosunu değiştir."
+          }
+        },
         "saveBeforeTest": "Test fişi kayıtlı ayarlarla basılır — yeni yazıcı ayarını denemek için önce kaydet.",
         "current": "Kayıtlı yazıcı:",
         "manual": "Elle ayarla (IP adresi, port, karakter tablosu)",
@@ -906,7 +920,7 @@
         "test": "Test fişi"
       },
       "testPrint": "Test fişi bas",
-      "testPrintSent": "Test fişi sıraya alındı",
+      "testPrintSent": "Test fişi sıraya alındı — restoranın baskı cihazı basar",
       "retried": "Tekrar sıraya alındı"
     },
     "audit": {

@@ -60,7 +60,11 @@ const DEFAULTS: Required<StationRunnerOptions> = {
 
 let printerMutex: Promise<unknown> = Promise.resolve();
 
-function withPrinterLock<T>(fn: () => Promise<T>): Promise<T> {
+/**
+ * Yazıcıya giden her JS çağrısı bu sıradan geçer (istasyon baskısı, durum yoklaması, Ayarlar'daki
+ * "Bu cihazdan test fişi bas"). Yazıcı aynı anda tek bağlantı kabul eder (R69).
+ */
+export function withPrinterLock<T>(fn: () => Promise<T>): Promise<T> {
   const run = printerMutex.then(fn, fn);
   printerMutex = run.then(
     () => undefined,

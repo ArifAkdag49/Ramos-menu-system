@@ -22,6 +22,7 @@ import { TicketPayloadPaper } from '../menu/TicketPreview';
 import { formatDateTime } from '../orders/orderView';
 import { PrinterCard } from '../PrinterCard';
 import { isNative } from '../../../native/capacitor';
+import { DeviceTestPrint } from './DeviceTestPrint';
 import { applyFoundPrinter } from './printerDiscovery';
 import { PrinterFinder } from './PrinterFinder';
 import { PrintRouteSection } from './PrintRouteSection';
@@ -439,6 +440,8 @@ function SettingsEditor({ row }: { row: SettingsRow }) {
                 />
               </div>
             </details>
+            {/* Yalnız Android uygulamasında: sıraya girmeden, kaydetmeden bu telefondan dener. */}
+            <DeviceTestPrint form={form} />
             {printerDirty ? (
               <p role="status" className="flex items-start gap-2 text-warning">
                 <AlertTriangle aria-hidden size={18} className="mt-0.5 shrink-0" />

@@ -43,7 +43,7 @@ const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
  * toplam ≤ 253). Yalnız rakam ve noktadan oluşan bir değer **mutlaka** IPv4 olmalıdır — "192.168.1"
  * geçerli bir ağ adı gibi görünür ama yazıcıya asla ulaşmaz. Boş değer "henüz kurulmadı" demektir.
  */
-function hostValid(raw: string): boolean {
+export function hostValid(raw: string): boolean {
   const host = raw.trim();
   if (host === '') return true;
   if (IPV4_SHAPE.test(host)) {
@@ -53,7 +53,7 @@ function hostValid(raw: string): boolean {
   return host.length <= 253 && host.split('.').every((label) => LABEL.test(label));
 }
 
-function portValid(raw: number | string): boolean {
+export function portValid(raw: number | string): boolean {
   if (typeof raw === 'string') {
     const text = raw.trim();
     return /^\d{1,5}$/.test(text) && portValid(Number(text));
