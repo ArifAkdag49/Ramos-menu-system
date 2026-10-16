@@ -15,6 +15,12 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Testler Supabase istemcisini kuruyor ama gerçek sunucuya gitmiyor; adres yalnız
+    # createClient boş değer görmesin diye. Üretim değerleri sunucuda (/opt/statik/ramos).
+    env:
+      VITE_SUPABASE_URL: http://127.0.0.1:54321
+      VITE_SUPABASE_ANON_KEY: ci-test-anon-key
+      VITE_STAFF_EMAIL_DOMAIN: ramos.test
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
