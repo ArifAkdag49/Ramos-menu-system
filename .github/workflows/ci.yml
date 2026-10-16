@@ -1,0 +1,27 @@
+# PR doğrulaması. Yalnız PR'da çalışıyor (oto-push her Claude cevabından sonra
+# push ediyor; her birinde koşmak Actions dakikalarını boşa harcar). deploy.yml de
+# main'e girişte bunu çağırıyor.
+name: Doğrulama
+
+on:
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test

@@ -1,0 +1,46 @@
+# main'e giren her commit: doğrulama → kodu sunucuya gönder → sunucuda derle ve
+# belge köküne yaz (deploy/sunucu-deploy.sh).
+#
+# Sunucu adımı yalnız repo değişkeni DEPLOY_ACIK=true iken çalışıyor
+# (Settings → Secrets and variables → Actions → Variables).
+# Gereken sır: SSH_KEY (arx-panel ile aynı deploy anahtarı).
+name: Canlıya çıkar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-canli
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  sunucu:
+    needs: test
+    if: vars.DEPLOY_ACIK == 'true'
+    runs-on: ubuntu-latest
+    environment: canli
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: SSH hazırlığı
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          cp deploy/known_hosts ~/.ssh/known_hosts
+      - name: Kodu sunucuya gönder
+        run: |
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_deploy" git push --force ssh://root@87.106.47.17/opt/statik/ramos/kaynak "${GITHUB_SHA}:refs/heads/gelen"
+      - name: Derle ve yayınla
+        run: |
+          ssh -i ~/.ssh/id_deploy root@87.106.47.17 "git -C /opt/statik/ramos/kaynak show ${GITHUB_SHA}:deploy/sunucu-deploy.sh | bash -s -- ${GITHUB_SHA}"
