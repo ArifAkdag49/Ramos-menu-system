@@ -45,14 +45,14 @@ ana() {
     chown "$SISTEM_KULLANICISI:psaserv" "$BELGE_KOKU"; chmod 750 "$BELGE_KOKU"
   }
 
-  # Cloudflare önbelleğine takılmadan doğrudan bu sunucuya: ana sayfa ve onun yüklediği ana JS
+  # Cloudflare önbelleğine takılmadan doğrudan bu sunucuya (nginx yalnız dış IP'de dinliyor): ana sayfa ve onun yüklediği ana JS
   saglikli() {
     local i sayfa js
     for i in $(seq 1 10); do
-      sayfa=$(curl -fsS --max-time 10 --resolve "$ALAN:443:127.0.0.1" "https://$ALAN/" 2>/dev/null) || { sleep 3; continue; }
+      sayfa=$(curl -fsS --max-time 10 --resolve "$ALAN:443:87.106.47.17" "https://$ALAN/" 2>/dev/null) || { sleep 3; continue; }
       js=$(echo "$sayfa" | grep -oE 'src="/assets/[^"]+\.js"' | head -1 | cut -d'"' -f2)
       [ -z "$js" ] && return 0
-      curl -fsS -o /dev/null --max-time 10 --resolve "$ALAN:443:127.0.0.1" "https://$ALAN$js" && return 0
+      curl -fsS -o /dev/null --max-time 10 --resolve "$ALAN:443:87.106.47.17" "https://$ALAN$js" && return 0
       sleep 3
     done
     return 1
