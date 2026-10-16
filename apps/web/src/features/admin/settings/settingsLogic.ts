@@ -8,7 +8,6 @@ import { readAllergenLegend } from '../menu/menuAdminLogic';
 export type SettingsErrorKey =
   | 'host_invalid'
   | 'port_invalid'
-  | 'header_empty'
   | 'header_too_long'
   | 'time_invalid'
   | 'name_empty'
@@ -70,9 +69,8 @@ export function validateSettings(s: SettingsDraft): Record<string, SettingsError
   if (s.restaurant_name !== undefined && s.restaurant_name.trim() === '')
     errors.restaurant_name = 'name_empty';
   if (!TIME.test(s.business_day_start)) errors.business_day_start = 'time_invalid';
-  const header = s.ticket_header.trim();
-  if (header === '') errors.ticket_header = 'header_empty';
-  else if (header.length > TICKET_HEADER_MAX) errors.ticket_header = 'header_too_long';
+  // Boş başlık geçerlidir: fiş başlıksız basılır, en üstte doğrudan masa adı görünür (16.10.2026).
+  if (s.ticket_header.trim().length > TICKET_HEADER_MAX) errors.ticket_header = 'header_too_long';
   if (!hostValid(s.printer_host)) errors.printer_host = 'host_invalid';
   if (!portValid(s.printer_port)) errors.printer_port = 'port_invalid';
 

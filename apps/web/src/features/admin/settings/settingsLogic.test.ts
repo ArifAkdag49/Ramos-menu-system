@@ -43,9 +43,13 @@ describe('validateSettings', () => {
     ).toEqual({
       printer_host: 'host_invalid',
       printer_port: 'port_invalid',
-      ticket_header: 'header_empty',
       business_day_start: 'time_invalid',
     });
+  });
+
+  it('boş fiş başlığı geçerli (başlıksız fiş), çok uzun başlık değil', () => {
+    expect(validateSettings({ ...ok, ticket_header: '' }).ticket_header).toBeUndefined();
+    expect(validateSettings({ ...ok, ticket_header: 'x'.repeat(200) }).ticket_header).toBe('header_too_long');
   });
 });
 

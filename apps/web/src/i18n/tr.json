@@ -729,7 +729,7 @@
         "title": "Mutfak fişi",
         "description": "Fişin başında ve sonunda basılan yazılar",
         "header": "Başlık",
-        "headerHint": "En fazla {{max}} karakter; kısa başlık büyük basılır",
+        "headerHint": "En fazla {{max}} karakter; kısa başlık büyük basılır. Boş bırakılırsa fişte başlık olmaz, en üstte masa adı çıkar.",
         "footer": "Alt yazı",
         "footerHint": "Boş bırakılırsa basılmaz",
         "preview": "Önizleme (örnek sipariş)"
@@ -836,7 +836,6 @@
       "errors": {
         "host_invalid": "Adres hatalı — örnek: 192.168.1.50",
         "port_invalid": "1 ile 65535 arası olmalı (genelde 9100)",
-        "header_empty": "Başlık boş olamaz",
         "header_too_long": "Başlık en fazla 48 karakter olabilir",
         "time_invalid": "Saat hatalı — örnek: 05:00",
         "name_empty": "Restoran adı boş olamaz",

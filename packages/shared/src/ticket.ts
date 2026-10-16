@@ -160,18 +160,6 @@ function pushSubLine(lines: Line[], text: string, columns: number, withPrice: bo
   for (const part of wrap(text, budget, 3)) pushText(lines, `${' '.repeat(SUB_INDENT)}${part}`);
 }
 
-// "+--------+ / | TISCH 61 | / +--------+" — kâğıtta çerçeve komutu yok; ASCII çizgi her kod
-// sayfasında (cp857, WPC1254) aynı basılır. Uzun masa adı kutunun içinde sarılır (R46).
-function pushBoxed(lines: Line[], text: string): void {
-  const inner = wrap(text, DOUBLE_WIDTH_BUDGET - 4, 0);
-  const w = Math.max(...inner.map((l) => l.length)) + 4;
-  const pad = ' '.repeat(Math.max(0, Math.floor((DOUBLE_WIDTH_BUDGET - w) / 2)));
-  const edge = `${pad}+${'-'.repeat(w - 2)}+`;
-  pushText(lines, edge, { width: 2, bold: true });
-  for (const l of inner) pushText(lines, `${pad}| ${l.padEnd(w - 4)} |`, { width: 2, height: 2, bold: true });
-  pushText(lines, edge, { width: 2, bold: true });
-}
-
 function renderItem(lines: Line[], item: TicketItem, columns: number, clean: (s: string) => string, withPrice: boolean): void {
   const qty = `${item.qty}x`.padEnd(QTY_COL);
   const codePart = item.code ? `${clean(item.code)} ` : '';
@@ -236,19 +224,15 @@ function closeTicket(lines: Line[], p: TicketPayload, columns: number, clean: (s
 }
 
 function renderOrderBody(lines: Line[], p: TicketPayload, columns: number, clean: (s: string) => string): void {
-  pushBoxed(lines, clean(p.table).toLocaleUpperCase('de-DE'));
-
-  // Meta tek ortalı satır: mutfak fişi KDS'deki sipariş numarasıyla eşleştirebilsin. STORNO
-  // "zu Bestellung #NNN" der; her tür tarih + garson taşır (R47).
-  const parts: string[] = [];
-  if (p.kind === 'storno') {
-    if (p.refOrderNo != null) parts.push(`zu Bestellung ${formatOrderNo(p.refOrderNo)}`);
-  } else if (p.orderNo != null) {
-    const round = p.round ?? 1;
-    parts.push(`Bestellung ${formatOrderNo(p.orderNo)}${round > 1 ? ` · Runde ${round}` : ''}`);
+  // Masa adı fişin en belirgin satırı: çift boy, kalın, ortalı. Önceden ASCII çerçeve (+---+) içindeydi;
+  // işletme üst kısmın sade olmasını istedi (16.10.2026). Uzun ad 24 kolonluk bütçede sarılır (R46).
+  for (const part of wrap(clean(p.table).toLocaleUpperCase('de-DE'), DOUBLE_WIDTH_BUDGET, 0)) {
+    pushText(lines, centerWide(part), { width: 2, height: 2, bold: true });
   }
-  parts.push(`${fmt(p.createdAt)}${p.waiter ? ` · Kellner: ${clean(p.waiter)}` : ''}`);
-  for (const part of parts) pushWrapped(lines, part, columns, 0, { align: 'center' });
+
+  // Sipariş numarası ve tarih/saat basılmaz (aynı sadeleştirme; R47 kaldırıldı). STORNO'nun
+  // "zu Bestellung #NNN" satırı da gitti: mutfak fişte artık numara görmüyor. Yalnız garson adı kalır.
+  if (p.waiter) pushWrapped(lines, `Kellner: ${clean(p.waiter)}`, columns, 0, { align: 'center' });
   lines.push({ kind: 'feed', lines: 1 });
 
   renderItems(lines, p.items, columns, clean);

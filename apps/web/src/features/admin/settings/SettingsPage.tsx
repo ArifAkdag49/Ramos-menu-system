@@ -50,7 +50,6 @@ import {
 const ERROR_KEY = {
   host_invalid: 'admin.settings.errors.host_invalid',
   port_invalid: 'admin.settings.errors.port_invalid',
-  header_empty: 'admin.settings.errors.header_empty',
   header_too_long: 'admin.settings.errors.header_too_long',
   time_invalid: 'admin.settings.errors.time_invalid',
   name_empty: 'admin.settings.errors.name_empty',

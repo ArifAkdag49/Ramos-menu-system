@@ -20,19 +20,24 @@ describe('renderTicket', () => {
   const lines = renderTicket(order);
   const texts = lines.flatMap((l) => (l.kind === 'text' ? [l.text] : l.kind === 'rule' ? ['---'] : []));
 
-  it('başlık büyük ve ortalı, ek sipariş bandı, kutulu masa ve meta', () => {
-    // lines[0] üstteki tutamak boşluğudur (feed 2); başlık ve bant ondan sonra gelir.
+  it('başlık büyük ve ortalı, ek sipariş bandı, çerçevesiz büyük masa adı, yalnız garson', () => {
+    // lines[0] üstteki tutamak boşluğudur; başlık ve bant ondan sonra gelir.
     expect(lines[1]).toMatchObject({ kind: 'text', text: "     RAMO'S · KÜCHE", width: 2, height: 2, bold: true });
     expect(lines[2]).toMatchObject({ text: 'NACHBESTELLUNG', invert: true, height: 2 });
-    expect(texts).toEqual(expect.arrayContaining(['      +----------+', '      | TISCH 12 |']));
-    expect(lines.find((l) => l.kind === 'text' && l.text.includes('| TISCH 12 |')))
-      .toMatchObject({ width: 2, height: 2, bold: true });
-    expect(texts).toContain('Bestellung #047 · Runde 2');
-    expect(texts).toContain('15.09.2026 19:42 · Kellner: Ahmet');   // 17:42Z = 19:42 Berlin (CEST)
+    expect(lines.find((l) => l.kind === 'text' && l.text.trim() === 'TISCH 12'))
+      .toMatchObject({ text: '        TISCH 12', width: 2, height: 2, bold: true });
+    expect(texts).toContain('Kellner: Ahmet');
+    // Sadeleştirme (16.10.2026): çerçeve, sipariş numarası ve tarih/saat basılmaz.
+    const all = texts.join('\n');
+    expect(all).not.toMatch(/\+-|\| TISCH/);
+    expect(all).not.toContain('Bestellung');
+    expect(all).not.toContain('#047');
+    expect(all).not.toContain('15.09.2026');
+    expect(all).not.toContain('19:42');
   });
 
-  it('meta satırlarından sonra "Nr. / Artikel" sütun başlığı gelir', () => {
-    const iMeta = texts.indexOf('15.09.2026 19:42 · Kellner: Ahmet');
+  it('garson satırından sonra "Nr. / Artikel" sütun başlığı gelir', () => {
+    const iMeta = texts.indexOf('Kellner: Ahmet');
     const iHead = texts.indexOf('Nr.  Artikel');
     expect(iMeta).toBeGreaterThan(0);
     expect(iHead).toBeGreaterThan(iMeta);
@@ -81,8 +86,9 @@ describe('renderTicket', () => {
     expect(linesToText(renderTicket({ ...order, round: 1 }))).not.toContain('NACHBESTELLUNG');
     const st = renderTicket({ ...order, kind: 'storno', refOrderNo: 47, reason: 'Gast hat storniert' });
     expect(st[2]).toMatchObject({ text: '*** STORNO ***' });
-    expect(linesToText(st)).toContain('zu Bestellung #047');
-    expect(linesToText(st)).toContain('15.09.2026 19:42 · Kellner: Ahmet'); // R47: STORNO da tarih + garson bilgisi taşır
+    expect(linesToText(st)).not.toContain('Bestellung');
+    expect(linesToText(st)).not.toContain('19:42');
+    expect(linesToText(st)).toContain('Kellner: Ahmet');
     expect(linesToText(st)).toContain('Grund: Gast hat storniert');
     const mv = renderTicket({ ...order, kind: 'table_move', fromTable: 'Tisch 3', toTable: 'Tisch 5', openOrderNos: [47, 52], items: [] });
     expect(linesToText(mv)).toContain('TISCH 3 -> TISCH 5');
@@ -128,8 +134,9 @@ describe('renderTicket', () => {
     const p: TicketPayload = { ...order, table: 'Terrasse Tisch 12 am Fenster ganz hinten' };
     const result = renderTicket(p);
     for (const l of result) if (isText(l)) expect(l.text.length * (l.width ?? 1)).toBeLessThanOrEqual(48);
-    const tableLines = result.filter((l): l is TextLine => isText(l) && l.width === 2 && l.text.trimStart().startsWith('|'));
-    expect(tableLines.length).toBeGreaterThan(1); // uzun ad kutunun içinde gerçekten sarmalanmış
+    const tableLines = result.filter(
+      (l): l is TextLine => isText(l) && l.width === 2 && l.height === 2 && /TERRASSE|FENSTER|HINTEN/.test(l.text));
+    expect(tableLines.length).toBeGreaterThan(1); // uzun ad gerçekten birden çok satıra sarılmış
   });
 
   it('R46: uzun TISCH x -> TISCH y satırı da 24 kolon bütçesinde kaydırılır', () => {
@@ -234,12 +241,12 @@ describe('fişin başı: tutamak boşluğu ve başlıksız fiş', () => {
     expect(lines[0]).toEqual({ kind: 'feed', lines: 1 });
   });
 
-  it('başlık boşsa hiç basılmaz: boşluktan sonra doğrudan masa kutusu gelir', () => {
+  it('başlık boşsa hiç basılmaz: boşluktan sonra doğrudan büyük masa adı gelir', () => {
     const lines = renderTicket({ ...order, header: '', round: 1 }); // ilk tur: bant da yok
     const metin = lines.filter((l): l is Extract<typeof l, { kind: 'text' }> => l.kind === 'text');
     expect(metin.some((l) => l.text.includes("RAMO'S"))).toBe(false);
-    expect(metin[0]?.text).toContain('+---');   // kutunun üst kenarı
-    expect(metin[1]?.text).toContain('TISCH');
+    expect(metin[0]).toMatchObject({ text: '        TISCH 12', width: 2, height: 2, bold: true });
+    expect(metin[1]?.text).toBe('Kellner: Ahmet');
   });
 
   it('başlık doluysa eskisi gibi en üstte büyük basılır', () => {

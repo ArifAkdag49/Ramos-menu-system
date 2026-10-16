@@ -729,7 +729,7 @@
         "title": "Küchenbon",
         "description": "Texte am Anfang und Ende des Bons",
         "header": "Kopfzeile",
-        "headerHint": "Höchstens {{max}} Zeichen; kurze Kopfzeilen werden groß gedruckt",
+        "headerHint": "Höchstens {{max}} Zeichen; kurze Kopfzeilen werden groß gedruckt. Leer lassen: keine Kopfzeile, oben steht direkt der Tisch.",
         "footer": "Fußzeile",
         "footerHint": "Leer lassen, um nichts zu drucken",
         "preview": "Vorschau (Beispielbestellung)"
@@ -836,7 +836,6 @@
       "errors": {
         "host_invalid": "Adresse ungültig — Beispiel: 192.168.1.50",
         "port_invalid": "Zahl von 1 bis 65535 (meist 9100)",
-        "header_empty": "Kopfzeile darf nicht leer sein",
         "header_too_long": "Kopfzeile darf höchstens 48 Zeichen haben",
         "time_invalid": "Uhrzeit ungültig — Beispiel: 05:00",
         "name_empty": "Name darf nicht leer sein",
