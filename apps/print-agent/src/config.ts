@@ -73,8 +73,9 @@ export function defaultLogDir(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
   if (platform === 'win32') {
-    const base = env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local');
-    return path.join(base, 'RamosPrintAgent', 'logs');
+    const base = env.LOCALAPPDATA ?? path.win32.join(os.homedir(), 'AppData', 'Local');
+    // path.win32: ajan Windows için yol üretiyor, test hangi makinede koşarsa koşsun
+    return path.win32.join(base, 'RamosPrintAgent', 'logs');
   }
   return './logs';
 }
