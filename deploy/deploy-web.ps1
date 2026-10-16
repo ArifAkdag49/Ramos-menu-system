@@ -19,10 +19,17 @@ param(
   [string]$Key = "$HOME\.ssh\tvds_deploy",
   [string]$Server = '87.106.47.17',
   [switch]$SkipBuild,
-  [switch]$SmokeOnly
+  [switch]$SmokeOnly,
+  [switch]$EskiYontem
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Normal yayin artik PR -> main -> GitHub Actions (CLAUDE.md "Deploy"). Bu betik o akisi
+# atliyor; yalniz duman testi (-SmokeOnly) ya da acil durumda bilerek (-EskiYontem).
+if (-not $SmokeOnly -and -not $EskiYontem) {
+  throw 'Normal yayin PR ile (main e birlesince otomatik). Yalniz test: -SmokeOnly. Acil durumda: -EskiYontem'
+}
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
