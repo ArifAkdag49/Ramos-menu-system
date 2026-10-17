@@ -9,6 +9,11 @@ name: Canlıya çıkar
 on:
   push:
     branches: [main]
+    # yalnız belge ve Claude ayarı değişen commit'ler canlıyı yeniden başlatmasın
+    paths-ignore:
+      - "**/*.md"
+      - ".claude/**"
+      - ".github/pull_request_template.md"
   workflow_dispatch:
 
 concurrency:
