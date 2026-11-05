@@ -20,6 +20,7 @@ import { MoveButtons, Section, SelectField, TextArea, TextField, Toggle } from '
 import { reorder, type AllergenEntry } from './menuAdminLogic';
 import { centsToInput, parseEuroInput } from './money';
 import { ProductImageField } from './ProductImageField';
+import { GroupOptionsQuickAdd, QuickAddGroup, QuickAddIngredient } from './QuickAdd';
 import { TicketPreview } from './TicketPreview';
 import { VariantsEditor, type VariantDraft } from './VariantsEditor';
 
@@ -339,6 +340,10 @@ export function ProductEditor({
             onMove={(from, to) => patch({ ingredientIds: moveInList(form.ingredientIds, from, to) })}
             emptyLabel={t('admin.menu.ingredients.noneChosen')}
           />
+          <QuickAddIngredient
+            ingredients={ingredients}
+            onCreated={(id) => setForm((f) => ({ ...f, ingredientIds: [...f.ingredientIds, id] }))}
+          />
         </Section>
 
         <Section title={t('admin.menu.sections.groups')}>
@@ -348,6 +353,17 @@ export function ProductEditor({
             onChange={(groupIds) => patch({ groupIds })}
             onMove={(from, to) => patch({ groupIds: moveInList(form.groupIds, from, to) })}
             emptyLabel={t('admin.menu.groups.noneChosen')}
+          />
+          {form.groupIds.flatMap((id) => {
+            const g = groups.find((x) => x.id === id);
+            return g ? [<GroupOptionsQuickAdd key={id} group={g} />] : [];
+          })}
+          {form.groupIds.length > 0 ? (
+            <p className="text-xs text-muted">{t('admin.menu.quick.sharedNote')}</p>
+          ) : null}
+          <QuickAddGroup
+            groups={groups}
+            onCreated={(id) => setForm((f) => ({ ...f, groupIds: [...f.groupIds, id] }))}
           />
         </Section>
 

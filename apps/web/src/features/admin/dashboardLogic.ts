@@ -104,11 +104,15 @@ export const MAX_RANGE_DAYS = 31;
  * Tarih aralığı denetimi. Sınır sorgu maliyeti içindir: sipariş listesi iç içe kalem ve fiş işi
  * taşır, aylarca geriye bakan bir sorgu telefonda sayfayı kilitlerdi. Uzun dönem için Raporlar var.
  */
-export function dateRangeError(from: string, to: string): DateRangeError | null {
+export function dateRangeError(
+  from: string,
+  to: string,
+  maxDays: number = MAX_RANGE_DAYS,
+): DateRangeError | null {
   const a = parseIsoDate(from);
   const b = parseIsoDate(to);
   if (a === null || b === null || b < a) return 'range_invalid';
-  return Math.round((b - a) / DAY_MS) + 1 > MAX_RANGE_DAYS ? 'range_too_long' : null;
+  return Math.round((b - a) / DAY_MS) + 1 > maxDays ? 'range_too_long' : null;
 }
 
 /** Europe/Berlin'in verilen andaki UTC farkı (dakika). `Intl` yaz/kış saatini kendisi bilir. */

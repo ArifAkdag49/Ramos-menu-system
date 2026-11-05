@@ -418,6 +418,36 @@
         "min_gt_max": "“En az” değeri “en çok”tan büyük olamaz",
         "min_gt_options": "“En az” değeri seçenek sayısından büyük olamaz",
         "max_gt_options": "“En çok” değeri seçenek sayısından büyük olamaz"
+      },
+      "quick": {
+        "newIngredient": "Listede yok — yeni malzeme ekle",
+        "ingredientHint": "Kütüphaneye eklenir ve bu ürüne seçilir. Fişte Almanca ad yazar (\"ohne …\").",
+        "newOptionButton": "Bu gruba seçenek ekle",
+        "newOption": "Yeni seçenek: {{group}}",
+        "optionHint": "Grubu kullanan bütün ürünlerde görünür. Fiyat farkı boşsa ücretsiz.",
+        "addOption": "Seçeneği ekle",
+        "newGroup": "Listede yok — yeni seçim grubu",
+        "groupHint": "Grup ve ilk seçeneği oluşturulur, bu ürüne eklenir. Diğer seçenekler sonra eklenebilir.",
+        "groupNameDe": "Grup adı (Almanca)",
+        "nameDe": "Almanca ad",
+        "nameTr": "Türkçe ad",
+        "kind": "Tür",
+        "firstOption": "İlk seçenek",
+        "kinds": {
+          "single": "Zorunlu, tek seçim (ör. Pommes / Reis)",
+          "multi": "İsteğe bağlı, birden çok (ör. soslar)",
+          "extra": "Ekstra malzeme (her biri ayrı satır)"
+        },
+        "createGroup": "Grubu oluştur ve ekle",
+        "addAndSelect": "Ekle ve seç",
+        "cancel": "Vazgeç",
+        "sharedNote": "Seçim grupları ortaktır: bir gruba eklenen seçenek o grubu kullanan bütün ürünlerde çıkar.",
+        "errors": {
+          "required": "Almanca ad gerekli",
+          "tooLong": "En fazla 60 karakter",
+          "taken": "Bu ad zaten var",
+          "max": "1 ile 20 arasında bir sayı yaz"
+        }
       }
     },
     "staff": {
@@ -581,8 +611,8 @@
         "label": "Hazır aralıklar",
         "today": "Bugün",
         "yesterday": "Dün",
-        "last7": "Son 7 gün",
-        "thisMonth": "Bu ay"
+        "last3": "Son 3 gün",
+        "last7": "Son 7 gün"
       },
       "stats": {
         "orders": "Sipariş",
@@ -1011,7 +1041,7 @@
       "note": "İş günü her gün saat {{time}} itibarıyla başlar",
       "errors": {
         "range_invalid": "Bitiş tarihi başlangıçtan önce olamaz — tarihleri düzelt",
-        "range_too_long": "En fazla 31 gün seçilebilir — aralığı kısalt"
+        "range_too_long": "En fazla {{max}} gün seçilebilir — aralığı kısalt"
       }
     }
   },

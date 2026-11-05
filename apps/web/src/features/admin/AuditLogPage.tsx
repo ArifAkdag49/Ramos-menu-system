@@ -17,7 +17,7 @@ import {
   isRowAction,
   type AuditSummaryContext,
 } from './auditLogic';
-import { businessDate, dateRangeError, formatDayStart } from './dashboardLogic';
+import { businessDate, dateRangeError, formatDayStart, MAX_RANGE_DAYS } from './dashboardLogic';
 import { SelectField, TextField } from './menu/fields';
 import { formatDateTime } from './orders/orderView';
 
@@ -155,7 +155,7 @@ export function AuditLogPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           {rangeError ? (
             <p role="alert" className="text-sm text-danger-ink">
-              {t(`admin.range.errors.${rangeError}`)}
+              {t(`admin.range.errors.${rangeError}`, { max: MAX_RANGE_DAYS })}
             </p>
           ) : (
             <p className="text-xs text-muted">
