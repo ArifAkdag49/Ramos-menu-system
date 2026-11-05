@@ -13,7 +13,7 @@ import { Button } from '../../../ui/Button';
 import { EmptyState } from '../../../ui/EmptyState';
 import { Spinner } from '../../../ui/Spinner';
 import { CancelItemSheet } from '../../waiter/CancelItemSheet';
-import { businessDate, formatDayStart } from '../dashboardLogic';
+import { businessDate, formatDayStart, MAX_RANGE_DAYS } from '../dashboardLogic';
 import { SelectField, TextField } from '../menu/fields';
 import { OrderDrawer } from './OrderDrawer';
 import {
@@ -227,7 +227,7 @@ function Filters({
       <div className="flex flex-wrap items-center justify-between gap-2">
         {rangeError ? (
           <p role="alert" className="text-sm text-danger-ink">
-            {t(`admin.range.errors.${rangeError}`)}
+            {t(`admin.range.errors.${rangeError}`, { max: MAX_RANGE_DAYS })}
           </p>
         ) : (
           <p className="text-xs text-muted">

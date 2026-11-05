@@ -24,14 +24,15 @@ import {
   isTestWaiter,
   presetRange,
   RANGE_PRESETS,
+  REPORT_MAX_DAYS,
   type RangePreset,
 } from './reportsLogic';
 
 const PRESET_KEY = {
   today: 'admin.reports.presets.today',
   yesterday: 'admin.reports.presets.yesterday',
+  last3: 'admin.reports.presets.last3',
   last7: 'admin.reports.presets.last7',
-  thisMonth: 'admin.reports.presets.thisMonth',
 } as const satisfies Record<RangePreset, string>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -61,7 +62,7 @@ export function ReportsPage() {
   });
   const from = range.from ?? today;
   const to = range.to ?? today;
-  const rangeError = dateRangeError(from, to);
+  const rangeError = dateRangeError(from, to, REPORT_MAX_DAYS);
   const { report, isPending, isStale, isError } = useReportRange(
     rangeError ? '' : from,
     rangeError ? '' : to,
@@ -161,7 +162,7 @@ export function ReportsPage() {
         </div>
         {rangeError ? (
           <p role="alert" className="text-danger-ink">
-            {t(`admin.range.errors.${rangeError}`)}
+            {t(`admin.range.errors.${rangeError}`, { max: REPORT_MAX_DAYS })}
           </p>
         ) : (
           <p className="text-xs text-muted">

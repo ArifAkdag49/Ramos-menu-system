@@ -7,6 +7,7 @@ import {
   isTestWaiter,
   presetRange,
   RANGE_PRESETS,
+  REPORT_MAX_DAYS,
   readAllPages,
 } from './reportsLogic';
 
@@ -16,29 +17,28 @@ describe('presetRange (iş günü, iki uç dahil)', () => {
   it('bugün', () => expect(presetRange('today', today)).toEqual({ from: today, to: today }));
   it('dün', () =>
     expect(presetRange('yesterday', today)).toEqual({ from: '2026-09-16', to: '2026-09-16' }));
+  it('son 3 gün bugünü de sayar', () =>
+    expect(presetRange('last3', today)).toEqual({ from: '2026-09-15', to: today }));
   it('son 7 gün bugünü de sayar', () =>
     expect(presetRange('last7', today)).toEqual({ from: '2026-09-11', to: today }));
-  it('bu ay: ayın 1’inden bugüne', () =>
-    expect(presetRange('thisMonth', today)).toEqual({ from: '2026-09-01', to: today }));
 
-  it('ay başında "dün" önceki aya, "son 7 gün" ay sınırını geçer', () => {
+  it('ay başında "dün" ve "son 3 gün" ay sınırını geçer', () => {
     expect(presetRange('yesterday', '2026-03-01')).toEqual({
       from: '2026-02-28',
       to: '2026-02-28',
     });
-    expect(presetRange('last7', '2026-03-02')).toEqual({ from: '2026-02-24', to: '2026-03-02' });
-    expect(presetRange('thisMonth', '2026-03-01')).toEqual({
-      from: '2026-03-01',
-      to: '2026-03-01',
-    });
+    expect(presetRange('last3', '2026-03-01')).toEqual({ from: '2026-02-27', to: '2026-03-01' });
   });
 
-  it('hiçbir hazır aralık 31 gün sınırını aşmaz', () => {
+  it('aylık seçenek yok; hiçbir hazır aralık rapor sınırını (7 gün) aşmaz', () => {
+    expect(RANGE_PRESETS).toEqual(['today', 'yesterday', 'last3', 'last7']);
+    expect(REPORT_MAX_DAYS).toBe(7);
     for (const day of ['2026-01-31', '2026-02-28', '2026-12-31', '2028-02-29'])
       for (const p of RANGE_PRESETS) {
         const r = presetRange(p, day);
-        expect(dateRangeError(r.from, r.to)).toBeNull();
+        expect(dateRangeError(r.from, r.to, REPORT_MAX_DAYS)).toBeNull();
       }
+    expect(dateRangeError('2026-09-01', '2026-09-08', REPORT_MAX_DAYS)).toBe('range_too_long');
   });
 });
 
@@ -46,14 +46,11 @@ describe('activePreset', () => {
   const today = '2026-09-17';
   it('aralık bir hazır seçeneğe eşitse onu verir', () => {
     expect(activePreset('2026-09-17', '2026-09-17', today)).toBe('today');
+    expect(activePreset('2026-09-15', '2026-09-17', today)).toBe('last3');
     expect(activePreset('2026-09-11', '2026-09-17', today)).toBe('last7');
-    expect(activePreset('2026-09-01', '2026-09-17', today)).toBe('thisMonth');
   });
   it('özel aralık → null', () =>
     expect(activePreset('2026-09-02', '2026-09-17', today)).toBeNull());
-  // Ayın 1'inde "Bugün" ile "Bu ay" aynı aralıktır; seçili görünen daha dar olanıdır.
-  it('çakışmada ilk (daha dar) seçenek kazanır', () =>
-    expect(activePreset('2026-09-01', '2026-09-01', '2026-09-01')).toBe('today'));
 });
 
 describe('hourRows (saatlik dağılım, iş günü sırası)', () => {

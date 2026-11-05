@@ -2,15 +2,18 @@ import type { ReportHourRow } from '../../../data/reports';
 import { addDays } from '../dashboardLogic';
 import { isTestAccount } from '../staff/staffLogic';
 
-export type RangePreset = 'today' | 'yesterday' | 'last7' | 'thisMonth';
+export type RangePreset = 'today' | 'yesterday' | 'last3' | 'last7';
 
 /** Sıra hem düğme sırası hem de çakışmada öncelik sırasıdır (dar aralık önce). */
-export const RANGE_PRESETS: readonly RangePreset[] = ['today', 'yesterday', 'last7', 'thisMonth'];
+export const RANGE_PRESETS: readonly RangePreset[] = ['today', 'yesterday', 'last3', 'last7'];
 
 /**
- * Hazır aralıklar. `today` iş günüdür (`businessDate`), takvim günü değil. Hepsi 31 gün sınırının
- * (`MAX_RANGE_DAYS`) içinde kalır: "Bu ay" en fazla 31, "Son 7 gün" bugünü de sayar.
+ * Raporda seçilebilecek en uzun aralık (iki uç dahil). İşletme isteği (05.11.2026): en çok
+ * haftalık rapor; aylık gerekmiyor. Sipariş ve denetim ekranlarının sınırı (`MAX_RANGE_DAYS`) ayrı.
  */
+export const REPORT_MAX_DAYS = 7;
+
+/** Hazır aralıklar. `today` iş günüdür (`businessDate`), takvim günü değil; hepsi bugünü de sayar. */
 export function presetRange(preset: RangePreset, today: string): { from: string; to: string } {
   switch (preset) {
     case 'today':
@@ -19,10 +22,10 @@ export function presetRange(preset: RangePreset, today: string): { from: string;
       const day = addDays(today, -1);
       return { from: day, to: day };
     }
+    case 'last3':
+      return { from: addDays(today, -2), to: today };
     case 'last7':
       return { from: addDays(today, -6), to: today };
-    case 'thisMonth':
-      return { from: `${today.slice(0, 8)}01`, to: today };
   }
 }
 

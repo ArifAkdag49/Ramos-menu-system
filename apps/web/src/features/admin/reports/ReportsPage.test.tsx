@@ -112,9 +112,13 @@ describe('<ReportsPage />', () => {
     expect(screen.getByText('İş günü her gün saat 04:00 itibarıyla başlar')).toBeInTheDocument();
   });
 
-  it('hazır aralıklar: Son 7 gün ve Bu ay', async () => {
+  it('hazır aralıklar: Son 3 gün ve Son 7 gün; aylık seçenek yok', async () => {
     const user = userEvent.setup();
     render(<ReportsPage />, { wrapper });
+    expect(screen.queryByRole('button', { name: 'Bu ay' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Son 3 gün' }));
+    expect(lastRange()).toEqual(['2026-09-15', '2026-09-17']);
 
     await user.click(screen.getByRole('button', { name: 'Son 7 gün' }));
     expect(lastRange()).toEqual(['2026-09-11', '2026-09-17']);
@@ -124,9 +128,16 @@ describe('<ReportsPage />', () => {
     );
     expect(screen.getByRole('button', { name: 'Bugün' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByText('11.09.2026 – 17.09.2026 · 7 iş günü')).toBeInTheDocument();
+  });
 
-    await user.click(screen.getByRole('button', { name: 'Bu ay' }));
-    expect(lastRange()).toEqual(['2026-09-01', '2026-09-17']);
+  it('7 günden uzun aralık istenmez, sınır yazılır', async () => {
+    const user = userEvent.setup();
+    render(<ReportsPage />, { wrapper });
+    const from = screen.getByLabelText('Başlangıç');
+    await user.clear(from);
+    await user.type(from, '2026-09-10');
+    expect(screen.getByRole('alert')).toHaveTextContent('En fazla 7 gün seçilebilir');
+    expect(lastRange()).toEqual(['', '']);
   });
 
   it('geçersiz aralıkta rapor ve CSV istenmez, hata yazılır', async () => {

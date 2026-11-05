@@ -418,6 +418,36 @@
         "min_gt_max": "„Mindestens“ darf nicht größer als „höchstens“ sein",
         "min_gt_options": "„Mindestens“ darf nicht größer als die Anzahl der Optionen sein",
         "max_gt_options": "„Höchstens“ darf nicht größer als die Anzahl der Optionen sein"
+      },
+      "quick": {
+        "newIngredient": "Nicht in der Liste — neue Zutat",
+        "ingredientHint": "Wird zur Bibliothek hinzugefügt und hier ausgewählt. Auf dem Bon steht der deutsche Name („ohne …“).",
+        "newOptionButton": "Option zu dieser Gruppe",
+        "newOption": "Neue Option: {{group}}",
+        "optionHint": "Erscheint bei allen Produkten mit dieser Gruppe. Ohne Aufpreis = kostenlos.",
+        "addOption": "Option hinzufügen",
+        "newGroup": "Nicht in der Liste — neue Auswahlgruppe",
+        "groupHint": "Gruppe und erste Option werden angelegt und diesem Produkt zugeordnet. Weitere Optionen später.",
+        "groupNameDe": "Gruppenname (Deutsch)",
+        "nameDe": "Name (Deutsch)",
+        "nameTr": "Name (Türkisch)",
+        "kind": "Art",
+        "firstOption": "Erste Option",
+        "kinds": {
+          "single": "Pflicht, eine Auswahl (z. B. Pommes / Reis)",
+          "multi": "Optional, mehrere (z. B. Soßen)",
+          "extra": "Extra-Zutat (je eine Zeile)"
+        },
+        "createGroup": "Gruppe anlegen und zuordnen",
+        "addAndSelect": "Hinzufügen und auswählen",
+        "cancel": "Abbrechen",
+        "sharedNote": "Auswahlgruppen sind gemeinsam: eine neue Option erscheint bei allen Produkten mit dieser Gruppe.",
+        "errors": {
+          "required": "Deutscher Name erforderlich",
+          "tooLong": "Höchstens 60 Zeichen",
+          "taken": "Name existiert bereits",
+          "max": "Zahl zwischen 1 und 20"
+        }
       }
     },
     "staff": {
@@ -581,8 +611,8 @@
         "label": "Schnellauswahl",
         "today": "Heute",
         "yesterday": "Gestern",
-        "last7": "Letzte 7 Tage",
-        "thisMonth": "Dieser Monat"
+        "last3": "Letzte 3 Tage",
+        "last7": "Letzte 7 Tage"
       },
       "stats": {
         "orders": "Bestellungen",
@@ -1011,7 +1041,7 @@
       "note": "Der Geschäftstag beginnt um {{time}} Uhr",
       "errors": {
         "range_invalid": "Das Enddatum liegt vor dem Startdatum — Daten korrigieren",
-        "range_too_long": "Höchstens 31 Tage wählbar — Zeitraum verkürzen"
+        "range_too_long": "Höchstens {{max}} Tage wählbar — Zeitraum verkürzen"
       }
     }
   },
