@@ -14,6 +14,7 @@ import { ReportsPage } from './reports/ReportsPage';
 import { SettingsPage } from './settings/SettingsPage';
 import { StaffPage } from './staff/StaffPage';
 import { TablesAdminPage } from './tables/TablesAdminPage';
+import { TimeclockAdminPage } from './timeclock/TimeclockAdminPage';
 
 /**
  * Admin bölümünün tamamı — ayrı JS parçası (Görev 27, Plan 5 Adım 2.4). `app/AdminRoute.tsx` bunu
@@ -37,6 +38,7 @@ export default function AdminApp() {
           <Route path="images" element={<BulkImagesPage />} />
         </Route>
         <Route path="staff" element={<StaffPage />} />
+        <Route path="timeclock" element={<TimeclockAdminPage />} />
         <Route path="tables" element={<TablesAdminPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="audit" element={<AuditLogPage />} />

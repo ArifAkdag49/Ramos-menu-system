@@ -6,10 +6,11 @@ const TABLES = [
   'option_groups', 'options', 'order_items', 'orders', 'print_jobs', 'printer_status',
   'product_ingredients', 'product_option_groups', 'product_variants', 'products', 'profiles',
   'push_subscriptions', 'sdp_printers', 'settings', 'station_devices', 'table_sessions',
+  'timeclock_settings', 'timeclock_shift_edits', 'timeclock_shifts', 'timeclock_staff',
 ];
 
 describe('0001 şema', () => {
-  it('22 tablo var ve hepsinde RLS açık', async () => {
+  it('26 tablo var ve hepsinde RLS açık', async () => {
     const rows = await sql<{ relname: string; relrowsecurity: boolean }>(`
       select c.relname, c.relrowsecurity
       from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -45,8 +46,10 @@ describe('anon yetkisi yok — her migration sonrası (R33)', () => {
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public'`);
     expect(rows.length).toBeGreaterThan(0);
-    // Tek bilinçli istisna: müşteri QR menüsü (0011_public_menu.sql; anon.test.ts'teki allowlist ile aynı).
-    expect(rows.filter((r) => r.anon && r.fn !== 'public_menu()').map((r) => r.fn)).toEqual([]);
+    // Bilinçli istisnalar: müşteri QR menüsü (0011) ve mesai okutma sayfası (0020); anon.test.ts'teki allowlist.
+    const allowed = ['public_menu()', 'timeclock_config(text)', 'timeclock_pair(text)',
+      'timeclock_scan(text,text,double precision,double precision,double precision)'];
+    expect(rows.filter((r) => r.anon && !allowed.includes(r.fn)).map((r) => r.fn)).toEqual([]);
   });
 
   it('anon hiçbir public sequence üzerinde usage/select/update yetkisine sahip değil', async () => {

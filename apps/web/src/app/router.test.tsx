@@ -6,13 +6,14 @@ vi.mock('./routeChunks', () => ({
   WaiterRoute: () => null,
   KitchenRoute: () => null,
   PublicMenuRoute: () => null,
+  TimeclockRoute: () => null,
   AdminRoute: () => null,
 }));
 vi.mock('../features/auth/LoginPage', () => ({ LoginPage: () => null }));
 
 import { router } from './router';
 import { RoleGate } from './RoleGate';
-import { AdminRoute, KitchenRoute, PublicMenuRoute, WaiterRoute } from './routeChunks';
+import { AdminRoute, KitchenRoute, PublicMenuRoute, TimeclockRoute, WaiterRoute } from './routeChunks';
 
 const elementAt = (path: string): ReactElement<{ children?: ReactElement }> =>
   router.routes.find((r) => r.path === path)?.element as ReactElement<{
@@ -28,6 +29,9 @@ describe('router — rota tablosu', () => {
     expect(router.routes.map((r) => r.path)).toEqual([
       '/login',
       '/menu',
+      '/mesai',
+      '/mesai/bagla/:code',
+      '/mesai/:qr',
       '/waiter/*',
       '/kitchen',
       '/admin/*',
@@ -56,6 +60,11 @@ describe('router — rota tablosu', () => {
   it('giriş ve müşteri menüsü kapısız kalır', () => {
     expect((elementAt('/login').type as unknown) === RoleGate).toBe(false);
     expect((elementAt('/menu').type as unknown) === RoleGate).toBe(false);
+  });
+
+  it('mesai okutma sayfası girişsiz ve kendi parçasında (0020)', () => {
+    for (const path of ['/mesai', '/mesai/bagla/:code', '/mesai/:qr'])
+      expect((elementAt(path).type as unknown) === TimeclockRoute).toBe(true);
   });
 
   it('garson rotası `/waiter/*`: alt yollar bölümün kendi içinde çözülür', () => {

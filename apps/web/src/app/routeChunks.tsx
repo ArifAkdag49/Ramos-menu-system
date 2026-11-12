@@ -31,6 +31,9 @@ const KitchenPage = lazy(() =>
 const PublicMenuPage = lazy(() =>
   import('../features/publicMenu/PublicMenuPage').then((m) => ({ default: m.PublicMenuPage })),
 );
+const TimeclockPage = lazy(() =>
+  import('../features/timeclock/TimeclockPage').then((m) => ({ default: m.TimeclockPage })),
+);
 
 /** Garson bölümü (`features/waiter/WaiterApp.tsx`): sekmeler + sipariş girişi. */
 export const WaiterRoute = () => (
@@ -50,6 +53,13 @@ export const KitchenRoute = () => (
 export const PublicMenuRoute = () => (
   <Chunk>
     <PublicMenuPage />
+  </Chunk>
+);
+
+/** Mesai okutma sayfası (0020) — personelin kendi telefonunda, girişsiz. */
+export const TimeclockRoute = () => (
+  <Chunk>
+    <TimeclockPage />
   </Chunk>
 );
 
