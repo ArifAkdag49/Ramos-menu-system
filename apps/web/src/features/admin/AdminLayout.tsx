@@ -3,6 +3,7 @@ import {
   BarChart3,
   BookOpen,
   ChefHat,
+  Clock,
   ClipboardList,
   ConciergeBell,
   LayoutDashboard,
@@ -29,6 +30,7 @@ interface NavItem {
     | 'admin.dashboard.title'
     | 'admin.menu.title'
     | 'admin.staff.title'
+    | 'admin.timeclock.title'
     | 'admin.tables.title'
     | 'admin.orders.title'
     | 'admin.reports.title'
@@ -47,6 +49,7 @@ const SECTIONS: NavItem[] = [
   },
   { to: '/admin/menu', labelKey: 'admin.menu.title', icon: <BookOpen aria-hidden size={20} /> },
   { to: '/admin/staff', labelKey: 'admin.staff.title', icon: <Users aria-hidden size={20} /> },
+  { to: '/admin/timeclock', labelKey: 'admin.timeclock.title', icon: <Clock aria-hidden size={20} /> },
   {
     to: '/admin/tables',
     labelKey: 'admin.tables.title',

@@ -34,7 +34,7 @@ export function TextField({
   /** Sağdan sola yazılan içerik (ör. Arapça ad) için `rtl`. */
   dir?: 'ltr' | 'rtl' | 'auto';
   lang?: string;
-  type?: 'text' | 'number' | 'date' | 'time';
+  type?: 'text' | 'number' | 'date' | 'time' | 'datetime-local';
   placeholder?: string;
   inputClassName?: string;
   disabled?: boolean;

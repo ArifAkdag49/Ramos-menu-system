@@ -13,9 +13,10 @@ import { sql } from './helpers/sql';
 //     - Bu yüzden argüman adları `null` değerlerle de gönderilir → imza eşleşir ve Postgres yetki denetimine
 //       ulaşılır: 401/403 + 42501 beklenir. Yetki denetimi gövde çalışmadan önce yapıldığı için yan etki yoktur.
 
-// Açık allowlist: anon'un çağırabildiği TEK fonksiyon — müşteri QR menüsü (0011_public_menu.sql).
+// Açık allowlist: anon'un çağırabildiği fonksiyonlar — müşteri QR menüsü (0011_public_menu.sql) ve girişsiz
+// mesai okutma sayfası (0020_timeclock.sql; üçü de 128/256 bit rastgele anahtar olmadan hiçbir şey döndürmez).
 // Buraya yeni ad eklemek bilinçli bir güvenlik kararıdır; docs/BUILD-DECISIONS.md'ye yazılmalı.
-const ANON_ALLOWED_FUNCTIONS = ['public_menu'];
+const ANON_ALLOWED_FUNCTIONS = ['public_menu', 'timeclock_config', 'timeclock_pair', 'timeclock_scan'];
 const FORBIDDEN_KEYS = ['slug', 'is_active', 'archived_at', 'ingredients', 'groups', 'printer_host', 'ticket_header'];
 
 type Fn = { oid: number; proname: string; in_args: string[]; anon_exec: boolean };

@@ -9,6 +9,8 @@ export const RPC_ERROR_KEYS = [
   'sdp_printer_not_found', 'station_id_invalid', 'fcm_token_invalid', 'station_device_name_invalid',
   'station_device_not_found', 'menu_sync_client_name_invalid', 'menu_sync_client_not_found',
   'table_not_found', 'session_already_open',
+  'timeclock_bad_qr', 'timeclock_not_paired', 'timeclock_bad_pair', 'timeclock_bad_range',
+  'timeclock_name_invalid', 'timeclock_not_found', 'timeclock_bad_week', 'timeclock_bad_location',
 ] as const;
 export type RpcErrorKey = (typeof RPC_ERROR_KEYS)[number];
 export const isRpcErrorKey = (s: string): s is RpcErrorKey => (RPC_ERROR_KEYS as readonly string[]).includes(s);

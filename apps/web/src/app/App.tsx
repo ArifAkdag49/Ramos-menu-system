@@ -12,7 +12,8 @@ import { Brand, BrandLoader } from './BrandLoader';
 import { router } from './router';
 
 /** Girişsiz açılan yollar: oturum açılışının hatası bu yollarda gösterilmez. */
-const isPublicPath = (path: string) => path === '/menu' || path.startsWith('/menu/');
+const isPublicPath = (path: string) =>
+  ['/menu', '/mesai'].some((p) => path === p || path.startsWith(`${p}/`));
 
 /** StrictMode iki kez bağladığı için oturum açılışı yalnız bir kez çalışır. */
 let started = false;

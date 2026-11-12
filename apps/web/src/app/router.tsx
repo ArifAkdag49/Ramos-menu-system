@@ -4,7 +4,7 @@ import { LoginPage } from '../features/auth/LoginPage';
 import type { Role } from '../lib/auth';
 import { HomeRedirect } from './pages';
 import { RoleGate } from './RoleGate';
-import { AdminRoute, KitchenRoute, PublicMenuRoute, WaiterRoute } from './routeChunks';
+import { AdminRoute, KitchenRoute, PublicMenuRoute, TimeclockRoute, WaiterRoute } from './routeChunks';
 
 const gate = (roles: Role[], element: ReactNode) => <RoleGate roles={roles}>{element}</RoleGate>;
 
@@ -21,6 +21,11 @@ export const router = createBrowserRouter([
 
   // Müşteri QR menüsü: girişsiz, `RoleGate` dışında. Oturum ve rol aranmaz.
   { path: '/menu', element: <PublicMenuRoute /> },
+
+  // Mesai okutma (duvardaki QR / telefon eşleştirme linki): girişsiz, personelin kendi telefonu.
+  { path: '/mesai', element: <TimeclockRoute /> },
+  { path: '/mesai/bagla/:code', element: <TimeclockRoute /> },
+  { path: '/mesai/:qr', element: <TimeclockRoute /> },
 
   // `RoleGate` önce çalışır: parça yalnız rolü uyan oturumda indirilir.
   { path: '/waiter/*', element: gate(WAITER, <WaiterRoute />) },

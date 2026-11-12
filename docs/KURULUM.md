@@ -575,6 +575,28 @@ adresine yönlendirilir (geçici yönlendirme, `apps/web/public/.htaccess`). Yen
   birbirini eşitler (son değişiklik geçerlidir). Yeni ürün ve silme de iki yönlüdür; Ramos'ta
   ürün silinmez, **pasife alınır** (siparişler ürüne bağlıdır).
 
+### Mesai takibi (QR ile giriş-çıkış)
+
+**Yönetim → Mesai takibi** (12.11.2026). Duvarda **tek basılı QR** var; personel mesaiye başlarken
+de çıkarken de aynı kodu kendi telefonuyla okutur. Kimin okuttuğunu telefon belirler, giriş mi çıkış mı
+olduğuna sistem karar verir. Takip edilen kişilerin giriş hesabı olması gerekmez (bulaşıkçı, kurye…).
+
+1. **QR ve ayarlar** sekmesi → **Yazdır** (ya da SVG indir) → kodu personel girişine asın.
+2. Restorandayken aynı sekmede **"Şu an restorandayım, konumu kaydet"**. Kaydedilene kadar konum kontrolü yapılmaz.
+3. **Personel** sekmesi → kişiyi ekleyin → **Telefon eşleştir**: çıkan QR'ı personel kendi telefonuyla bir kez okutur
+   (ya da linki açar). Link tek kullanımlık, 24 saat geçerli.
+4. **Haftalık tablo**: kim hangi gün kaç saat çalışmış, şu an kim mesaide. Hücreye dokunarak saat düzeltilir ya da
+   **+** ile elle mesai eklenir; her düzeltme sebep ister ve eski saatler geçmişte kalır.
+
+Kurallar: 2 dakika içindeki ikinci okutma sayılmaz · 16 saatten uzun açık kalan mesai kendiliğinden kapanmaz, tabloda
+**çıkış eksik** görünür ve elle düzeltilir · mola takibi yok (süre = çıkış − giriş) · gece yarısını geçen mesai başladığı
+güne yazılır · telefonu olmayan personel için **Mesaiyi başlat / bitir** düğmesi · ayrılan personel silinmez,
+**pasife alınır** · kayıtlar 2 yıl saklanır (MiLoG §17). Konum **saklanmaz**: okutma anında yalnız "restorana yakın mı"
+sonucu yazılır; doğrulanamayan okutma engellenmez, tabloda işaretlenir. **Personele bunu yazılı olarak bildirin.**
+
+Eşleşme telefonun tarayıcısında saklanır. Tarayıcı verisi silinirse ya da iPhone'da site haftalarca açılmazsa telefon
+"eşleşmemiş" der: **Telefonu değiştir** ile yeni link verin. **QR kodu yenile** eski basılı kodu geçersiz kılar.
+
 ---
 
 ## 7. Günlük akış
